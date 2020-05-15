@@ -5,7 +5,7 @@ import mango.syntax.lex.Token
 
 class ElseClauseNode(
         val keyword: Token,
-        val statement: BlockStatementNode
+        val statement: StatementNode
 ) : Node() {
     override val kind
         get() = SyntaxType.ElseClause

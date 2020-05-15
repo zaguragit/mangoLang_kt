@@ -28,7 +28,7 @@ class Binder(
     private fun bindIfStatement(node: IfStatementNode): BoundIfStatement {
         val condition = bindExpression(node.condition, Type.Bool)
         val statement = bindBlockStatement(node.thenStatement)
-        val elseStatement = node.elseClause?.let { bindBlockStatement(it.statement) }
+        val elseStatement = node.elseClause?.let { bindStatement(it.statement) }
         return BoundIfStatement(condition, statement, elseStatement)
     }
 

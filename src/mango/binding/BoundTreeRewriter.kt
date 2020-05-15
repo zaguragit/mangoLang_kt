@@ -59,7 +59,7 @@ open class BoundTreeRewriter {
         val condition = rewriteExpression(node.condition)
         val body = rewriteBlockStatement(node.statement)
         val elseStatement = if (node.elseStatement == null) { null } else {
-            rewriteBlockStatement(node.elseStatement)
+            rewriteStatement(node.elseStatement)
         }
         if (condition == node.condition && body == node.statement && elseStatement == node.elseStatement) {
             return node

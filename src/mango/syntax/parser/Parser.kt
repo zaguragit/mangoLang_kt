@@ -119,7 +119,8 @@ class Parser(val sourceText: SourceText) {
             return null
         }
         val keyword = next()
-        val statement = parseBlockStatement()
+        val isIfNext = peek(1).kind == SyntaxType.If
+        val statement = if (isIfNext) { parseIfStatement() } else { parseBlockStatement() }
         return ElseClauseNode(keyword, statement)
     }
 
