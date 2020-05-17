@@ -184,7 +184,7 @@ class Parser(val sourceText: SourceText) {
         SyntaxType.Int -> parseNumberLiteral()
         SyntaxType.String -> parseStringLiteral()
         SyntaxType.In -> parseNumberLiteral()
-        else -> parseNameExpression()
+        else -> parseNameOrCallExpression()
     }
 
     private fun parseParenthesizedExpression(): ParenthesizedExpressionNode {
@@ -204,8 +204,47 @@ class Parser(val sourceText: SourceText) {
 
     private fun parseStringLiteral() = LiteralExpressionNode(match(SyntaxType.String))
 
+    private fun parseNameOrCallExpression(): ExpressionNode {
+        if (peek(0).kind == SyntaxType.Identifier &&
+            peek(1).kind == SyntaxType.OpenRoundedBracket) {
+            return parseCallExpression()
+        }
+        return parseNameExpression()
+    }
+
     private fun parseNameExpression(): NameExpressionNode {
         val identifierToken = match(SyntaxType.Identifier)
         return NameExpressionNode(identifierToken)
+    }
+
+    private fun parseCallExpression(): CallExpressionNode {
+        val identifierToken = match(SyntaxType.Identifier)
+        val leftBracket = match(SyntaxType.OpenRoundedBracket)
+        val arguments = parseArguments()
+        val rightBracket = match(SyntaxType.ClosedRoundedBracket)
+        return CallExpressionNode(identifierToken, leftBracket, arguments, rightBracket)
+    }
+
+    private fun parseArguments(): SeparatedNodeList<ExpressionNode> {
+
+        val nodesNSeparators = ArrayList<Node>()
+        //val startToken = current
+
+        while (
+            current.kind != SyntaxType.ClosedRoundedBracket &&
+            current.kind != SyntaxType.EOF
+        ) {
+            val expression = parseExpression()
+            nodesNSeparators.add(expression)
+
+            if (current.kind != SyntaxType.ClosedRoundedBracket) {
+                val comma = match(SyntaxType.Comma)
+                nodesNSeparators.add(comma)
+            }
+
+            //if (startToken == current) { next() }
+        }
+
+        return SeparatedNodeList(nodesNSeparators)
     }
 }

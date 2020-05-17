@@ -1,10 +1,9 @@
 package mango.console
 
-import mango.binding.VariableSymbol
+import mango.symbols.VariableSymbol
 import mango.compilation.Compilation
 import mango.compilation.Diagnostic
 import mango.syntax.parser.SyntaxTree
-import kotlin.system.exitProcess
 
 class MangoRepl : Repl() {
 
@@ -32,15 +31,6 @@ class MangoRepl : Repl() {
     }
 
     override fun evaluateSubmission(text: String) {
-/*
-        if (text.isEmpty()) {
-            if (lastWasEmpty) {
-                exitProcess(0)
-            }
-            lastWasEmpty = true
-            return
-        }
-        lastWasEmpty = false*/
 
         val syntaxTree = SyntaxTree.parse(text)
 
@@ -65,6 +55,7 @@ class MangoRepl : Repl() {
                     print(result.value)
                     println('"')
                 }
+                null -> {}
                 else -> println(result.value)
             }
         } else {

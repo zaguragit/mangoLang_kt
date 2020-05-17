@@ -4,7 +4,7 @@ class BoundUnaryExpression(
     val operator: BoundUnaryOperator,
     val operand: BoundExpression
 ) : BoundExpression() {
-    override val type: Type get() = operator.resultType
+    override val type = operator.resultType
     override val boundType = BoundNodeType.UnaryExpression
     override val children get() = listOf(operand)
 }

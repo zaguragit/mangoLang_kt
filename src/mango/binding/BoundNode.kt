@@ -1,6 +1,7 @@
 package mango.binding
 
 import mango.console.Console
+import mango.symbols.TypeSymbol
 
 abstract class BoundNode {
     abstract val boundType: BoundNodeType
@@ -32,7 +33,7 @@ abstract class BoundNode {
 }
 
 abstract class BoundExpression : BoundNode() {
-    abstract val type: Type
+    abstract val type: TypeSymbol
 }
 
 abstract class BoundStatement : BoundNode()
@@ -43,6 +44,8 @@ enum class BoundNodeType {
     LiteralExpression,
     VariableExpression,
     AssignmentExpression,
+    CallExpression,
+    ErrorExpression,
 
     BlockStatement,
     ExpressionStatement,
@@ -53,10 +56,4 @@ enum class BoundNodeType {
     LabelStatement,
     GotoStatement,
     ConditionalGotoStatement
-}
-
-enum class Type {
-    String,
-    Bool,
-    Int
 }

@@ -2,7 +2,7 @@ package mango.compilation
 
 import mango.binding.Binder
 import mango.binding.BoundGlobalScope
-import mango.binding.VariableSymbol
+import mango.symbols.VariableSymbol
 import mango.lowering.Lowerer
 import mango.syntax.parser.SyntaxTree
 

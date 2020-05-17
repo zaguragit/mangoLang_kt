@@ -1,21 +1,22 @@
 package mango.binding
 
+import mango.symbols.TypeSymbol
 import mango.syntax.SyntaxType
 
 class BoundUnaryOperator(
     val syntaxType: SyntaxType,
     val type: BoundUnaryOperatorType,
-    val operandType: Type,
-    val resultType: Type = operandType
+    val operandType: TypeSymbol,
+    val resultType: TypeSymbol = operandType
 ) {
     companion object {
 
         private val operators = arrayOf(
-            BoundUnaryOperator(SyntaxType.Not, BoundUnaryOperatorType.Not, Type.Bool),
-            BoundUnaryOperator(SyntaxType.Plus, BoundUnaryOperatorType.Identity, Type.Int),
-            BoundUnaryOperator(SyntaxType.Minus, BoundUnaryOperatorType.Negation, Type.Int))
+            BoundUnaryOperator(SyntaxType.Not, BoundUnaryOperatorType.Not, TypeSymbol.bool),
+            BoundUnaryOperator(SyntaxType.Plus, BoundUnaryOperatorType.Identity, TypeSymbol.int),
+            BoundUnaryOperator(SyntaxType.Minus, BoundUnaryOperatorType.Negation, TypeSymbol.int))
 
-        fun bind(syntaxType: SyntaxType, operandType: Type): BoundUnaryOperator? {
+        fun bind(syntaxType: SyntaxType, operandType: TypeSymbol): BoundUnaryOperator? {
             for (op in operators) {
                 if (op.syntaxType == syntaxType && op.operandType == operandType) {
                     return op

@@ -1,8 +1,9 @@
 package mango.lowering
 
 import mango.binding.*
+import mango.symbols.TypeSymbol
+import mango.symbols.VariableSymbol
 import mango.syntax.SyntaxType
-import mango.syntax.parser.BlockStatementNode
 import java.util.*
 import kotlin.collections.ArrayList
 
@@ -10,9 +11,9 @@ class Lowerer private constructor() : BoundTreeRewriter() {
 
     private var labelCount = 0
 
-    private fun generateLabel(): LabelSymbol {
+    private fun generateLabel(): BoundLabel {
         val name = "label_${(++labelCount).toString(16)}"
-        return LabelSymbol(name)
+        return BoundLabel(name)
     }
 
     private fun flatten(statement: BoundStatement): BoundBlockStatement {
@@ -35,19 +36,19 @@ class Lowerer private constructor() : BoundTreeRewriter() {
     override fun rewriteForStatement(node: BoundForStatement): BoundStatement {
         val variableDeclaration = BoundVariableDeclaration(node.variable, node.lowerBound)
         val variableExpression = BoundVariableExpression(node.variable)
-        val upperBoundSymbol = VariableSymbol("0upperBound", Type.Int, true)
+        val upperBoundSymbol = VariableSymbol("0upperBound", TypeSymbol.int, true)
         val upperBoundDeclaration = BoundVariableDeclaration(upperBoundSymbol, node.upperBound)
         val condition = BoundBinaryExpression(
             variableExpression,
-            BoundBinaryOperator.bind(SyntaxType.IsEqualOrLess, Type.Int, Type.Int)!!,
+            BoundBinaryOperator.bind(SyntaxType.IsEqualOrLess, TypeSymbol.int, TypeSymbol.int)!!,
             BoundVariableExpression(upperBoundSymbol)
         )
         val increment = BoundExpressionStatement(BoundAssignmentExpression(
             node.variable,
             BoundBinaryExpression(
                 variableExpression,
-                BoundBinaryOperator.bind(SyntaxType.Plus, Type.Int, Type.Int)!!,
-                BoundLiteralExpression(1, Type.Int)
+                BoundBinaryOperator.bind(SyntaxType.Plus, TypeSymbol.int, TypeSymbol.int)!!,
+                BoundLiteralExpression(1)
             )
         ))
         val body = BoundBlockStatement(listOf(node.body, increment))

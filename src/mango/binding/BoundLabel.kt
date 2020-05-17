@@ -1,6 +1,6 @@
 package mango.binding
 
-class LabelSymbol(
+class BoundLabel(
     val name: String
 ) {
 
@@ -9,7 +9,7 @@ class LabelSymbol(
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (javaClass != other?.javaClass) return false
-        other as LabelSymbol
+        other as BoundLabel
         return name == other.name
     }
 }

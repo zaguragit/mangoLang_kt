@@ -1,5 +1,7 @@
 package mango.binding
 
+import mango.symbols.VariableSymbol
+
 class BoundVariableExpression(
     val variable: VariableSymbol
 ) : BoundExpression() {

@@ -6,6 +6,7 @@ enum class SyntaxType {
     Bad,
     NewLine,
     Dot,
+    Comma,
 
     // Nodes
     FileUnit,
@@ -18,6 +19,7 @@ enum class SyntaxType {
     ParenthesizedExpression,
     NameExpression,
     AssignmentExpression,
+    CallExpression,
 
     // Types
     Int,

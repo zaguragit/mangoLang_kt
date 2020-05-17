@@ -105,6 +105,8 @@ open class BoundTreeRewriter {
             BoundNodeType.LiteralExpression -> rewriteLiteralExpression(node as BoundLiteralExpression)
             BoundNodeType.VariableExpression -> rewriteVariableExpression(node as BoundVariableExpression)
             BoundNodeType.AssignmentExpression -> rewriteAssignmentExpression(node as BoundAssignmentExpression)
+            BoundNodeType.CallExpression -> rewriteCallExpression(node as BoundCallExpression)
+            BoundNodeType.ErrorExpression -> node
             else -> throw Exception("Unexpected node: ${node.boundType}")
         }
     }
@@ -135,5 +137,27 @@ open class BoundTreeRewriter {
             return node
         }
         return BoundAssignmentExpression(node.variable, expression)
+    }
+
+    private fun rewriteCallExpression(node: BoundCallExpression): BoundExpression {
+        var args: ArrayList<BoundExpression>? = null
+        for (i in node.arguments.indices) {
+            val oldArgument = node.arguments.elementAt(i)
+            val newArgument = rewriteExpression(oldArgument)
+            if (newArgument != oldArgument) {
+                if (args == null) {
+                    args = ArrayList()
+                    for (j in 0 until i) {
+                        args.add(node.arguments.elementAt(j))
+                    }
+                }
+            }
+            args?.add(newArgument)
+        }
+
+        if (args == null) {
+            return node
+        }
+        return BoundCallExpression(node.function, args)
     }
 }

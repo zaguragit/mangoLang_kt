@@ -1,40 +1,47 @@
 package mango.binding
 
+import mango.symbols.TypeSymbol
 import mango.syntax.SyntaxType
 
 class BoundBinaryOperator(
     val syntaxType: SyntaxType,
     val type: BoundBinaryOperatorType,
-    val leftType: Type,
-    val rightType: Type = leftType,
-    val resultType: Type = leftType
+    val leftType: TypeSymbol,
+    val rightType: TypeSymbol = leftType,
+    val resultType: TypeSymbol = leftType
 ) {
     companion object {
 
         private val operators = arrayOf(
-                BoundBinaryOperator(SyntaxType.Plus, BoundBinaryOperatorType.Add, Type.Int),
-                BoundBinaryOperator(SyntaxType.Minus, BoundBinaryOperatorType.Sub, Type.Int),
-                BoundBinaryOperator(SyntaxType.Mul, BoundBinaryOperatorType.Mul, Type.Int),
-                BoundBinaryOperator(SyntaxType.Div, BoundBinaryOperatorType.Div, Type.Int),
-                BoundBinaryOperator(SyntaxType.Rem, BoundBinaryOperatorType.Rem, Type.Int),
-                BoundBinaryOperator(SyntaxType.BitAnd, BoundBinaryOperatorType.BitAnd, Type.Int),
-                BoundBinaryOperator(SyntaxType.BitOr, BoundBinaryOperatorType.BitOr, Type.Int),
+            BoundBinaryOperator(SyntaxType.Plus, BoundBinaryOperatorType.Add, TypeSymbol.int),
+            BoundBinaryOperator(SyntaxType.Minus, BoundBinaryOperatorType.Sub, TypeSymbol.int),
+            BoundBinaryOperator(SyntaxType.Mul, BoundBinaryOperatorType.Mul, TypeSymbol.int),
+            BoundBinaryOperator(SyntaxType.Div, BoundBinaryOperatorType.Div, TypeSymbol.int),
+            BoundBinaryOperator(SyntaxType.Rem, BoundBinaryOperatorType.Rem, TypeSymbol.int),
+            BoundBinaryOperator(SyntaxType.BitAnd, BoundBinaryOperatorType.BitAnd, TypeSymbol.int),
+            BoundBinaryOperator(SyntaxType.BitOr, BoundBinaryOperatorType.BitOr, TypeSymbol.int),
 
-                BoundBinaryOperator(SyntaxType.LessThan, BoundBinaryOperatorType.LessThan, Type.Int, resultType = Type.Bool),
-                BoundBinaryOperator(SyntaxType.MoreThan, BoundBinaryOperatorType.MoreThan, Type.Int, resultType = Type.Bool),
-                BoundBinaryOperator(SyntaxType.IsEqual, BoundBinaryOperatorType.IsEqual, Type.Int, resultType = Type.Bool),
-                BoundBinaryOperator(SyntaxType.IsEqualOrLess, BoundBinaryOperatorType.IsEqualOrLess, Type.Int, resultType = Type.Bool),
-                BoundBinaryOperator(SyntaxType.IsEqualOrMore, BoundBinaryOperatorType.IsEqualOrMore, Type.Int, resultType = Type.Bool),
-                BoundBinaryOperator(SyntaxType.IsNotEqual, BoundBinaryOperatorType.IsNotEqual, Type.Int, resultType = Type.Bool),
+            BoundBinaryOperator(SyntaxType.LessThan, BoundBinaryOperatorType.LessThan, TypeSymbol.int, resultType = TypeSymbol.bool),
+            BoundBinaryOperator(SyntaxType.MoreThan, BoundBinaryOperatorType.MoreThan, TypeSymbol.int, resultType = TypeSymbol.bool),
+            BoundBinaryOperator(SyntaxType.IsEqual, BoundBinaryOperatorType.IsEqual, TypeSymbol.int, resultType = TypeSymbol.bool),
+            BoundBinaryOperator(SyntaxType.IsEqualOrLess, BoundBinaryOperatorType.IsEqualOrLess, TypeSymbol.int, resultType = TypeSymbol.bool),
+            BoundBinaryOperator(SyntaxType.IsEqualOrMore, BoundBinaryOperatorType.IsEqualOrMore, TypeSymbol.int, resultType = TypeSymbol.bool),
+            BoundBinaryOperator(SyntaxType.IsNotEqual, BoundBinaryOperatorType.IsNotEqual, TypeSymbol.int, resultType = TypeSymbol.bool),
 
-                BoundBinaryOperator(SyntaxType.BitAnd, BoundBinaryOperatorType.BitAnd, Type.Bool),
-                BoundBinaryOperator(SyntaxType.BitOr, BoundBinaryOperatorType.BitOr, Type.Bool),
-                BoundBinaryOperator(SyntaxType.LogicAnd, BoundBinaryOperatorType.LogicAnd, Type.Bool),
-                BoundBinaryOperator(SyntaxType.LogicOr, BoundBinaryOperatorType.LogicOr, Type.Bool),
-                BoundBinaryOperator(SyntaxType.IsEqual, BoundBinaryOperatorType.IsEqual, Type.Bool),
-                BoundBinaryOperator(SyntaxType.IsNotEqual, BoundBinaryOperatorType.IsNotEqual, Type.Bool))
+            BoundBinaryOperator(SyntaxType.BitAnd, BoundBinaryOperatorType.BitAnd, TypeSymbol.bool),
+            BoundBinaryOperator(SyntaxType.BitOr, BoundBinaryOperatorType.BitOr, TypeSymbol.bool),
+            BoundBinaryOperator(SyntaxType.LogicAnd, BoundBinaryOperatorType.LogicAnd, TypeSymbol.bool),
+            BoundBinaryOperator(SyntaxType.LogicOr, BoundBinaryOperatorType.LogicOr, TypeSymbol.bool),
+            BoundBinaryOperator(SyntaxType.IsEqual, BoundBinaryOperatorType.IsEqual, TypeSymbol.bool),
+            BoundBinaryOperator(SyntaxType.IsNotEqual, BoundBinaryOperatorType.IsNotEqual, TypeSymbol.bool),
 
-        fun bind(syntaxType: SyntaxType, leftType: Type, rightType: Type): BoundBinaryOperator? {
+            //BoundBinaryOperator(SyntaxType.Plus, BoundBinaryOperatorType.Add, TypeSymbol.string, TypeSymbol.int, TypeSymbol.string),
+            //BoundBinaryOperator(SyntaxType.Plus, BoundBinaryOperatorType.Add, TypeSymbol.int, TypeSymbol.string, TypeSymbol.string),
+            //BoundBinaryOperator(SyntaxType.Plus, BoundBinaryOperatorType.Add, TypeSymbol.string, TypeSymbol.bool, TypeSymbol.string),
+            //BoundBinaryOperator(SyntaxType.Plus, BoundBinaryOperatorType.Add, TypeSymbol.bool, TypeSymbol.string, TypeSymbol.string),
+            BoundBinaryOperator(SyntaxType.Plus, BoundBinaryOperatorType.Add, TypeSymbol.string))
+
+        fun bind(syntaxType: SyntaxType, leftType: TypeSymbol, rightType: TypeSymbol): BoundBinaryOperator? {
             for (op in operators) {
                 if (op.syntaxType == syntaxType &&
                     op.leftType == leftType &&

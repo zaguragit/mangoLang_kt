@@ -1,6 +1,8 @@
 package mango.compilation
 
-import mango.binding.Type
+import mango.binding.BoundCallExpression
+import mango.binding.BoundExpression
+import mango.symbols.TypeSymbol
 import mango.syntax.SyntaxType
 
 class Diagnostic(
@@ -36,7 +38,7 @@ class DiagnosticList {
     inline fun reportWrongType(
         span: TextSpan,
         value: Any?,
-        expectedType: Type
+        expectedType: TypeSymbol
     ) = report(span, "$value isn't of type $expectedType", Diagnostic.Type.Error)
 
     inline fun reportUnexpectedToken(
@@ -48,14 +50,14 @@ class DiagnosticList {
     inline fun reportUnaryOperator(
         span: TextSpan,
         operatorType: SyntaxType,
-        operandType: Type
+        operandType: TypeSymbol
     ) = report(span, "$operatorType isn't compatible with $operandType")
 
     inline fun reportBinaryOperator(
         span: TextSpan,
-        leftType: Type,
+        leftType: TypeSymbol,
         operatorType: SyntaxType,
-        rightType: Type
+        rightType: TypeSymbol
     ) = report(span, "$operatorType isn't compatible with $leftType and $rightType")
 
     inline fun reportUndefinedName(
@@ -69,8 +71,8 @@ class DiagnosticList {
     ) = report(span, "Variable \"$name\" is already declared")
 
     inline fun reportVarIsImmutable(
-            span: TextSpan,
-            name: String
+        span: TextSpan,
+        name: String
     ) = report(span, "Variable \"$name\" immutable and can't be assigned to")
 
     inline fun reportInvalidCharacterEscape(
@@ -81,4 +83,22 @@ class DiagnosticList {
     inline fun reportUnterminatedString(
         span: TextSpan
     ) = report(span, "Unterminated string")
+
+    inline fun reportWrongArgumentCount(
+        span: TextSpan,
+        name: String,
+        count: Int,
+        correctCount: Int
+    ) = report(span, "Wrong argument count in function \"$name\" (found $count, required $correctCount)")
+
+    inline fun reportWrongParameterType(
+        span: TextSpan,
+        paramName: String,
+        paramType: TypeSymbol,
+        expectedType: TypeSymbol
+    ) = report(span, "Parameter \"${paramName}\" is of type $paramType, but $expectedType was expected", Diagnostic.Type.Error)
+
+    inline fun reportExpressionMustHaveValue(
+        span: TextSpan
+    ) = report(span, "Expression must have a value")
 }

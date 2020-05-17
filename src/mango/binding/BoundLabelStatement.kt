@@ -1,7 +1,7 @@
 package mango.binding
 
 class BoundLabelStatement(
-    val symbol: LabelSymbol
+    val symbol: BoundLabel
 ) : BoundStatement() {
 
     override val boundType = BoundNodeType.LabelStatement

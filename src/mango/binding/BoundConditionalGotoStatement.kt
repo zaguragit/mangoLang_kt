@@ -1,9 +1,9 @@
 package mango.binding
 
 class BoundConditionalGotoStatement(
-    val label: LabelSymbol,
-    val condition: BoundExpression,
-    val jumpIfTrue: Boolean
+        val label: BoundLabel,
+        val condition: BoundExpression,
+        val jumpIfTrue: Boolean
 ) : BoundStatement() {
 
     override val boundType = BoundNodeType.ConditionalGotoStatement

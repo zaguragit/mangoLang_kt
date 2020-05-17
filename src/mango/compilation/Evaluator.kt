@@ -1,7 +1,11 @@
 package mango.compilation
 
 import mango.binding.*
+import mango.symbols.BuiltinFunctions
+import mango.symbols.TypeSymbol
+import mango.symbols.VariableSymbol
 import kotlin.Exception
+import kotlin.random.Random
 
 class Evaluator(
     val root: BoundBlockStatement,
@@ -11,7 +15,7 @@ class Evaluator(
     var lastValue: Any? = null
 
     fun evaluate(): Any? {
-        val labelToIndex = HashMap<LabelSymbol, Int>()
+        val labelToIndex = HashMap<BoundLabel, Int>()
         for (i in root.statements.indices) {
             val s = root.statements.elementAt(i)
             if (s is BoundLabelStatement) {
@@ -55,6 +59,7 @@ class Evaluator(
         is BoundAssignmentExpression -> evaluateAssignmentExpression(node)
         is BoundUnaryExpression -> evaluateUnaryExpression(node)
         is BoundBinaryExpression -> evaluateBinaryExpression(node)
+        is BoundCallExpression -> evaluateCallExpression(node)
         else -> throw Exception("Unexpected node: ${node.boundType.name}")
     }
 
@@ -93,14 +98,19 @@ class Evaluator(
         if (right == null || left == null) return null
         return when (node.operator.type) {
             BoundBinaryOperatorType.Add -> {
-                left as Int + right as Int
+                if (node.type == TypeSymbol.string) {
+                    left as String + right as String
+                }
+                else {
+                    left as Int + right as Int
+                }
             }
             BoundBinaryOperatorType.Sub -> left as Int - right as Int
             BoundBinaryOperatorType.Mul -> left as Int * right as Int
             BoundBinaryOperatorType.Div -> left as Int / right as Int
             BoundBinaryOperatorType.Rem -> left as Int % right as Int
             BoundBinaryOperatorType.BitAnd -> {
-                if (node.type == Type.Bool) {
+                if (node.type == TypeSymbol.bool) {
                     left as Boolean and right as Boolean
                 }
                 else {
@@ -108,7 +118,7 @@ class Evaluator(
                 }
             }
             BoundBinaryOperatorType.BitOr -> {
-                if (node.type == Type.Bool) {
+                if (node.type == TypeSymbol.bool) {
                     left as Boolean or right as Boolean
                 }
                 else {
@@ -126,5 +136,25 @@ class Evaluator(
             BoundBinaryOperatorType.IsIdentityEqual -> left === right
             BoundBinaryOperatorType.IsNotIdentityEqual -> left !== right
         }
+    }
+
+    private fun evaluateCallExpression(node: BoundCallExpression): Any? = when (node.function) {
+        BuiltinFunctions.print -> {
+            print(evaluateExpression(node.arguments.elementAt(0)) as String)
+            null
+        }
+        BuiltinFunctions.println -> {
+            val args = node.arguments
+            println(evaluateExpression(args.elementAt(0)) as String)
+            null
+        }
+        BuiltinFunctions.readln -> readLine()
+        BuiltinFunctions.typeOf -> {
+            node.arguments.elementAt(0).type.name
+        }
+        BuiltinFunctions.random -> {
+            Random.nextInt(evaluateExpression(node.arguments.elementAt(0)) as Int)
+        }
+        else -> throw Exception("Unexpected function ${node.function}")
     }
 }

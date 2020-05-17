@@ -1,8 +1,8 @@
 package mango.syntax.lex
 
-import mango.binding.Type
 import mango.compilation.DiagnosticList
 import mango.compilation.TextSpan
+import mango.symbols.TypeSymbol
 import mango.syntax.SyntaxType
 import mango.text.SourceText
 
@@ -112,7 +112,7 @@ class Lexer(private val sourceText: SourceText) {
         val text = sourceText.getText(start, position - start)
         val value = text.toIntOrNull()
         if (value == null) {
-            diagnostics.reportWrongType(TextSpan(start, position - start), value, Type.Int)
+            diagnostics.reportWrongType(TextSpan(start, position - start), value, TypeSymbol.int)
         }
         return Token(SyntaxType.Int, start, value, text)
     }
