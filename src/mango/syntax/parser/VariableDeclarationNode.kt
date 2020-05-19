@@ -6,6 +6,7 @@ import mango.syntax.lex.Token
 class VariableDeclarationNode(
     val keyword: Token,
     val identifier: Token,
+    val typeClauseNode: TypeClauseNode?,
     val equals: Token,
     val initializer: ExpressionNode
 ) : StatementNode() {

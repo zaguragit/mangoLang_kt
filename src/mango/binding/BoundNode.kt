@@ -46,6 +46,7 @@ enum class BoundNodeType {
     AssignmentExpression,
     CallExpression,
     ErrorExpression,
+    CastExpression,
 
     BlockStatement,
     ExpressionStatement,

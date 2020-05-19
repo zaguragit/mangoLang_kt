@@ -1,7 +1,5 @@
 package mango.compilation
 
-import mango.binding.BoundCallExpression
-import mango.binding.BoundExpression
 import mango.symbols.TypeSymbol
 import mango.syntax.SyntaxType
 
@@ -101,4 +99,20 @@ class DiagnosticList {
     inline fun reportExpressionMustHaveValue(
         span: TextSpan
     ) = report(span, "Expression must have a value")
+
+    inline fun reportUndefinedType(
+        span: TextSpan,
+        name: String
+    ) = report(span, "Type \"$name\" doesn't exist")
+
+    inline fun reportBadCharacter(
+        span: TextSpan,
+        char: Char
+    ) = report(span, "Invalid character '$char'")
+
+    inline fun reportCantCast(
+        span: TextSpan,
+        from: TypeSymbol,
+        to: TypeSymbol
+    ) = report(span, "Can't cast from type $from to type $to")
 }

@@ -23,7 +23,7 @@ class Lexer(private val sourceText: SourceText) {
 
         while (char == ' ' || char == '\t' || char == ';' || char == ';') { position++ }
 
-        if (char.isLetter()) {
+        if (char.isLetter() || char == '_') {
             return readIdentifierOrKeyword()
         }
 
@@ -100,7 +100,10 @@ class Lexer(private val sourceText: SourceText) {
             '"' -> readString()
             //'\n', '\r' -> Token(SyntaxType.NewLine, position++)
             '\u0000' -> Token(SyntaxType.EOF, position++)
-            else -> Token(SyntaxType.Bad, position++)
+            else -> {
+                diagnostics.reportBadCharacter(TextSpan(position, 1), char)
+                Token(SyntaxType.Bad, position++)
+            }
         }
     }
 
@@ -174,6 +177,6 @@ class Lexer(private val sourceText: SourceText) {
         }
         val text = builder.toString()
         position++
-        return Token(SyntaxType.String, start, text, text)
+        return Token(SyntaxType.String, start - 1, text, text)
     }
 }

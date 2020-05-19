@@ -81,6 +81,8 @@ enum class SyntaxType {
     // Declaration keywords
     Val,
     Var,
+    Fn,
+    Colon,
 
     // Conditional keywords
     If,
@@ -88,7 +90,8 @@ enum class SyntaxType {
     For,
     While,
 
-    Identifier;
+    Identifier,
+    TypeClause;
 
     fun getBinaryOperatorPrecedence() = when (this) {
         Mul, Div -> 7

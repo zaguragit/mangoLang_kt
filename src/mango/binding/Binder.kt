@@ -73,10 +73,26 @@ class Binder(
     }
 
     private fun bindVariableDeclaration(node: VariableDeclarationNode): BoundStatement {
-        val  isReadOnly = node.keyword.kind == SyntaxType.Val
+        val isReadOnly = node.keyword.kind == SyntaxType.Val
+        val type = bindTypeClause(node.typeClauseNode)
         val initializer = bindExpression(node.initializer)
-        val variable = bindVariable(node.identifier, initializer.type, isReadOnly)
+        val actualType = type ?: initializer.type
+        if (!initializer.type.isOfType(actualType) && initializer.type != TypeSymbol.error) {
+            diagnostics.reportWrongType(node.initializer.span, initializer, type!!)
+        }
+        val variable = bindVariable(node.identifier, actualType, isReadOnly)
         return BoundVariableDeclaration(variable, initializer)
+    }
+
+    private fun bindTypeClause(node: TypeClauseNode?): TypeSymbol? {
+        if (node == null) {
+            return null
+        }
+        val type = TypeSymbol.lookup(node.identifier.string!!)
+        if (type == null) {
+            diagnostics.reportUndefinedType(node.identifier.span, node.identifier.string)
+        }
+        return type
     }
 
     private fun bindVariable(identifier: Token, type: TypeSymbol, isReadOnly: Boolean): VariableSymbol {
@@ -122,15 +138,17 @@ class Binder(
 
     private fun bindCallExpression(node: CallExpressionNode): BoundExpression {
 
+        val type = TypeSymbol.lookup(node.identifier.string!!)
+        if (node.arguments.nodeCount == 1 && type != null) {
+            return bindCast(node.arguments[0], type)
+        }
+
         val arguments = ArrayList<BoundExpression>()
 
         for (a in node.arguments) {
             val arg = bindExpression(a, canBeUnit = true)
             arguments.add(arg)
         }
-
-        //val functions = BuiltinFunctions.getAll()
-        //val function = functions.singleOrNull { it.name == node.identifier.string }
 
         val (function, result) = scope.tryLookupFunction(node.identifier.string!!)
 
@@ -149,12 +167,28 @@ class Binder(
             val param = function.parameters[i]
 
             if (!arg.type.isOfType(param.type)) {
-                diagnostics.reportWrongParameterType(node.span, param.name, param.type, function.type)
+                diagnostics.reportWrongParameterType(node.span, param.name, arg.type, param.type)
                 return BoundErrorExpression()
             }
         }
 
         return BoundCallExpression(function, arguments)
+    }
+
+    private fun bindCast(node: ExpressionNode, type: TypeSymbol): BoundExpression {
+        val expression = bindExpression(node)
+        if (expression.type == TypeSymbol.error) {
+            return BoundErrorExpression()
+        }
+        val conversion = Conversion.classify(expression.type, type)
+        if (!conversion.exists) {
+            diagnostics.reportCantCast(node.span, expression.type, type)
+            return BoundErrorExpression()
+        }
+        if (conversion.isIdentity) {
+            return expression
+        }
+        return BoundCastExpression(type, expression)
     }
 
     private fun bindAssignmentExpression(node: AssignmentExpressionNode): BoundExpression {
@@ -226,12 +260,12 @@ class Binder(
             val parentScope = createParentScopes(previous)
             val binder = Binder(BoundScope(parentScope))
             val expression = binder.bindStatement(fileUnit.statementNode)
-            val variables = binder.scope.variables
+            val symbols = binder.scope.symbols
             val diagnostics = binder.diagnostics.list.toMutableList()
             if (previous != null) {
                 diagnostics.addAll(previous.diagnostics)
             }
-            return BoundGlobalScope(previous, diagnostics, variables, expression)
+            return BoundGlobalScope(previous, diagnostics, symbols, expression)
         }
 
         private fun createParentScopes(previous: BoundGlobalScope?): BoundScope? {
@@ -249,8 +283,8 @@ class Binder(
             while (stack.count() > 0) {
                 val previous = stack.pop()
                 val scope = BoundScope(parent)
-                for (v in previous.variables) {
-                    scope.tryDeclareVariable(v)
+                for (v in previous.symbols) {
+                    scope.tryDeclare(v)
                 }
                 parent = scope
             }

@@ -23,6 +23,19 @@ class TypeSymbol private constructor(
         val unit = TypeSymbol("Unit")
 
         val error = TypeSymbol("?")
+
+        fun lookup(name: String) = when (name) {
+            "Any" -> any
+            "Int" -> int
+            "Short" -> short
+            "Long" -> long
+            "Double" -> double
+            "Float" -> float
+            "Bool" -> bool
+            "String" -> string
+            "Unit" -> unit
+            else -> null
+        }
     }
 
     fun isOfType(other: TypeSymbol): Boolean {

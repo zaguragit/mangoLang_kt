@@ -74,9 +74,22 @@ class Parser(val sourceText: SourceText) {
             else { SyntaxType.Var }
         val keyword = match(expected)
         val identifier = match(SyntaxType.Identifier)
+        val typeClause = parseOptionalTypeClause()
         val equals = match(SyntaxType.Equals)
         val initializer = parseExpression()
-        return VariableDeclarationNode(keyword, identifier, equals, initializer)
+        return VariableDeclarationNode(keyword, identifier, typeClause, equals, initializer)
+    }
+
+    private fun parseOptionalTypeClause(): TypeClauseNode? {
+        if (current.kind == SyntaxType.Equals) {
+            return null
+        }
+        return parseTypeClause()
+    }
+
+    private fun parseTypeClause(): TypeClauseNode {
+        val identifier = match(SyntaxType.Identifier)
+        return TypeClauseNode(identifier)
     }
 
     private fun parseExpressionStatement(): ExpressionStatementNode {
@@ -228,7 +241,6 @@ class Parser(val sourceText: SourceText) {
     private fun parseArguments(): SeparatedNodeList<ExpressionNode> {
 
         val nodesNSeparators = ArrayList<Node>()
-        //val startToken = current
 
         while (
             current.kind != SyntaxType.ClosedRoundedBracket &&
@@ -241,8 +253,6 @@ class Parser(val sourceText: SourceText) {
                 val comma = match(SyntaxType.Comma)
                 nodesNSeparators.add(comma)
             }
-
-            //if (startToken == current) { next() }
         }
 
         return SeparatedNodeList(nodesNSeparators)

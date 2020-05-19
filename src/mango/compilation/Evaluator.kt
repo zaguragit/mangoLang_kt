@@ -60,6 +60,7 @@ class Evaluator(
         is BoundUnaryExpression -> evaluateUnaryExpression(node)
         is BoundBinaryExpression -> evaluateBinaryExpression(node)
         is BoundCallExpression -> evaluateCallExpression(node)
+        is BoundCastExpression -> evaluateCastExpression(node)
         else -> throw Exception("Unexpected node: ${node.boundType.name}")
     }
 
@@ -156,5 +157,21 @@ class Evaluator(
             Random.nextInt(evaluateExpression(node.arguments.elementAt(0)) as Int)
         }
         else -> throw Exception("Unexpected function ${node.function}")
+    }
+
+    private fun evaluateCastExpression(node: BoundCastExpression): Any? {
+        val value = evaluateExpression(node.expression)
+        return when (node.type) {
+            TypeSymbol.bool -> {
+                value.toString().toBoolean()
+            }
+            TypeSymbol.int -> {
+                value.toString().toInt()
+            }
+            TypeSymbol.string -> {
+                value.toString()
+            }
+            else -> value
+        }
     }
 }
