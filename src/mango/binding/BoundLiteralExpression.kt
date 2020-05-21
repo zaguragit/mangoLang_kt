@@ -15,6 +15,8 @@ class BoundLiteralExpression(
 
     override val boundType = BoundNodeType.LiteralExpression
     override val children get() = listOf<BoundNode>()
-    override fun toString() = value.toString()
+    override fun toString() =
+        if (type == TypeSymbol.string) { '"' + value.toString() + '"' }
+        else { value.toString() }
     override fun getDataString() = value.toString()
 }

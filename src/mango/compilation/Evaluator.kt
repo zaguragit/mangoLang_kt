@@ -1,30 +1,34 @@
 package mango.compilation
 
 import mango.binding.*
-import mango.symbols.BuiltinFunctions
-import mango.symbols.TypeSymbol
-import mango.symbols.VariableSymbol
+import mango.symbols.*
+import mango.syntax.parser.BlockStatementNode
+import java.util.*
 import kotlin.Exception
+import kotlin.collections.HashMap
 import kotlin.random.Random
 
 class Evaluator(
+    val functionBodies: HashMap<FunctionSymbol, BoundStatement>,
     val root: BoundBlockStatement,
-    val variables: HashMap<VariableSymbol, Any?>
+    val globals: HashMap<VariableSymbol, Any?>
 ) {
 
-    var lastValue: Any? = null
+    val stack = Stack<HashMap<VariableSymbol, Any?>>()
 
-    fun evaluate(): Any? {
+    fun evaluate(): Any? = evaluateStatement(root)
+
+    private fun evaluateStatement(body: BoundBlockStatement) {
         val labelToIndex = HashMap<BoundLabel, Int>()
-        for (i in root.statements.indices) {
-            val s = root.statements.elementAt(i)
+        for (i in body.statements.indices) {
+            val s = body.statements.elementAt(i)
             if (s is BoundLabelStatement) {
                 labelToIndex[s.symbol] = i + 1
             }
         }
         var i = 0
-        while (i < root.statements.size) {
-            val s = root.statements.elementAt(i)
+        while (i < body.statements.size) {
+            val s = body.statements.elementAt(i)
             when (s.boundType) {
                 BoundNodeType.ExpressionStatement -> {
                     evaluateExpressionStatement(s as BoundExpressionStatement)
@@ -50,7 +54,6 @@ class Evaluator(
                 else -> throw Exception("Unexpected node: ${s.boundType.name}")
             }
         }
-        return lastValue
     }
 
     private fun evaluateExpression(node: BoundExpression) = when (node) {
@@ -65,23 +68,27 @@ class Evaluator(
     }
 
     private fun evaluateExpressionStatement(node: BoundExpressionStatement) {
-        lastValue = evaluateExpression(node.expression)
+        evaluateExpression(node.expression)
     }
 
     private fun evaluateVariableDeclaration(node: BoundVariableDeclaration) {
         val value = evaluateExpression(node.initializer)
-        variables[node.variable] = value
-        lastValue = value
-    }
-
-    private fun evaluateVariableExpression(node: BoundVariableExpression): Any? {
-        return variables[node.variable]
+        assign(node.variable, value)
     }
 
     private fun evaluateAssignmentExpression(node: BoundAssignmentExpression): Any? {
         val value = evaluateExpression(node.expression)
-        variables[node.variable] = value
+        assign(node.variable, value)
         return value
+    }
+
+    private fun evaluateVariableExpression(node: BoundVariableExpression): Any? {
+        if (node.variable.kind == Symbol.Kind.GlobalVariable) {
+            return globals[node.variable]
+        } else {
+            val locals = stack.peek()
+            return locals[node.variable]
+        }
     }
 
     private fun evaluateUnaryExpression(node: BoundUnaryExpression): Any? {
@@ -156,7 +163,23 @@ class Evaluator(
         BuiltinFunctions.random -> {
             Random.nextInt(evaluateExpression(node.arguments.elementAt(0)) as Int)
         }
-        else -> throw Exception("Unexpected function ${node.function}")
+        else -> {
+            val locals = HashMap<VariableSymbol, Any?>()
+            for (i in node.arguments.indices) {
+                val parameter = node.function.parameters[i]
+                val value = evaluateExpression(node.arguments.elementAt(i))
+                locals[parameter] = value
+            }
+            stack.push(locals)
+            val statement = functionBodies[node.function]!!
+            val result = if (statement is BoundBlockStatement) {
+                evaluateStatement(statement)
+            } else {
+                evaluateStatement(BoundBlockStatement(listOf(statement)))
+            }
+            stack.pop()
+            result
+        }
     }
 
     private fun evaluateCastExpression(node: BoundCastExpression): Any? {
@@ -172,6 +195,15 @@ class Evaluator(
                 value.toString()
             }
             else -> value
+        }
+    }
+
+    private fun assign(variable: VariableSymbol, value: Any?) {
+        if (variable.kind == Symbol.Kind.GlobalVariable) {
+            globals[variable] = value
+        } else {
+            val locals = stack.peek()
+            locals[variable] = value
         }
     }
 }

@@ -1,21 +1,31 @@
 package mango.binding
 
 import mango.compilation.DiagnosticList
-import mango.symbols.BuiltinFunctions
-import mango.symbols.TypeSymbol
-import mango.symbols.VariableSymbol
+import mango.lowering.Lowerer
+import mango.symbols.*
 import mango.syntax.SyntaxType
 import mango.syntax.lex.Token
 import mango.syntax.parser.*
 import java.util.*
 import kotlin.Exception
 import kotlin.collections.ArrayList
+import kotlin.collections.HashMap
+import kotlin.collections.HashSet
 
 class Binder(
-    var scope: BoundScope
+    var scope: BoundScope,
+    val function: FunctionSymbol?
 ) {
 
     val diagnostics = DiagnosticList()
+
+    init {
+        if (function != null) {
+            for (p in function.parameters) {
+                scope.tryDeclare(p)
+            }
+        }
+    }
 
     private fun bindStatement(node: StatementNode): BoundStatement {
         return when (node.kind) {
@@ -97,9 +107,11 @@ class Binder(
 
     private fun bindVariable(identifier: Token, type: TypeSymbol, isReadOnly: Boolean): VariableSymbol {
         val name = identifier.string ?: "?"
-        val variable = VariableSymbol(name, type, isReadOnly)
-        if (!identifier.isMissing && !scope.tryDeclareVariable(variable)) {
-            diagnostics.reportVarAlreadyDeclared(identifier.span, name)
+        val variable =
+            if (function == null) { GlobalVariableSymbol(name, type, isReadOnly) }
+            else { LocalVariableSymbol(name, type, isReadOnly) }
+        if (!identifier.isMissing && !scope.tryDeclare(variable)) {
+            diagnostics.reportSymbolAlreadyDeclared(identifier.span, name)
         }
         return variable
     }
@@ -166,8 +178,9 @@ class Binder(
             val arg = arguments[i]
             val param = function.parameters[i]
 
-            if (!arg.type.isOfType(param.type)) {
-                diagnostics.reportWrongParameterType(node.span, param.name, arg.type, param.type)
+            if (!arg.type.isOfType(param.type) &&
+                arg.type != TypeSymbol.error) {
+                diagnostics.reportWrongArgumentType(node.arguments[i].span, param.name, arg.type, param.type)
                 return BoundErrorExpression()
             }
         }
@@ -256,19 +269,33 @@ class Binder(
     }
 
     companion object {
-        fun bindGlobalScope(fileUnit: FileUnit, previous: BoundGlobalScope?): BoundGlobalScope {
+        fun bindGlobalScope(node: CompilationUnitNode, previous: BoundGlobalScope?): BoundGlobalScope {
             val parentScope = createParentScopes(previous)
-            val binder = Binder(BoundScope(parentScope))
-            val expression = binder.bindStatement(fileUnit.statementNode)
-            val symbols = binder.scope.symbols
-            val diagnostics = binder.diagnostics.list.toMutableList()
-            if (previous != null) {
-                diagnostics.addAll(previous.diagnostics)
+            val binder = Binder(BoundScope(parentScope), null)
+
+            val statementBuilder = ArrayList<BoundStatement>()
+
+            for (member in node.members) {
+                when (member) {
+                    is FunctionDeclarationNode -> binder.bindFunctionDeclaration(member)
+                    is GlobalStatementNode -> {
+                        val statement = binder.bindStatement(member.statement)
+                        statementBuilder.add(statement)
+                    }
+                }
             }
-            return BoundGlobalScope(previous, diagnostics, symbols, expression)
+
+            val statement = BoundBlockStatement(statementBuilder)
+
+            val symbols = binder.scope.symbols
+            val diagnostics = binder.diagnostics
+            if (previous != null) {
+                diagnostics.append(previous.diagnostics)
+            }
+            return BoundGlobalScope(previous, diagnostics, symbols, statement)
         }
 
-        private fun createParentScopes(previous: BoundGlobalScope?): BoundScope? {
+        private fun createParentScopes(previous: BoundGlobalScope?): BoundScope {
 
             val stack = Stack<BoundGlobalScope>()
             var prev = previous
@@ -278,7 +305,7 @@ class Binder(
                 prev = prev.previous
             }
 
-            var parent: BoundScope? = createRootScope()
+            var parent: BoundScope = createRootScope()
 
             while (stack.count() > 0) {
                 val previous = stack.pop()
@@ -292,12 +319,71 @@ class Binder(
             return parent
         }
 
-        private fun createRootScope(): BoundScope? {
+        private fun createRootScope(): BoundScope {
             val result = BoundScope(null)
             for (fn in BuiltinFunctions.getAll()) {
-                result.tryDeclareFunction(fn)
+                result.tryDeclare(fn)
             }
             return result
+        }
+
+        fun bindProgram(globalScope: BoundGlobalScope): BoundProgram {
+
+            val parentScope = createParentScopes(globalScope)
+            val functionBodies = HashMap<FunctionSymbol, BoundStatement>()
+            val diagnostics = globalScope.diagnostics
+
+            var scope: BoundGlobalScope? = globalScope
+            while (scope != null) {
+                for (symbol in scope.symbols) {
+                    if (symbol is FunctionSymbol) {
+                        val binder = Binder(parentScope, symbol)
+                        val body = binder.bindStatement(symbol.declarationNode!!.body)
+                        val loweredBody = Lowerer.lower(body)
+                        functionBodies[symbol] = loweredBody
+                        diagnostics.append(binder.diagnostics)
+                    }
+                }
+                scope = scope.previous
+            }
+
+            return BoundProgram(globalScope, diagnostics, functionBodies)
+        }
+    }
+
+    private fun bindFunctionDeclaration(node: FunctionDeclarationNode) {
+        val params = ArrayList<ParameterSymbol>()
+
+        val seenParameterNames = HashSet<String>()
+
+        if (node.params != null) {
+            for (paramNode in node.params.iterator()) {
+                val name = paramNode.identifier.string!!
+                if (!seenParameterNames.add(name)) {
+                    diagnostics.reportParamAlreadyExists(paramNode.identifier.span, name)
+                } else {
+                    val type = bindTypeClause(paramNode.typeClause)!!
+                    val parameter = ParameterSymbol(name, type)
+                    params.add(parameter)
+                }
+            }
+        }
+
+        val type: TypeSymbol
+
+        if (node.typeClause == null) {
+            if (node.lambdaArrow == null) {
+                type = TypeSymbol.unit
+            } else {
+                type = TypeSymbol.unit
+            }
+        } else {
+            type = bindTypeClause(node.typeClause)!!
+        }
+
+        val function = FunctionSymbol(node.identifier.string!!, params.toTypedArray(), type, node)
+        if (!scope.tryDeclare(function)) {
+            diagnostics.reportSymbolAlreadyDeclared(node.identifier.span, function.name)
         }
     }
 }

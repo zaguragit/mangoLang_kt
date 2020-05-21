@@ -17,11 +17,17 @@ class Compilation(
 
         val errors = syntaxTree.errors.apply { append(globalScope.diagnostics) }
         if (errors.any()) {
-            return EvaluationResult(errors.list, null)
+            return EvaluationResult(errors.apply { sortBySpan() }.list)
         }
-        val evaluator = Evaluator(getStatement(), variables)
-        val value = evaluator.evaluate()
-        return EvaluationResult(errors.list, value)
+
+        val program = Binder.bindProgram(globalScope)
+        if (program.diagnostics.any()) {
+            return EvaluationResult(program.diagnostics.apply { sortBySpan() }.list)
+        }
+
+        val evaluator = Evaluator(program.functionBodies, getStatement(), variables)
+        evaluator.evaluate()
+        return EvaluationResult(errors.apply { sortBySpan() }.list)
     }
 
     fun getStatement() = Lowerer.lower(globalScope.statement)

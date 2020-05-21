@@ -3,7 +3,7 @@ package mango.symbols
 class ParameterSymbol(
     name: String,
     type: TypeSymbol
-) : VariableSymbol(
+) : LocalVariableSymbol(
     name,
     type,
     true

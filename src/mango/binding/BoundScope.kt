@@ -1,6 +1,7 @@
 package mango.binding
 
 import mango.compilation.Diagnostic
+import mango.compilation.DiagnosticList
 import mango.symbols.FunctionSymbol
 import mango.symbols.Symbol
 import mango.symbols.VariableSymbol
@@ -20,14 +21,6 @@ class BoundScope(
         return true
     }
 
-    fun tryDeclareVariable(variable: VariableSymbol): Boolean {
-        if (map.containsKey(variable.name)) {
-            return false
-        }
-        map[variable.name] = variable
-        return true
-    }
-
     fun tryLookupVariable(name: String): Pair<VariableSymbol?, Boolean> {
         return when {
             map.containsKey(name) -> {
@@ -38,14 +31,6 @@ class BoundScope(
             parent == null -> return null to false
             else -> parent.tryLookupVariable(name)
         }
-    }
-
-    fun tryDeclareFunction(function: FunctionSymbol): Boolean {
-        if (map.containsKey(function.name)) {
-            return false
-        }
-        map[function.name] = function
-        return true
     }
 
     fun tryLookupFunction(name: String): Pair<FunctionSymbol?, Boolean> {
@@ -63,6 +48,6 @@ class BoundScope(
 
 class BoundGlobalScope(
     val previous: BoundGlobalScope?,
-    val diagnostics: List<Diagnostic>,
+    val diagnostics: DiagnosticList,
     val symbols: Collection<Symbol>,
     val statement: BoundStatement)

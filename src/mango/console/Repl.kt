@@ -10,11 +10,8 @@ abstract class Repl {
     fun run() {
         Console.setTitle("mango")
         while (true) {
-
             val text = editSubmission() ?: return
-
             evaluateSubmission(text)
-
             stringBuilder.clear()
         }
     }
@@ -72,54 +69,4 @@ abstract class Repl {
             }
         }
     }
-
-    /*private class SubmissionView(val startLineI: Int) {
-
-        val document = ArrayList<String>()
-
-        private var y = 0
-        private var x = 0
-
-        var curY
-            get() = y
-            set(value) {
-                if (y != value) {
-                    y = value
-                    updateCursorPos()
-                }
-            }
-
-        var curX
-            get() = x
-            set(value) {
-                if (x != value) {
-                    x = value
-                    updateCursorPos()
-                }
-            }
-
-        fun updateCursorPos() = Console.setCursorPos(x + 2, y + startLineI)
-
-        private fun submissionDocumentChanged() {
-            render()
-        }
-
-        private fun render() {
-            x = 0
-
-            Console.hideCursor()
-
-            for ((lineCount, line) in document.withIndex()) {
-                print(Console.BLUE)
-                if (lineCount == 0) {
-                    print("> ")
-                }
-                else { print("· ") }
-                print(Console.RESET)
-                println(line)
-            }
-
-            Console.showCursor()
-        }
-    }*/
 }

@@ -10,7 +10,7 @@ abstract class Node {
     abstract val kind: SyntaxType
     abstract val children: Collection<Node>
     open val span: TextSpan
-        get() = TextSpan(children.first().span.start, children.last().span.end)
+        get() = TextSpan(children.first().span.start, children.last().span.end - children.first().span.start)
 
     var isMissing = false
 

@@ -1,6 +1,7 @@
 package mango.lowering
 
 import mango.binding.*
+import mango.symbols.LocalVariableSymbol
 import mango.symbols.TypeSymbol
 import mango.symbols.VariableSymbol
 import mango.syntax.SyntaxType
@@ -36,7 +37,7 @@ class Lowerer private constructor() : BoundTreeRewriter() {
     override fun rewriteForStatement(node: BoundForStatement): BoundStatement {
         val variableDeclaration = BoundVariableDeclaration(node.variable, node.lowerBound)
         val variableExpression = BoundVariableExpression(node.variable)
-        val upperBoundSymbol = VariableSymbol("0upperBound", TypeSymbol.int, true)
+        val upperBoundSymbol = LocalVariableSymbol("0upperBound", TypeSymbol.int, true)
         val upperBoundDeclaration = BoundVariableDeclaration(upperBoundSymbol, node.upperBound)
         val condition = BoundBinaryExpression(
             variableExpression,

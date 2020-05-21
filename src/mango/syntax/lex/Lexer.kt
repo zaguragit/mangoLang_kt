@@ -21,7 +21,7 @@ class Lexer(private val sourceText: SourceText) {
 
     fun nextToken(): Token {
 
-        while (char == ' ' || char == '\t' || char == ';' || char == ';') { position++ }
+        while (char == ' ' || char == '\t' || char == ';' || char == ';' || char == '\n' || char == '\r') { position++ }
 
         if (char.isLetter() || char == '_') {
             return readIdentifierOrKeyword()
@@ -30,7 +30,13 @@ class Lexer(private val sourceText: SourceText) {
         return when (char) {
             '0', '1', '2', '3', '4', '5', '6', '7', '8', '9' -> readNumberToken()
             '+' -> Token(SyntaxType.Plus, position++, string = "+")
-            '-' -> Token(SyntaxType.Minus, position++, string = "-")
+            '-' -> {
+                if (lookAhead() == '>') {
+                    Token(SyntaxType.LambdaArrow, position, string = "->").also { position += 2 }
+                } else {
+                    Token(SyntaxType.Minus, position++, string = "-")
+                }
+            }
             '*' -> Token(SyntaxType.Mul, position++, string = "*")
             '/' -> Token(SyntaxType.Div, position++, string = "/")
             '%' -> Token(SyntaxType.Rem, position++, string = "%")
@@ -97,6 +103,7 @@ class Lexer(private val sourceText: SourceText) {
                     Token(SyntaxType.Dot, position++, string = ".")
                 }
             }
+            ':' -> Token(SyntaxType.Colon, position++, string = ":")
             '"' -> readString()
             //'\n', '\r' -> Token(SyntaxType.NewLine, position++)
             '\u0000' -> Token(SyntaxType.EOF, position++)
@@ -115,7 +122,8 @@ class Lexer(private val sourceText: SourceText) {
         val text = sourceText.getText(start, position - start)
         val value = text.toIntOrNull()
         if (value == null) {
-            diagnostics.reportWrongType(TextSpan(start, position - start), value, TypeSymbol.int)
+            diagnostics.reportWrongType(TextSpan(start, position - start), text, TypeSymbol.int)
+            return Token(SyntaxType.Int, start, 1, text)
         }
         return Token(SyntaxType.Int, start, value, text)
     }
@@ -177,6 +185,6 @@ class Lexer(private val sourceText: SourceText) {
         }
         val text = builder.toString()
         position++
-        return Token(SyntaxType.String, start - 1, text, text)
+        return Token(SyntaxType.String, start - 1, text, '"' + text + '"')
     }
 }

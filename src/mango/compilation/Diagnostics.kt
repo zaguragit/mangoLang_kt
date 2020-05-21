@@ -19,12 +19,21 @@ class Diagnostic(
 
 class DiagnosticList {
 
+    fun sortBySpan() {
+        arrayList.sortWith(Comparator { d0, d1 ->
+            var cmp = d0.span.start - d1.span.start
+            if (cmp == 0) {
+                cmp = d0.span.length - d1.span.length
+            }
+            cmp
+        })
+    }
+
     private val arrayList = ArrayList<Diagnostic>()
 
     val list: List<Diagnostic> get() = arrayList
 
     fun append(other: DiagnosticList) = arrayList.addAll(other.arrayList)
-    fun append(other: Collection<Diagnostic>) = arrayList.addAll(other)
     fun any() = arrayList.any()
 
     fun report(
@@ -63,10 +72,15 @@ class DiagnosticList {
         name: String
     ) = report(span, "Undefined name \"$name\"")
 
-    inline fun reportVarAlreadyDeclared(
+    inline fun reportSymbolAlreadyDeclared(
         span: TextSpan,
         name: String
-    ) = report(span, "Variable \"$name\" is already declared")
+    ) = report(span, "\"$name\" is already declared")
+
+    inline fun reportParamAlreadyExists(
+        span: TextSpan,
+        name: String
+    ) = report(span, "Param \"$name\" already exists")
 
     inline fun reportVarIsImmutable(
         span: TextSpan,
@@ -89,12 +103,12 @@ class DiagnosticList {
         correctCount: Int
     ) = report(span, "Wrong argument count in function \"$name\" (found $count, required $correctCount)")
 
-    inline fun reportWrongParameterType(
+    inline fun reportWrongArgumentType(
         span: TextSpan,
         paramName: String,
         paramType: TypeSymbol,
         expectedType: TypeSymbol
-    ) = report(span, "Parameter \"${paramName}\" is of type $paramType, but $expectedType was expected", Diagnostic.Type.Error)
+    ) = report(span, "Argument \"${paramName}\" is of type $paramType, but $expectedType was expected", Diagnostic.Type.Error)
 
     inline fun reportExpressionMustHaveValue(
         span: TextSpan

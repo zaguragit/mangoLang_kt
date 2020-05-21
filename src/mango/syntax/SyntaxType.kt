@@ -9,8 +9,9 @@ enum class SyntaxType {
     Comma,
 
     // Nodes
-    FileUnit,
+    CompilationUnit,
     ElseClause,
+    Parameter,
 
     // Expressions
     LiteralExpression,
@@ -29,9 +30,11 @@ enum class SyntaxType {
     BlockStatement,
     ExpressionStatement,
     VariableDeclaration,
+    FunctionDeclaration,
     IfStatement,
     WhileStatement,
     ForStatement,
+    GlobalStatement,
 
     // Brackets
     OpenRoundedBracket,
@@ -72,6 +75,8 @@ enum class SyntaxType {
     RemEquals,
     AndEquals,
     OrEquals,
+
+    LambdaArrow,
 
     // Literals
     True,

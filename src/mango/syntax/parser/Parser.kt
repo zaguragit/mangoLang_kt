@@ -45,10 +45,95 @@ class Parser(val sourceText: SourceText) {
             Token(type, current.position).apply { isMissing = true }
         }
 
-    fun parseFileUnit(): FileUnit {
-        val statement = parseStatement()
-        return FileUnit(statement, match(SyntaxType.EOF))
+    fun parseCompilationUnit(): CompilationUnitNode {
+        val statement = parseMembers()
+        return CompilationUnitNode(statement, match(SyntaxType.EOF))
     }
+
+    private fun parseMembers(): Collection<MemberNode> {
+        val members = ArrayList<MemberNode>()
+
+        while (current.kind != SyntaxType.EOF) {
+            val startToken = current
+
+            val member = parseMember()
+            members.add(member)
+
+            if (startToken == current) {
+                next()
+            }
+        }
+
+        return members
+    }
+
+    private fun parseMember(): MemberNode {
+        if (current.kind == SyntaxType.Fn) {
+            return parseFunctionDeclaration()
+        }
+        return parseGlobalStatement()
+    }
+
+    private fun parseFunctionDeclaration(): MemberNode {
+        val keyword = match(SyntaxType.Fn)
+        val identifier = match(SyntaxType.Identifier)
+        var params: SeparatedNodeList<ParameterNode>? = null
+        if (current.kind == SyntaxType.Colon) {
+            next()
+            params = parseParamList()
+        }
+
+        var lambdaArrow: Token? = null
+        var type: TypeClauseNode? = null
+        val body: StatementNode
+        if (current.kind == SyntaxType.LambdaArrow) {
+            lambdaArrow = next()
+            if (current.kind == SyntaxType.TypeClause) {
+                type = parseTypeClause()
+                body = parseBlockStatement()
+            } else {
+                body = parseStatement()
+            }
+        } else {
+            body = parseBlockStatement()
+        }
+
+        return FunctionDeclarationNode(keyword, identifier, params, lambdaArrow, type, body)
+    }
+
+    private fun parseParamList(): SeparatedNodeList<ParameterNode> {
+        val nodesNSeparators = ArrayList<Node>()
+
+        while (
+            current.kind != SyntaxType.OpenCurlyBracket &&
+            current.kind != SyntaxType.LambdaArrow &&
+            current.kind != SyntaxType.EOF
+        ) {
+            val param = parseParam()
+            nodesNSeparators.add(param)
+
+            if (current.kind == SyntaxType.Comma) {
+                val comma = match(SyntaxType.Comma)
+                nodesNSeparators.add(comma)
+            } else {
+                break
+            }
+        }
+
+        return SeparatedNodeList(nodesNSeparators)
+    }
+
+    private fun parseParam(): ParameterNode {
+        val identifier = match(SyntaxType.Identifier)
+        val type = parseTypeClause()
+        return ParameterNode(identifier, type)
+    }
+
+    private fun parseGlobalStatement(): MemberNode {
+        val statement = parseStatement()
+        return GlobalStatementNode(statement)
+    }
+
 
     private fun parseStatement() = when (current.kind) {
         SyntaxType.OpenCurlyBracket -> {
@@ -74,13 +159,13 @@ class Parser(val sourceText: SourceText) {
             else { SyntaxType.Var }
         val keyword = match(expected)
         val identifier = match(SyntaxType.Identifier)
-        val typeClause = parseOptionalTypeClause()
+        val typeClause = parseOptionalValueTypeClause()
         val equals = match(SyntaxType.Equals)
         val initializer = parseExpression()
         return VariableDeclarationNode(keyword, identifier, typeClause, equals, initializer)
     }
 
-    private fun parseOptionalTypeClause(): TypeClauseNode? {
+    private fun parseOptionalValueTypeClause(): TypeClauseNode? {
         if (current.kind == SyntaxType.Equals) {
             return null
         }
@@ -101,12 +186,12 @@ class Parser(val sourceText: SourceText) {
         val statements = ArrayList<StatementNode>()
         val openBrace = match(SyntaxType.OpenCurlyBracket)
 
-        val startToken = current
-
         while (
             current.kind != SyntaxType.EOF &&
             current.kind != SyntaxType.ClosedCurlyBracket
         ) {
+            val startToken = current
+
             val statement = parseStatement()
             statements.add(statement)
 
@@ -249,9 +334,11 @@ class Parser(val sourceText: SourceText) {
             val expression = parseExpression()
             nodesNSeparators.add(expression)
 
-            if (current.kind != SyntaxType.ClosedRoundedBracket) {
+            if (current.kind == SyntaxType.Comma) {
                 val comma = match(SyntaxType.Comma)
                 nodesNSeparators.add(comma)
+            } else {
+                break
             }
         }
 

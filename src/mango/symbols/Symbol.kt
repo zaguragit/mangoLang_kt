@@ -5,7 +5,8 @@ abstract class Symbol {
     abstract val kind: Kind
 
     enum class Kind {
-        Variable,
+        GlobalVariable,
+        LocalVariable,
         Type,
         Function,
         Parameter

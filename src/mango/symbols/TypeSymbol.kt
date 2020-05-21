@@ -1,28 +1,30 @@
 package mango.symbols
 
+
 class TypeSymbol private constructor(
-    override val name: String
+    override val name: String,
+    val parentType: TypeSymbol?
 ) : Symbol() {
 
     override val kind = Kind.Type
 
     companion object {
 
-        val any = TypeSymbol("Any")
+        val any = TypeSymbol("Any", null)
 
-        val int = TypeSymbol("Int")
-        val short = TypeSymbol("Short")
-        val long = TypeSymbol("Long")
-        val double = TypeSymbol("Double")
-        val float = TypeSymbol("Float")
+        val int = TypeSymbol("Int", any)
+        val short = TypeSymbol("Short", any)
+        val long = TypeSymbol("Long", any)
+        val double = TypeSymbol("Double", any)
+        val float = TypeSymbol("Float", any)
 
-        val bool = TypeSymbol("Bool")
+        val bool = TypeSymbol("Bool", any)
 
-        val string = TypeSymbol("String")
+        val string = TypeSymbol("String", any)
 
-        val unit = TypeSymbol("Unit")
+        val unit = TypeSymbol("Unit", any)
 
-        val error = TypeSymbol("?")
+        val error = TypeSymbol("?", any)
 
         fun lookup(name: String) = when (name) {
             "Any" -> any
@@ -38,10 +40,5 @@ class TypeSymbol private constructor(
         }
     }
 
-    fun isOfType(other: TypeSymbol): Boolean {
-        if (other == any) {
-            return true
-        }
-        return this == other
-    }
+    fun isOfType(other: TypeSymbol): Boolean = this == other || parentType?.isOfType(other) ?: false
 }

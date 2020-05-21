@@ -7,7 +7,7 @@ class BoundCallExpression(
     val arguments: Collection<BoundExpression>
 ) : BoundExpression() {
 
-    override val type = function.type
+    override val type get() = function.type
     override val boundType = BoundNodeType.CallExpression
     override val children = arguments
 }

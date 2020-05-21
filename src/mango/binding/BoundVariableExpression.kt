@@ -10,5 +10,6 @@ class BoundVariableExpression(
     override val boundType = BoundNodeType.VariableExpression
     override val children get() = listOf<BoundNode>()
 
+    override fun toString() = variable.name
     override fun getDataString() = variable.name
 }

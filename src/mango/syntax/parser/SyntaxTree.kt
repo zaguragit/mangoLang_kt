@@ -7,12 +7,12 @@ class SyntaxTree internal constructor(
     val sourceText: SourceText
 ) {
 
-    val root: FileUnit
+    val root: CompilationUnitNode
     val errors: DiagnosticList
 
     init {
         val parser = Parser(sourceText)
-        root = parser.parseFileUnit()
+        root = parser.parseCompilationUnit()
         errors = parser.diagnostics
     }
 
