@@ -18,6 +18,8 @@ class Binder(
 ) {
 
     val diagnostics = DiagnosticList()
+    private val loopStack = Stack<Pair<BoundLabel, BoundLabel>>()
+    private var labelCount = 0
 
     init {
         if (function != null) {
@@ -35,9 +37,13 @@ class Binder(
             SyntaxType.IfStatement -> bindIfStatement(node as IfStatementNode)
             SyntaxType.WhileStatement -> bindWhileStatement(node as WhileStatementNode)
             SyntaxType.ForStatement -> bindForStatement(node as ForStatementNode)
+            SyntaxType.BreakStatement -> bindBreakStatement(node as BreakStatementNode)
+            SyntaxType.ContinueStatement -> bindContinueStatement(node as ContinueStatementNode)
             else -> throw Exception("Unexpected node: ${node.kind}")
         }
     }
+
+    private fun bindErrorStatement() = BoundExpressionStatement(BoundErrorExpression())
 
     private fun bindIfStatement(node: IfStatementNode): BoundIfStatement {
         val condition = bindExpression(node.condition, TypeSymbol.bool)
@@ -48,8 +54,8 @@ class Binder(
 
     private fun bindWhileStatement(node: WhileStatementNode): BoundWhileStatement {
         val condition = bindExpression(node.condition, TypeSymbol.bool)
-        val body = bindBlockStatement(node.body)
-        return BoundWhileStatement(condition, body)
+        val (body, breakLabel, continueLabel) = bindLoopBody(node.body)
+        return BoundWhileStatement(condition, body, breakLabel, continueLabel)
     }
 
     private fun bindForStatement(node: ForStatementNode): BoundForStatement {
@@ -59,10 +65,39 @@ class Binder(
         val previous = scope
         scope = BoundScope(scope)
         val variable = bindVariable(node.identifier, TypeSymbol.int, true)
-        val body = bindBlockStatement(node.body)
+        val (body, breakLabel, continueLabel) = bindLoopBody(node.body)
         scope = previous
 
-        return BoundForStatement(variable, lowerBound, upperBound, body)
+        return BoundForStatement(variable, lowerBound, upperBound, body, breakLabel, continueLabel)
+    }
+
+    private fun bindLoopBody(node: BlockStatementNode): Triple<BoundBlockStatement, BoundLabel, BoundLabel> {
+        val numStr = labelCount.toString(16)
+        val breakLabel = BoundLabel("B$numStr")
+        val continueLabel = BoundLabel("C$numStr")
+        labelCount++
+        loopStack.push(breakLabel to continueLabel)
+        val body = bindBlockStatement(node)
+        loopStack.pop()
+        return Triple(body, breakLabel, continueLabel)
+    }
+
+    private fun bindBreakStatement(node: BreakStatementNode): BoundStatement {
+        if (loopStack.count() == 0) {
+            diagnostics.reportBreakContinueOutsideLoop(node.keyword.span, node.keyword.string!!)
+            return bindErrorStatement()
+        }
+        val breakLabel = loopStack.peek().first
+        return BoundGotoStatement(breakLabel)
+    }
+
+    private fun bindContinueStatement(node: ContinueStatementNode): BoundStatement {
+        if (loopStack.count() == 0) {
+            diagnostics.reportBreakContinueOutsideLoop(node.keyword.span, node.keyword.string!!)
+            return bindErrorStatement()
+        }
+        val continueLabel = loopStack.peek().second
+        return BoundGotoStatement(continueLabel)
     }
 
     private fun bindBlockStatement(node: BlockStatementNode): BoundBlockStatement {

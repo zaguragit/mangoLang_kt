@@ -18,5 +18,4 @@ class BoundLiteralExpression(
     override fun toString() =
         if (type == TypeSymbol.string) { '"' + value.toString() + '"' }
         else { value.toString() }
-    override fun getDataString() = value.toString()
 }

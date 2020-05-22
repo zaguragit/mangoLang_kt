@@ -65,7 +65,7 @@ class MangoRepl : Repl() {
                 }
                 val textLine = syntaxTree.sourceText.lines[lineNumber]
                 val spanStart = error.span.start
-                val spanEnd = error.span.end
+                val spanEnd = min(error.span.end, textLine.end)
                 print(prefix + error + Console.RESET + " {\n\t")
                 print(text.substring(textLine.start, spanStart))
                 print(when (error.diagnosticType) {

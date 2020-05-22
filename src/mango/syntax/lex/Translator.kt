@@ -17,6 +17,9 @@ object Translator {
         "while" -> SyntaxType.While
         "for" -> SyntaxType.For
 
+        "break" -> SyntaxType.Break
+        "continue" -> SyntaxType.Continue
+
         "in" -> SyntaxType.In
 
         "fn" -> SyntaxType.Fn

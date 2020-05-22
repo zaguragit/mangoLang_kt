@@ -35,6 +35,8 @@ enum class SyntaxType {
     WhileStatement,
     ForStatement,
     GlobalStatement,
+    BreakStatement,
+    ContinueStatement,
 
     // Brackets
     OpenRoundedBracket,
@@ -94,6 +96,10 @@ enum class SyntaxType {
     Else,
     For,
     While,
+
+    Break,
+    Continue,
+    Return,
 
     Identifier,
     TypeClause;

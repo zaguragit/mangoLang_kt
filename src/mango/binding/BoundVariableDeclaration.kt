@@ -9,6 +9,4 @@ class BoundVariableDeclaration(
 
     override val boundType = BoundNodeType.VariableDeclaration
     override val children get() = listOf(initializer)
-
-    override fun getDataString() = variable.name
 }

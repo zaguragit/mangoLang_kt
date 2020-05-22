@@ -28,6 +28,9 @@ class BoundBinaryOperator(
             BoundBinaryOperator(SyntaxType.IsEqualOrMore, BoundBinaryOperatorType.IsEqualOrMore, TypeSymbol.int, resultType = TypeSymbol.bool),
             BoundBinaryOperator(SyntaxType.IsNotEqual, BoundBinaryOperatorType.IsNotEqual, TypeSymbol.int, resultType = TypeSymbol.bool),
 
+            BoundBinaryOperator(SyntaxType.IsIdentityEqual, BoundBinaryOperatorType.IsIdentityEqual, TypeSymbol.int, resultType = TypeSymbol.bool),
+            BoundBinaryOperator(SyntaxType.IsNotIdentityEqual, BoundBinaryOperatorType.IsNotIdentityEqual, TypeSymbol.int, resultType = TypeSymbol.bool),
+
             BoundBinaryOperator(SyntaxType.BitAnd, BoundBinaryOperatorType.BitAnd, TypeSymbol.bool),
             BoundBinaryOperator(SyntaxType.BitOr, BoundBinaryOperatorType.BitOr, TypeSymbol.bool),
             BoundBinaryOperator(SyntaxType.LogicAnd, BoundBinaryOperatorType.LogicAnd, TypeSymbol.bool),
@@ -35,11 +38,14 @@ class BoundBinaryOperator(
             BoundBinaryOperator(SyntaxType.IsEqual, BoundBinaryOperatorType.IsEqual, TypeSymbol.bool),
             BoundBinaryOperator(SyntaxType.IsNotEqual, BoundBinaryOperatorType.IsNotEqual, TypeSymbol.bool),
 
-            //BoundBinaryOperator(SyntaxType.Plus, BoundBinaryOperatorType.Add, TypeSymbol.string, TypeSymbol.int, TypeSymbol.string),
-            //BoundBinaryOperator(SyntaxType.Plus, BoundBinaryOperatorType.Add, TypeSymbol.int, TypeSymbol.string, TypeSymbol.string),
-            //BoundBinaryOperator(SyntaxType.Plus, BoundBinaryOperatorType.Add, TypeSymbol.string, TypeSymbol.bool, TypeSymbol.string),
-            //BoundBinaryOperator(SyntaxType.Plus, BoundBinaryOperatorType.Add, TypeSymbol.bool, TypeSymbol.string, TypeSymbol.string),
-            BoundBinaryOperator(SyntaxType.Plus, BoundBinaryOperatorType.Add, TypeSymbol.string))
+            BoundBinaryOperator(SyntaxType.IsIdentityEqual, BoundBinaryOperatorType.IsIdentityEqual, TypeSymbol.bool, resultType = TypeSymbol.bool),
+            BoundBinaryOperator(SyntaxType.IsNotIdentityEqual, BoundBinaryOperatorType.IsNotIdentityEqual, TypeSymbol.bool, resultType = TypeSymbol.bool),
+
+            BoundBinaryOperator(SyntaxType.Plus, BoundBinaryOperatorType.Add, TypeSymbol.string),
+            BoundBinaryOperator(SyntaxType.IsEqual, BoundBinaryOperatorType.IsEqual, TypeSymbol.string, resultType = TypeSymbol.bool),
+            BoundBinaryOperator(SyntaxType.IsNotEqual, BoundBinaryOperatorType.IsNotEqual, TypeSymbol.string, resultType = TypeSymbol.bool),
+            BoundBinaryOperator(SyntaxType.IsIdentityEqual, BoundBinaryOperatorType.IsIdentityEqual, TypeSymbol.string, resultType = TypeSymbol.bool),
+            BoundBinaryOperator(SyntaxType.IsNotIdentityEqual, BoundBinaryOperatorType.IsNotIdentityEqual, TypeSymbol.string, resultType = TypeSymbol.bool))
 
         fun bind(syntaxType: SyntaxType, leftType: TypeSymbol, rightType: TypeSymbol): BoundBinaryOperator? {
             for (op in operators) {
@@ -50,6 +56,27 @@ class BoundBinaryOperator(
                 }
             }
             return null
+        }
+
+
+        fun getString(type: BoundBinaryOperatorType): String = when (type) {
+            BoundBinaryOperatorType.Add -> "+"
+            BoundBinaryOperatorType.Sub -> "-"
+            BoundBinaryOperatorType.Mul -> "*"
+            BoundBinaryOperatorType.Div -> "/"
+            BoundBinaryOperatorType.Rem -> "%"
+            BoundBinaryOperatorType.BitAnd -> "&"
+            BoundBinaryOperatorType.BitOr -> "|"
+            BoundBinaryOperatorType.LogicAnd -> "&&"
+            BoundBinaryOperatorType.LogicOr -> "||"
+            BoundBinaryOperatorType.LessThan -> "<"
+            BoundBinaryOperatorType.MoreThan -> ">"
+            BoundBinaryOperatorType.IsEqual -> "=="
+            BoundBinaryOperatorType.IsEqualOrMore -> ">="
+            BoundBinaryOperatorType.IsEqualOrLess -> "<="
+            BoundBinaryOperatorType.IsNotEqual -> "!="
+            BoundBinaryOperatorType.IsIdentityEqual -> "==="
+            BoundBinaryOperatorType.IsNotIdentityEqual -> "!=="
         }
     }
 }

@@ -129,4 +129,9 @@ class DiagnosticList {
         from: TypeSymbol,
         to: TypeSymbol
     ) = report(span, "Can't cast from type $from to type $to")
+
+    inline fun reportBreakContinueOutsideLoop(
+        span: TextSpan,
+        keyword: String
+    ) = report(span, "\"$keyword\" can't be outside a loop")
 }

@@ -24,5 +24,11 @@ class BoundUnaryOperator(
             }
             return null
         }
+
+        fun getString(type: BoundUnaryOperatorType): String = when (type) {
+            BoundUnaryOperatorType.Identity -> "+"
+            BoundUnaryOperatorType.Negation -> "-"
+            BoundUnaryOperatorType.Not -> "!"
+        }
     }
 }

@@ -3,7 +3,6 @@ package mango.lowering
 import mango.binding.*
 import mango.symbols.LocalVariableSymbol
 import mango.symbols.TypeSymbol
-import mango.symbols.VariableSymbol
 import mango.syntax.SyntaxType
 import java.util.*
 import kotlin.collections.ArrayList
@@ -13,7 +12,7 @@ class Lowerer private constructor() : BoundTreeRewriter() {
     private var labelCount = 0
 
     private fun generateLabel(): BoundLabel {
-        val name = "label_${(++labelCount).toString(16)}"
+        val name = "L${(++labelCount).toString(16)}"
         return BoundLabel(name)
     }
 
@@ -44,6 +43,7 @@ class Lowerer private constructor() : BoundTreeRewriter() {
             BoundBinaryOperator.bind(SyntaxType.IsEqualOrLess, TypeSymbol.int, TypeSymbol.int)!!,
             BoundVariableExpression(upperBoundSymbol)
         )
+        val continueLabelStatement = BoundLabelStatement(node.continueLabel)
         val increment = BoundExpressionStatement(BoundAssignmentExpression(
             node.variable,
             BoundBinaryExpression(
@@ -52,8 +52,12 @@ class Lowerer private constructor() : BoundTreeRewriter() {
                 BoundLiteralExpression(1)
             )
         ))
-        val body = BoundBlockStatement(listOf(node.body, increment))
-        val whileStatement = BoundWhileStatement(condition, body)
+        val body = BoundBlockStatement(listOf(
+            node.body,
+            continueLabelStatement,
+            increment
+        ))
+        val whileStatement = BoundWhileStatement(condition, body, node.breakLabel, generateLabel())
         val result = BoundBlockStatement(listOf(variableDeclaration, upperBoundDeclaration, whileStatement))
         return rewriteStatement(result)
     }
@@ -86,21 +90,21 @@ class Lowerer private constructor() : BoundTreeRewriter() {
     }
 
     override fun rewriteWhileStatement(node: BoundWhileStatement): BoundStatement {
-        val continueLabel = generateLabel()
+        //val continueLabel = generateLabel()
         val checkLabel = generateLabel()
-        val endLabel = generateLabel()
+        //val breakLabel = generateLabel()
         val gotoCheck = BoundGotoStatement(checkLabel)
-        val continueLabelStatement = BoundLabelStatement(continueLabel)
+        val continueLabelStatement = BoundLabelStatement(node.continueLabel)
         val checkLabelStatement = BoundLabelStatement(checkLabel)
-        val gotoTrue = BoundConditionalGotoStatement(continueLabel, node.condition, true)
-        val endLabelStatement = BoundLabelStatement(endLabel)
+        val gotoTrue = BoundConditionalGotoStatement(node.continueLabel, node.condition, true)
+        val breakLabelStatement = BoundLabelStatement(node.breakLabel)
         return BoundBlockStatement(listOf(
                 gotoCheck,
                 continueLabelStatement,
-                node.body,
+                rewriteBlockStatement(node.body),
                 checkLabelStatement,
                 gotoTrue,
-                endLabelStatement
+                breakLabelStatement
         ))
     }
 

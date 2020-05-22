@@ -14,7 +14,7 @@ class Evaluator(
     val globals: HashMap<VariableSymbol, Any?>
 ) {
 
-    val stack = Stack<HashMap<VariableSymbol, Any?>>()
+    val stack = Stack<HashMap<VariableSymbol, Any?>>().apply { push(HashMap()) }
 
     fun evaluate(): Any? = evaluateStatement(root)
 

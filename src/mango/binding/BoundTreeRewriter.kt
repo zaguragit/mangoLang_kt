@@ -73,7 +73,7 @@ open class BoundTreeRewriter {
         if (condition == node.condition && body == node.body) {
             return node
         }
-        return BoundWhileStatement(condition, body)
+        return BoundWhileStatement(condition, body, node.breakLabel, node.continueLabel)
     }
 
     protected open fun rewriteForStatement(node: BoundForStatement): BoundStatement {
@@ -83,7 +83,7 @@ open class BoundTreeRewriter {
         if (lowerBound == node.lowerBound && upperBound == node.upperBound && body == node.body) {
             return node
         }
-        return BoundForStatement(node.variable, lowerBound, upperBound, body)
+        return BoundForStatement(node.variable, lowerBound, upperBound, body, node.breakLabel, node.continueLabel)
     }
 
     private fun rewriteLabelStatement(node: BoundLabelStatement) = node

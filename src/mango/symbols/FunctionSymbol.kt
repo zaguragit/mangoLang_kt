@@ -8,5 +8,6 @@ class FunctionSymbol(
     val type: TypeSymbol,
     val declarationNode: FunctionDeclarationNode? = null
 ) : Symbol() {
+
     override val kind = Kind.Function
 }

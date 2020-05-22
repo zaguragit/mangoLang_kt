@@ -33,6 +33,19 @@ class Compilation(
     fun getStatement() = Lowerer.lower(globalScope.statement)
 
     fun printTree() {
-        getStatement().printTree()
+        val program = Binder.bindProgram(globalScope)
+        val statement = getStatement()
+        if (statement.statements.any()) {
+            statement.printStructure()
+        }
+        else {
+            for (functionBody in program.functionBodies) {
+                if (!globalScope.symbols.contains(functionBody.key)) {
+                    continue
+                }
+                functionBody.key.printStructure()
+                functionBody.value.printStructure()
+            }
+        }
     }
 }

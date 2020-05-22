@@ -8,5 +8,4 @@ class BoundConditionalGotoStatement(
 
     override val boundType = BoundNodeType.ConditionalGotoStatement
     override val children: Collection<BoundNode> get() = listOf(condition)
-    override fun getDataString() = label.name
 }

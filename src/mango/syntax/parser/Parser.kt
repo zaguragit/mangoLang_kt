@@ -136,21 +136,13 @@ class Parser(val sourceText: SourceText) {
 
 
     private fun parseStatement() = when (current.kind) {
-        SyntaxType.OpenCurlyBracket -> {
-            parseBlockStatement()
-        }
-        SyntaxType.Val, SyntaxType.Var -> {
-            parseVariableDeclaration()
-        }
-        SyntaxType.If -> {
-            parseIfStatement()
-        }
-        SyntaxType.While -> {
-            parseWhileStatement()
-        }
-        SyntaxType.For -> {
-            parseForStatement()
-        }
+        SyntaxType.OpenCurlyBracket -> parseBlockStatement()
+        SyntaxType.Val, SyntaxType.Var -> parseVariableDeclaration()
+        SyntaxType.If -> parseIfStatement()
+        SyntaxType.While -> parseWhileStatement()
+        SyntaxType.For -> parseForStatement()
+        SyntaxType.Break -> parseBreakStatement()
+        SyntaxType.Continue -> parseContinueStatement()
         else -> parseExpressionStatement()
     }
 
@@ -238,6 +230,16 @@ class Parser(val sourceText: SourceText) {
         val upperBound = parseExpression()
         val body = parseBlockStatement()
         return ForStatementNode(keyword, identifier, inToken, lowerBound, rangeToken, upperBound, body)
+    }
+
+    private fun parseBreakStatement(): StatementNode {
+        val keyword = match(SyntaxType.Break)
+        return BreakStatementNode(keyword)
+    }
+
+    private fun parseContinueStatement(): StatementNode {
+        val keyword = match(SyntaxType.Continue)
+        return ContinueStatementNode(keyword)
     }
 
     private fun parseExpression() = parseAssignmentExpression()

@@ -6,5 +6,4 @@ class BoundGotoStatement(
 
     override val boundType = BoundNodeType.GotoStatement
     override val children: Collection<BoundNode> get() = listOf()
-    override fun getDataString() = label.name
 }
