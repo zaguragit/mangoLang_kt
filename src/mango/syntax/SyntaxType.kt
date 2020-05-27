@@ -37,6 +37,7 @@ enum class SyntaxType {
     GlobalStatement,
     BreakStatement,
     ContinueStatement,
+    ReturnStatement,
 
     // Brackets
     OpenRoundedBracket,

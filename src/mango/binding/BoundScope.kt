@@ -50,4 +50,4 @@ class BoundGlobalScope(
     val previous: BoundGlobalScope?,
     val diagnostics: DiagnosticList,
     val symbols: Collection<Symbol>,
-    val statement: BoundStatement)
+    val statements: Collection<BoundStatement>)

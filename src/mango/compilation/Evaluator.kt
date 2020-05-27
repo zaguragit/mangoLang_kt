@@ -2,7 +2,6 @@ package mango.compilation
 
 import mango.binding.*
 import mango.symbols.*
-import mango.syntax.parser.BlockStatementNode
 import java.util.*
 import kotlin.Exception
 import kotlin.collections.HashMap
@@ -18,13 +17,17 @@ class Evaluator(
 
     fun evaluate(): Any? = evaluateStatement(root)
 
-    private fun evaluateStatement(body: BoundBlockStatement) {
+    private fun evaluateStatement(body: BoundBlockStatement): Any? {
         val labelToIndex = HashMap<BoundLabel, Int>()
         for (i in body.statements.indices) {
             val s = body.statements.elementAt(i)
             if (s is BoundLabelStatement) {
                 labelToIndex[s.symbol] = i + 1
             }
+        }
+        if (body.statements.size == 1 &&
+            body.statements.elementAt(0).boundType == BoundNodeType.ExpressionStatement) {
+            return evaluateExpressionStatement(body.statements.elementAt(0) as BoundExpressionStatement)
         }
         var i = 0
         while (i < body.statements.size) {
@@ -51,9 +54,14 @@ class Evaluator(
                     else { i++ }
                 }
                 BoundNodeType.LabelStatement -> { i++ }
+                BoundNodeType.ReturnStatement -> {
+                    s as BoundReturnStatement
+                    return s.expression?.let { evaluateExpression(it) }
+                }
                 else -> throw Exception("Unexpected node: ${s.boundType.name}")
             }
         }
+        return null
     }
 
     private fun evaluateExpression(node: BoundExpression) = when (node) {
@@ -67,9 +75,8 @@ class Evaluator(
         else -> throw Exception("Unexpected node: ${node.boundType.name}")
     }
 
-    private fun evaluateExpressionStatement(node: BoundExpressionStatement) {
+    private fun evaluateExpressionStatement(node: BoundExpressionStatement) =
         evaluateExpression(node.expression)
-    }
 
     private fun evaluateVariableDeclaration(node: BoundVariableDeclaration) {
         val value = evaluateExpression(node.initializer)

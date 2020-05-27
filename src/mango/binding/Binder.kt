@@ -1,6 +1,7 @@
 package mango.binding
 
 import mango.compilation.DiagnosticList
+import mango.compilation.TextSpan
 import mango.lowering.Lowerer
 import mango.symbols.*
 import mango.syntax.SyntaxType
@@ -39,6 +40,7 @@ class Binder(
             SyntaxType.ForStatement -> bindForStatement(node as ForStatementNode)
             SyntaxType.BreakStatement -> bindBreakStatement(node as BreakStatementNode)
             SyntaxType.ContinueStatement -> bindContinueStatement(node as ContinueStatementNode)
+            SyntaxType.ReturnStatement -> bindReturnStatement(node as ReturnStatementNode)
             else -> throw Exception("Unexpected node: ${node.kind}")
         }
     }
@@ -48,7 +50,17 @@ class Binder(
     private fun bindIfStatement(node: IfStatementNode): BoundIfStatement {
         val condition = bindExpression(node.condition, TypeSymbol.bool)
         val statement = bindBlockStatement(node.thenStatement)
-        val elseStatement = node.elseClause?.let { bindStatement(it.statement) }
+        val elseStatement: BoundStatement?
+        if (node.elseClause != null) {
+            elseStatement = bindStatement(node.elseClause.statement)
+            if (elseStatement is BoundBlockStatement &&
+                elseStatement.statements.size == 1 &&
+                elseStatement.statements.elementAt(0) is BoundIfStatement) {
+                diagnostics.styleElseIfStatement(node.elseClause.span)
+            }
+        } else {
+            elseStatement = null
+        }
         return BoundIfStatement(condition, statement, elseStatement)
     }
 
@@ -98,6 +110,27 @@ class Binder(
         }
         val continueLabel = loopStack.peek().second
         return BoundGotoStatement(continueLabel)
+    }
+
+    private fun bindReturnStatement(node: ReturnStatementNode): BoundStatement {
+        val expression = node.expression?.let { bindExpression(it) }
+        if (function == null) {
+            diagnostics.reportReturnOutsideFunction(node.keyword.span)
+        }
+        else if (function.type == TypeSymbol.unit) {
+            if (expression != null) {
+                diagnostics.reportCantReturnInUnitFunction(node.expression.span)
+            }
+        }
+        else {
+            if (expression == null) {
+                diagnostics.reportCantReturnWithoutValue(node.keyword.span)
+            }
+            else if (!expression.type.isOfType(function.type)) {
+                diagnostics.reportWrongType(node.expression.span, expression.type, function.type)
+            }
+        }
+        return BoundReturnStatement(expression)
     }
 
     private fun bindBlockStatement(node: BlockStatementNode): BoundBlockStatement {
@@ -204,8 +237,17 @@ class Binder(
             return BoundErrorExpression()
         }
 
-        if (node.arguments.nodeCount != function!!.parameters.size) {
-            diagnostics.reportWrongArgumentCount(node.span, function.name, node.arguments.nodeCount, function.parameters.size)
+        if (node.arguments.nodeCount > function!!.parameters.size) {
+            val firstExceedingNode = if (function.parameters.isNotEmpty()) {
+                node.arguments.getSeparator(function.parameters.size - 1)
+            } else {
+                node.arguments[0]
+            }
+            val span = TextSpan.fromBounds(firstExceedingNode.span.start, node.arguments.last().span.end)
+            diagnostics.reportWrongArgumentCount(span, function.name, node.arguments.nodeCount, function.parameters.size)
+            return  BoundErrorExpression()
+        } else if (node.arguments.nodeCount < function.parameters.size) {
+            diagnostics.reportWrongArgumentCount(node.rightBracket.span, function.name, node.arguments.nodeCount, function.parameters.size)
             return  BoundErrorExpression()
         }
 
@@ -213,9 +255,10 @@ class Binder(
             val arg = arguments[i]
             val param = function.parameters[i]
 
-            if (!arg.type.isOfType(param.type) &&
-                arg.type != TypeSymbol.error) {
-                diagnostics.reportWrongArgumentType(node.arguments[i].span, param.name, arg.type, param.type)
+            if (!arg.type.isOfType(param.type)) {
+                if (arg.type != TypeSymbol.error) {
+                    diagnostics.reportWrongArgumentType(node.arguments[i].span, param.name, arg.type, param.type)
+                }
                 return BoundErrorExpression()
             }
         }
@@ -269,7 +312,7 @@ class Binder(
     }
 
     private fun bindParenthesizedExpression(
-            node: ParenthesizedExpressionNode
+        node: ParenthesizedExpressionNode
     ) = bindExpression(node.expression)
 
     private fun bindLiteralExpression(
@@ -308,26 +351,27 @@ class Binder(
             val parentScope = createParentScopes(previous)
             val binder = Binder(BoundScope(parentScope), null)
 
-            val statementBuilder = ArrayList<BoundStatement>()
-
-            for (member in node.members) {
-                when (member) {
-                    is FunctionDeclarationNode -> binder.bindFunctionDeclaration(member)
-                    is GlobalStatementNode -> {
-                        val statement = binder.bindStatement(member.statement)
-                        statementBuilder.add(statement)
-                    }
+            for (function in node.members) {
+                if (function is FunctionDeclarationNode) {
+                    binder.bindFunctionDeclaration(function)
                 }
             }
 
-            val statement = BoundBlockStatement(statementBuilder)
+            val statementBuilder = ArrayList<BoundStatement>()
+
+            for (globalStatement in node.members) {
+                if (globalStatement is GlobalStatementNode) {
+                    val statement = binder.bindStatement(globalStatement.statement)
+                    statementBuilder.add(statement)
+                }
+            }
 
             val symbols = binder.scope.symbols
             val diagnostics = binder.diagnostics
             if (previous != null) {
                 diagnostics.append(previous.diagnostics)
             }
-            return BoundGlobalScope(previous, diagnostics, symbols, statement)
+            return BoundGlobalScope(previous, diagnostics, symbols, statementBuilder)
         }
 
         private fun createParentScopes(previous: BoundGlobalScope?): BoundScope {
@@ -366,7 +410,7 @@ class Binder(
 
             val parentScope = createParentScopes(globalScope)
             val functionBodies = HashMap<FunctionSymbol, BoundStatement>()
-            val diagnostics = globalScope.diagnostics
+            val diagnostics = DiagnosticList()
 
             var scope: BoundGlobalScope? = globalScope
             while (scope != null) {
@@ -375,6 +419,9 @@ class Binder(
                         val binder = Binder(parentScope, symbol)
                         val body = binder.bindStatement(symbol.declarationNode!!.body)
                         val loweredBody = Lowerer.lower(body)
+                        if (symbol.type != TypeSymbol.unit && !ControlFlowGraph.allPathsReturn(loweredBody)) {
+                            diagnostics.reportAllPathsMustReturn(symbol.declarationNode.identifier.span)
+                        }
                         functionBodies[symbol] = loweredBody
                         diagnostics.append(binder.diagnostics)
                     }
@@ -382,7 +429,9 @@ class Binder(
                 scope = scope.previous
             }
 
-            return BoundProgram(globalScope, diagnostics, functionBodies)
+            val statement = Lowerer.lower(BoundBlockStatement(globalScope.statements))
+
+            return BoundProgram(diagnostics, functionBodies, statement)
         }
     }
 

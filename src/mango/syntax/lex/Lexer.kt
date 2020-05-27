@@ -103,6 +103,7 @@ class Lexer(private val sourceText: SourceText) {
                     Token(SyntaxType.Dot, position++, string = ".")
                 }
             }
+            ',' -> Token(SyntaxType.Comma, position++, string = ",")
             ':' -> Token(SyntaxType.Colon, position++, string = ":")
             '"' -> readString()
             //'\n', '\r' -> Token(SyntaxType.NewLine, position++)
@@ -130,7 +131,7 @@ class Lexer(private val sourceText: SourceText) {
 
     fun readIdentifierOrKeyword(): Token {
         val start = position++
-        while (char.isLetterOrDigit()) {
+        while (char.isLetterOrDigit() || char == '_') {
             position++
         }
         val text = sourceText.getText(start, position - start)

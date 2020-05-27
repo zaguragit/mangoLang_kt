@@ -90,9 +90,7 @@ class Lowerer private constructor() : BoundTreeRewriter() {
     }
 
     override fun rewriteWhileStatement(node: BoundWhileStatement): BoundStatement {
-        //val continueLabel = generateLabel()
         val checkLabel = generateLabel()
-        //val breakLabel = generateLabel()
         val gotoCheck = BoundGotoStatement(checkLabel)
         val continueLabelStatement = BoundLabelStatement(node.continueLabel)
         val checkLabelStatement = BoundLabelStatement(checkLabel)

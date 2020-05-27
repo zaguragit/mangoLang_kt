@@ -4,12 +4,12 @@ import mango.syntax.SyntaxType
 import mango.syntax.lex.Token
 
 class FunctionDeclarationNode(
-        val keyword: Token,
-        val identifier: Token,
-        val params: SeparatedNodeList<ParameterNode>?,
-        val lambdaArrow: Token?,
-        val typeClause: TypeClauseNode?,
-        val body: StatementNode
+    val keyword: Token,
+    val identifier: Token,
+    val typeClause: TypeClauseNode?,
+    val params: SeparatedNodeList<ParameterNode>?,
+    val lambdaArrow: Token?,
+    val body: StatementNode
 ) : MemberNode() {
 
     override val kind = SyntaxType.FunctionDeclaration

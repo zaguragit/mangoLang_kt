@@ -6,7 +6,6 @@ class BoundUnaryExpression(
 ) : BoundExpression() {
     override val type = operator.resultType
     override val boundType = BoundNodeType.UnaryExpression
-    override val children get() = listOf(operand)
 }
 
 enum class BoundUnaryOperatorType {

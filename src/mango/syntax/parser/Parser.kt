@@ -77,6 +77,10 @@ class Parser(val sourceText: SourceText) {
     private fun parseFunctionDeclaration(): MemberNode {
         val keyword = match(SyntaxType.Fn)
         val identifier = match(SyntaxType.Identifier)
+        var type: TypeClauseNode? = null
+        if (current.kind == SyntaxType.Identifier) {
+            type = parseTypeClause()
+        }
         var params: SeparatedNodeList<ParameterNode>? = null
         if (current.kind == SyntaxType.Colon) {
             next()
@@ -84,21 +88,14 @@ class Parser(val sourceText: SourceText) {
         }
 
         var lambdaArrow: Token? = null
-        var type: TypeClauseNode? = null
         val body: StatementNode
         if (current.kind == SyntaxType.LambdaArrow) {
             lambdaArrow = next()
-            if (current.kind == SyntaxType.TypeClause) {
-                type = parseTypeClause()
-                body = parseBlockStatement()
-            } else {
-                body = parseStatement()
-            }
+            body = parseExpressionStatement()
         } else {
             body = parseBlockStatement()
         }
-
-        return FunctionDeclarationNode(keyword, identifier, params, lambdaArrow, type, body)
+        return FunctionDeclarationNode(keyword, identifier, type, params, lambdaArrow, body)
     }
 
     private fun parseParamList(): SeparatedNodeList<ParameterNode> {
@@ -143,6 +140,7 @@ class Parser(val sourceText: SourceText) {
         SyntaxType.For -> parseForStatement()
         SyntaxType.Break -> parseBreakStatement()
         SyntaxType.Continue -> parseContinueStatement()
+        SyntaxType.Return -> parseReturnStatement()
         else -> parseExpressionStatement()
     }
 
@@ -209,7 +207,7 @@ class Parser(val sourceText: SourceText) {
             return null
         }
         val keyword = next()
-        val isIfNext = peek(1).kind == SyntaxType.If
+        val isIfNext = current.kind == SyntaxType.If
         val statement = if (isIfNext) { parseIfStatement() } else { parseBlockStatement() }
         return ElseClauseNode(keyword, statement)
     }
@@ -240,6 +238,16 @@ class Parser(val sourceText: SourceText) {
     private fun parseContinueStatement(): StatementNode {
         val keyword = match(SyntaxType.Continue)
         return ContinueStatementNode(keyword)
+    }
+
+    private fun parseReturnStatement(): StatementNode {
+        val keyword = match(SyntaxType.Return)
+        val keywordLine = sourceText.getLineI(keyword.span.start)
+        val currentLine = sourceText.getLineI(current.span.start)
+        val expression = if (currentLine == keywordLine && current.kind != SyntaxType.EOF) {
+            parseExpression()
+        } else null
+        return ReturnStatementNode(keyword, expression)
     }
 
     private fun parseExpression() = parseAssignmentExpression()

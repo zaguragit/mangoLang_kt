@@ -8,5 +8,4 @@ class BoundVariableDeclaration(
 ) : BoundStatement() {
 
     override val boundType = BoundNodeType.VariableDeclaration
-    override val children get() = listOf(initializer)
 }

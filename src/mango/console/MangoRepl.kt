@@ -48,31 +48,21 @@ class MangoRepl : Repl() {
 
         val result = compilation.evaluate(variables)
         val errors = result.errors
+        val nonErrors = result.nonErrors
 
         if (errors.isEmpty()) {
             previous = compilation
         } else {
             println()
-
             for (error in errors) {
                 val lineNumber = syntaxTree.sourceText.getLineI(error.span.start)
                 val charNumber = error.span.start - syntaxTree.sourceText.lines[lineNumber].start
-                val locationStr = Console.BLUE_BRIGHT + "$lineNumber, $charNumber"
-                val prefix = when (error.diagnosticType) {
-                    Diagnostic.Type.Error -> Console.RED + "error(" + locationStr + Console.RED + "): "
-                    Diagnostic.Type.Warning -> Console.YELLOW_BRIGHT + "warning(" + locationStr + Console.YELLOW_BRIGHT + "): "
-                    Diagnostic.Type.Style -> Console.CYAN + "style(" + locationStr + Console.CYAN + "): "
-                }
                 val textLine = syntaxTree.sourceText.lines[lineNumber]
                 val spanStart = error.span.start
                 val spanEnd = min(error.span.end, textLine.end)
-                print(prefix + error + Console.RESET + " {\n\t")
+                print(Console.RED + "error(" + Console.BLUE_BRIGHT + "$lineNumber, $charNumber" + Console.RED + "): $error" + Console.RESET + " {\n\t")
                 print(text.substring(textLine.start, spanStart))
-                print(when (error.diagnosticType) {
-                    Diagnostic.Type.Error -> Console.RED_BOLD_BRIGHT
-                    Diagnostic.Type.Warning -> Console.YELLOW_BOLD_BRIGHT
-                    Diagnostic.Type.Style -> Console.CYAN_BOLD_BRIGHT
-                })
+                print(Console.RED_BOLD_BRIGHT)
                 print(text.substring(spanStart, spanEnd))
                 print(Console.RESET)
                 print(text.substring(spanEnd, textLine.end))
@@ -81,10 +71,35 @@ class MangoRepl : Repl() {
                 println()
             }
         }
+/*
+        for (suggestion in nonErrors) {
+            val lineNumber = syntaxTree.sourceText.getLineI(suggestion.span.start)
+            val charNumber = suggestion.span.start - syntaxTree.sourceText.lines[lineNumber].start
+            val locationStr = Console.BLUE_BRIGHT + "$lineNumber, $charNumber"
+            val prefix = when (suggestion.diagnosticType) {
+                Diagnostic.Type.Warning -> Console.YELLOW_BRIGHT + "warning(" + locationStr + Console.YELLOW_BRIGHT + "): "
+                else -> Console.CYAN + "style(" + locationStr + Console.CYAN + "): "
+            }
+            val textLine = syntaxTree.sourceText.lines[lineNumber]
+            val spanStart = suggestion.span.start
+            val spanEnd = min(suggestion.span.end, textLine.end)
+            print(prefix + suggestion + Console.RESET + " {\n\t")
+            print(text.substring(textLine.start, spanStart))
+            when (suggestion.diagnosticType) {
+                Diagnostic.Type.Warning -> print(Console.YELLOW_BOLD_BRIGHT)
+                else -> print(Console.CYAN_BOLD_BRIGHT)
+            }
+            print(text.substring(spanStart, spanEnd))
+            print(Console.RESET)
+            print(text.substring(spanEnd, textLine.end))
+            println()
+            println('}')
+            println()
+        }*/
     }
 
     override fun evaluateMetaCommand(cmd: String) = when (cmd) {
-        "#showParseTree" -> {
+        "#showTree" -> {
             if (showParseTree) {
                 showParseTree = false
                 println("Parse tree is now invisible")
@@ -93,7 +108,7 @@ class MangoRepl : Repl() {
                 println("Parse tree is now visible")
             }
         }
-        "#showBindTree" -> {
+        "#showProgram" -> {
             if (showBindTree) {
                 showBindTree = false
                 println("Bind tree is now invisible")

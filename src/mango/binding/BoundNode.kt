@@ -6,7 +6,6 @@ import mango.syntax.lex.Translator
 
 abstract class BoundNode {
     abstract val boundType: BoundNodeType
-    abstract val children: Collection<BoundNode>
 
     private fun printNestedExpression(indent: Int,parentPrecedence: Int, expression: BoundExpression) {
         when (expression) {
@@ -110,6 +109,9 @@ abstract class BoundNode {
                 for (statement in statements) {
                     statement.printStructure(indent + 1)
                 }
+                for (t in 0 until indent) {
+                    print("    ")
+                }
                 println('}')
             }
             BoundNodeType.ExpressionStatement -> {
@@ -155,6 +157,12 @@ abstract class BoundNode {
                 condition.printStructure(indent + 1, true)
                 println()
             }
+            BoundNodeType.ReturnStatement -> {
+                this as BoundReturnStatement
+                print("return ")
+                expression?.printStructure(indent + 1, true)
+                println()
+            }
         }
     }
 }
@@ -183,5 +191,6 @@ enum class BoundNodeType {
     ForStatement,
     LabelStatement,
     GotoStatement,
-    ConditionalGotoStatement
+    ConditionalGotoStatement,
+    ReturnStatement
 }

@@ -7,6 +7,4 @@ class BoundCastExpression(
     val expression: BoundExpression
 ) : BoundExpression() {
     override val boundType = BoundNodeType.CastExpression
-    override val children: Collection<BoundNode>
-        get() = listOf(expression)
 }

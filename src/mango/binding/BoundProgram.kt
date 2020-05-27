@@ -4,7 +4,7 @@ import mango.compilation.DiagnosticList
 import mango.symbols.FunctionSymbol
 
 class BoundProgram(
-    val globalScope: BoundGlobalScope,
     val diagnostics: DiagnosticList,
-    val functionBodies: HashMap<FunctionSymbol, BoundStatement>
+    val functionBodies: HashMap<FunctionSymbol, BoundStatement>,
+    val statement: BoundBlockStatement
 )

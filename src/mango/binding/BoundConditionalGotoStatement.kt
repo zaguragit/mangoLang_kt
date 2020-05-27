@@ -7,5 +7,4 @@ class BoundConditionalGotoStatement(
 ) : BoundStatement() {
 
     override val boundType = BoundNodeType.ConditionalGotoStatement
-    override val children: Collection<BoundNode> get() = listOf(condition)
 }

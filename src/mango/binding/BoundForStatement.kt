@@ -12,5 +12,4 @@ class BoundForStatement(
 ) : BoundLoopStatement(breakLabel, continueLabel) {
 
     override val boundType = BoundNodeType.ForStatement
-    override val children: Collection<BoundNode> get() = listOf(lowerBound, upperBound, body)
 }

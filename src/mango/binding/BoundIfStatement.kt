@@ -7,10 +7,4 @@ class BoundIfStatement(
 ) : BoundStatement() {
 
     override val boundType = BoundNodeType.IfStatement
-    override val children: Collection<BoundNode>
-        get() = arrayListOf(condition, statement).apply {
-            if (elseStatement != null) {
-                add(elseStatement)
-            }
-        }
 }

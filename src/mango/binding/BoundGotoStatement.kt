@@ -5,5 +5,4 @@ class BoundGotoStatement(
 ) : BoundStatement() {
 
     override val boundType = BoundNodeType.GotoStatement
-    override val children: Collection<BoundNode> get() = listOf()
 }

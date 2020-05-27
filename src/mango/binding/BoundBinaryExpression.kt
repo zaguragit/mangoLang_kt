@@ -7,7 +7,6 @@ class BoundBinaryExpression(
 ) : BoundExpression() {
     override val type get() = operator.resultType
     override val boundType = BoundNodeType.BinaryExpression
-    override val children get() = listOf(left, right)
 }
 
 enum class BoundBinaryOperatorType {

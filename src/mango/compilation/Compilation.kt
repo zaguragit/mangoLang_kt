@@ -1,10 +1,15 @@
 package mango.compilation
 
 import mango.binding.Binder
+import mango.binding.BoundBlockStatement
 import mango.binding.BoundGlobalScope
+import mango.binding.ControlFlowGraph
 import mango.symbols.VariableSymbol
 import mango.lowering.Lowerer
 import mango.syntax.parser.SyntaxTree
+import java.io.File
+import java.io.OutputStreamWriter
+import java.nio.file.Path
 
 class Compilation(
     val syntaxTree: SyntaxTree,
@@ -16,27 +21,38 @@ class Compilation(
     fun evaluate(variables: HashMap<VariableSymbol, Any?>): EvaluationResult {
 
         val errors = syntaxTree.errors.apply { append(globalScope.diagnostics) }
-        if (errors.any()) {
-            return EvaluationResult(errors.apply { sortBySpan() }.list)
+        if (errors.hasErrors()) {
+            errors.sortBySpan()
+            return EvaluationResult(errors.list, errors.nonErrorList)
         }
 
         val program = Binder.bindProgram(globalScope)
-        if (program.diagnostics.any()) {
-            return EvaluationResult(program.diagnostics.apply { sortBySpan() }.list)
+
+        val cfgStatement = if (!program.statement.statements.any() && program.functionBodies.any()) {
+            program.functionBodies.values.last()
+        } else {
+            program.statement
+        }
+        if (cfgStatement is BoundBlockStatement) {
+            val cfg = ControlFlowGraph.create(cfgStatement)
+            cfg.print()
         }
 
-        val evaluator = Evaluator(program.functionBodies, getStatement(), variables)
-        evaluator.evaluate()
-        return EvaluationResult(errors.apply { sortBySpan() }.list)
-    }
+        if (program.diagnostics.hasErrors()) {
+            val d = program.diagnostics.apply { sortBySpan() }
+            return EvaluationResult(d.list, d.nonErrorList)
+        }
 
-    fun getStatement() = Lowerer.lower(globalScope.statement)
+        val evaluator = Evaluator(program.functionBodies, program.statement, variables)
+        evaluator.evaluate()
+        errors.sortBySpan()
+        return EvaluationResult(errors.list, errors.nonErrorList)
+    }
 
     fun printTree() {
         val program = Binder.bindProgram(globalScope)
-        val statement = getStatement()
-        if (statement.statements.any()) {
-            statement.printStructure()
+        if (program.statement.statements.any()) {
+            program.statement.printStructure()
         }
         else {
             for (functionBody in program.functionBodies) {

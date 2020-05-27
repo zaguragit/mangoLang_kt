@@ -24,7 +24,8 @@ class TypeSymbol private constructor(
 
         val unit = TypeSymbol("Unit", any)
 
-        val error = TypeSymbol("?", any)
+        val unknown = TypeSymbol("?Unknown?", any)
+        val error = TypeSymbol("?Error?", any)
 
         fun lookup(name: String) = when (name) {
             "Any" -> any

@@ -9,6 +9,4 @@ class BoundWhileStatement(
 
     override val boundType
         get() = BoundNodeType.WhileStatement
-    override val children: Collection<BoundNode>
-        get() = listOf(condition, body)
 }

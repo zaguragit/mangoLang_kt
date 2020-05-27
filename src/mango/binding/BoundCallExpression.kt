@@ -9,5 +9,4 @@ class BoundCallExpression(
 
     override val type get() = function.type
     override val boundType = BoundNodeType.CallExpression
-    override val children = arguments
 }
