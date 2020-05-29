@@ -1,5 +1,8 @@
 package mango.console
 
+import javax.tools.Diagnostic
+import kotlin.math.min
+
 object Console {
 
     const val ESCAPE = '\u001b'

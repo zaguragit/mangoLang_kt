@@ -1,15 +1,12 @@
 package mango.compilation
 
-import mango.binding.Binder
-import mango.binding.BoundBlockStatement
-import mango.binding.BoundGlobalScope
-import mango.binding.ControlFlowGraph
-import mango.symbols.VariableSymbol
-import mango.lowering.Lowerer
-import mango.syntax.parser.SyntaxTree
-import java.io.File
-import java.io.OutputStreamWriter
-import java.nio.file.Path
+import mango.interpreter.Evaluator
+import mango.interpreter.binding.Binder
+import mango.interpreter.binding.BoundBlockStatement
+import mango.interpreter.binding.BoundGlobalScope
+import mango.interpreter.binding.ControlFlowGraph
+import mango.interpreter.symbols.VariableSymbol
+import mango.interpreter.syntax.parser.SyntaxTree
 
 class Compilation(
     val syntaxTree: SyntaxTree,
@@ -28,15 +25,15 @@ class Compilation(
 
         val program = Binder.bindProgram(globalScope)
 
-        val cfgStatement = if (!program.statement.statements.any() && program.functionBodies.any()) {
+        /*val cfgStatement = if (!program.statement.statements.any() && program.functionBodies.any()) {
             program.functionBodies.values.last()
         } else {
             program.statement
         }
         if (cfgStatement is BoundBlockStatement) {
-            val cfg = ControlFlowGraph.create(cfgStatement)
-            cfg.print()
-        }
+            //val cfg = ControlFlowGraph.create(cfgStatement)
+            //cfg.print()
+        }*/
 
         if (program.diagnostics.hasErrors()) {
             val d = program.diagnostics.apply { sortBySpan() }

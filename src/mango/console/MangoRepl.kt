@@ -1,10 +1,8 @@
 package mango.console
 
-import mango.symbols.VariableSymbol
+import mango.interpreter.symbols.VariableSymbol
 import mango.compilation.Compilation
-import mango.compilation.Diagnostic
-import mango.syntax.parser.SyntaxTree
-import kotlin.math.max
+import mango.interpreter.syntax.parser.SyntaxTree
 import kotlin.math.min
 
 class MangoRepl : Repl() {
@@ -55,19 +53,7 @@ class MangoRepl : Repl() {
         } else {
             println()
             for (error in errors) {
-                val lineNumber = syntaxTree.sourceText.getLineI(error.span.start)
-                val charNumber = error.span.start - syntaxTree.sourceText.lines[lineNumber].start
-                val textLine = syntaxTree.sourceText.lines[lineNumber]
-                val spanStart = error.span.start
-                val spanEnd = min(error.span.end, textLine.end)
-                print(Console.RED + "error(" + Console.BLUE_BRIGHT + "$lineNumber, $charNumber" + Console.RED + "): $error" + Console.RESET + " {\n\t")
-                print(text.substring(textLine.start, spanStart))
-                print(Console.RED_BOLD_BRIGHT)
-                print(text.substring(spanStart, spanEnd))
-                print(Console.RESET)
-                print(text.substring(spanEnd, textLine.end))
-                println()
-                println('}')
+                error.print(syntaxTree)
                 println()
             }
         }

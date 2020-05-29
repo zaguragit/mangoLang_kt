@@ -1,7 +1,10 @@
 package mango.compilation
 
-import mango.symbols.TypeSymbol
-import mango.syntax.SyntaxType
+import mango.console.Console
+import mango.interpreter.symbols.TypeSymbol
+import mango.interpreter.syntax.SyntaxType
+import mango.interpreter.syntax.parser.SyntaxTree
+import kotlin.math.min
 
 class Diagnostic(
     val span: TextSpan,
@@ -14,6 +17,24 @@ class Diagnostic(
         Error,
         Warning,
         Style
+    }
+
+    fun print(syntaxTree: SyntaxTree) {
+        val lineI = syntaxTree.sourceText.getLineI(span.start)
+        val charI = span.start - syntaxTree.sourceText.lines[lineI].start
+        val line = syntaxTree.sourceText.lines[lineI]
+
+        val spanStart = span.start
+        val spanEnd = min(span.end, line.end)
+
+        print(Console.RED + "error(" + Console.BLUE_BRIGHT + "$lineI, $charI" + Console.RED + "): $message" + Console.RESET + " {\n\t")
+        print(syntaxTree.sourceText.getTextRange(line.start, spanStart))
+        print(Console.RED_BOLD_BRIGHT)
+        print(syntaxTree.sourceText.getTextRange(spanStart, spanEnd))
+        print(Console.RESET)
+        print(syntaxTree.sourceText.getTextRange(spanEnd, line.end))
+        println()
+        println('}')
     }
 }
 
