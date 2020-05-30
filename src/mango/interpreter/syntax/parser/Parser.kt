@@ -59,7 +59,7 @@ class Parser(
         while (current.kind != SyntaxType.EOF) {
             val startToken = current
 
-            val member = parseMember()
+            val member = parseGlobalStatement()
             members.add(member)
 
             if (startToken == current) {
@@ -70,24 +70,19 @@ class Parser(
         return members
     }
 
-    private fun parseMember(): MemberNode {
-        if (current.kind == SyntaxType.Fn) {
-            return parseFunctionDeclaration()
-        }
-        return parseGlobalStatement()
-    }
-
-    private fun parseFunctionDeclaration(): MemberNode {
+    private fun parseFunctionDeclaration(): FunctionDeclarationNode {
         val keyword = match(SyntaxType.Fn)
         val identifier = match(SyntaxType.Identifier)
+        var params: SeparatedNodeList<ParameterNode>? = null
+        if (current.kind == SyntaxType.OpenRoundedBracket) {
+            next()
+            params = parseParamList()
+            match(SyntaxType.ClosedRoundedBracket)
+        }
+
         var type: TypeClauseNode? = null
         if (current.kind == SyntaxType.Identifier) {
             type = parseTypeClause()
-        }
-        var params: SeparatedNodeList<ParameterNode>? = null
-        if (current.kind == SyntaxType.Colon) {
-            next()
-            params = parseParamList()
         }
 
         var lambdaArrow: Token? = null
@@ -105,8 +100,7 @@ class Parser(
         val nodesNSeparators = ArrayList<Node>()
 
         while (
-            current.kind != SyntaxType.OpenCurlyBracket &&
-            current.kind != SyntaxType.LambdaArrow &&
+            current.kind != SyntaxType.ClosedRoundedBracket &&
             current.kind != SyntaxType.EOF
         ) {
             val param = parseParam()
@@ -130,6 +124,9 @@ class Parser(
     }
 
     private fun parseGlobalStatement(): MemberNode {
+        if (current.kind == SyntaxType.Fn) {
+            return parseFunctionDeclaration()
+        }
         val statement = parseStatement()
         return GlobalStatementNode(syntaxTree, statement)
     }

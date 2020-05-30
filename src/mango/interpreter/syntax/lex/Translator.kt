@@ -3,6 +3,7 @@ package mango.interpreter.syntax.lex
 import mango.interpreter.syntax.SyntaxType
 
 object Translator {
+
     fun stringToTokenKind(string: String) = when (string) {
 
         "false" -> SyntaxType.False
@@ -10,6 +11,7 @@ object Translator {
 
         "val" -> SyntaxType.Val
         "var" -> SyntaxType.Var
+        "fn" -> SyntaxType.Fn
 
         "if" -> SyntaxType.If
         "else" -> SyntaxType.Else
@@ -22,8 +24,8 @@ object Translator {
         "return" -> SyntaxType.Return
 
         "in" -> SyntaxType.In
-
-        "fn" -> SyntaxType.Fn
+        "as" -> SyntaxType.As
+        "is" -> SyntaxType.Is
 
         else -> SyntaxType.Identifier
     }

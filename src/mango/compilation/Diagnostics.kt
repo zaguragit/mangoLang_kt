@@ -22,21 +22,21 @@ class Diagnostic(
         Style
     }
 
-    fun print(syntaxTree: SyntaxTree) {
+    fun print() {
         val span = location.span
-        val lineI = syntaxTree.sourceText.getLineI(span.start)
-        val charI = span.start - syntaxTree.sourceText.lines[lineI].start
-        val line = syntaxTree.sourceText.lines[lineI]
+        val charI = location.startCharI
+        val startLine = location.text.lines[location.startLineI]
+        val endLine = location.text.lines[location.endLineI]
 
         val spanStart = span.start
-        val spanEnd = min(span.end, line.end)
+        val spanEnd = span.end
 
-        print(Console.RED + "${location.text.fileName} [" + Console.BLUE_BRIGHT + "$lineI, $charI" + Console.RED + "]: $message" + Console.RESET + " {\n\t")
-        print(syntaxTree.sourceText.getTextRange(line.start, spanStart))
+        print(Console.RED + "${location.text.fileName} [" + Console.BLUE_BRIGHT + "${location.startLineI}, $charI" + Console.RED + "]: $message" + Console.RESET + " {\n\t")
+        print(location.text.getTextRange(startLine.start, spanStart))
         print(Console.RED_BOLD_BRIGHT)
-        print(syntaxTree.sourceText.getTextRange(spanStart, spanEnd))
+        print(location.text.getTextRange(spanStart, spanEnd).replace("\n", "\n\t"))
         print(Console.RESET)
-        print(syntaxTree.sourceText.getTextRange(spanEnd, line.end))
+        print(location.text.getTextRange(spanEnd, endLine.end))
         println()
         println('}')
     }
@@ -201,4 +201,8 @@ class DiagnosticList {
     fun reportAllPathsMustReturn(
         location: TextLocation
     ) = report(location, "Not all paths return a value")
+
+    fun reportInvalidExpressionStatement(
+        location: TextLocation
+    ) = report(location, "Only assignment and call expressions can be used as statements")
 }

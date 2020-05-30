@@ -4,6 +4,7 @@ class TextLocation(
     val text: SourceText,
     val span: TextSpan
 ) {
+
     inline val startLineI get() = text.getLineI(span.start)
     inline val startCharI get() = span.start - text.lines[startLineI].start
 

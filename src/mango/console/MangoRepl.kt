@@ -34,7 +34,7 @@ class MangoRepl : Repl() {
 
         val syntaxTree = SyntaxTree.parse(text)
 
-        val compilation = Compilation(syntaxTree, previous)
+        val compilation = Compilation(previous, syntaxTree)
 
         if (showParseTree) {
             syntaxTree.root.printTree()
@@ -53,7 +53,7 @@ class MangoRepl : Repl() {
         } else {
             println()
             for (error in errors) {
-                error.print(syntaxTree)
+                error.print()
                 println()
             }
         }

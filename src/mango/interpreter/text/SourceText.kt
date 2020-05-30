@@ -76,4 +76,5 @@ class SourceText internal constructor(
 
     operator fun get(i: Int) = text[i]
     val length get() = text.length
+    val lastIndex get() = text.lastIndex
 }

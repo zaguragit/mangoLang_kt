@@ -1,19 +1,18 @@
 package mango.compilation
 
 import mango.interpreter.Evaluator
-import mango.interpreter.binding.Binder
-import mango.interpreter.binding.BoundBlockStatement
-import mango.interpreter.binding.BoundGlobalScope
-import mango.interpreter.binding.ControlFlowGraph
+import mango.interpreter.binding.*
 import mango.interpreter.symbols.VariableSymbol
 import mango.interpreter.syntax.parser.SyntaxTree
 
 class Compilation(
-    val syntaxTree: SyntaxTree,
-    val previous: Compilation?
+    val previous: Compilation?,
+    val syntaxTree: SyntaxTree
 ) {
 
     val globalScope: BoundGlobalScope = Binder.bindGlobalScope(syntaxTree.root, previous?.globalScope)
+
+    private fun getProgram(): BoundProgram = Binder.bindProgram(previous?.getProgram(), globalScope)
 
     fun evaluate(variables: HashMap<VariableSymbol, Any?>): EvaluationResult {
 
@@ -23,7 +22,7 @@ class Compilation(
             return EvaluationResult(errors.list, errors.nonErrorList)
         }
 
-        val program = Binder.bindProgram(globalScope)
+        val program = getProgram()
 
         /*val cfgStatement = if (!program.statement.statements.any() && program.functionBodies.any()) {
             program.functionBodies.values.last()
@@ -40,14 +39,14 @@ class Compilation(
             return EvaluationResult(d.list, d.nonErrorList)
         }
 
-        val evaluator = Evaluator(program.functionBodies, program.statement, variables)
+        val evaluator = Evaluator(program, variables)
         evaluator.evaluate()
         errors.sortBySpan()
         return EvaluationResult(errors.list, errors.nonErrorList)
     }
 
     fun printTree() {
-        val program = Binder.bindProgram(globalScope)
+        val program = getProgram()
         if (program.statement.statements.any()) {
             program.statement.printStructure()
         }

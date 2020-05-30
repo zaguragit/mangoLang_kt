@@ -67,6 +67,8 @@ enum class SyntaxType {
     IsIdentityEqual,
     IsNotIdentityEqual,
     In,
+    As,
+    Is,
     Range,
 
     // Assignment operators

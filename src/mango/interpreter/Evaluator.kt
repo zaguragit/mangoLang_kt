@@ -8,12 +8,24 @@ import kotlin.collections.HashMap
 import kotlin.random.Random
 
 class Evaluator(
-    val functionBodies: HashMap<FunctionSymbol, BoundStatement>,
-    val root: BoundBlockStatement,
+    boundProgram: BoundProgram,
     val globals: HashMap<VariableSymbol, Any?>
 ) {
 
+    val functionBodies = HashMap<FunctionSymbol, BoundStatement>()
+    val root = boundProgram.statement
+
     val stack = Stack<HashMap<VariableSymbol, Any?>>().apply { push(HashMap()) }
+
+    init {
+        var current: BoundProgram? = boundProgram
+        while (current != null) {
+            for (f in current.functionBodies) {
+                functionBodies.putIfAbsent(f.key, f.value)
+            }
+            current = current.previous
+        }
+    }
 
     fun evaluate(): Any? = evaluateStatement(root)
 
@@ -155,12 +167,12 @@ class Evaluator(
 
     private fun evaluateCallExpression(node: BoundCallExpression): Any? = when (node.function) {
         BuiltinFunctions.print -> {
-            print(evaluateExpression(node.arguments.elementAt(0)) as String)
+            print(evaluateExpression(node.arguments.elementAt(0)))
             null
         }
         BuiltinFunctions.println -> {
             val args = node.arguments
-            println(evaluateExpression(args.elementAt(0)) as String)
+            println(evaluateExpression(args.elementAt(0)))
             null
         }
         BuiltinFunctions.readln -> readLine()
@@ -179,11 +191,9 @@ class Evaluator(
             }
             stack.push(locals)
             val statement = functionBodies[node.function]!!
-            val result = if (statement is BoundBlockStatement) {
-                evaluateStatement(statement)
-            } else {
-                evaluateStatement(BoundBlockStatement(listOf(statement)))
-            }
+            val result = evaluateStatement(
+                if (statement is BoundBlockStatement) statement
+                else BoundBlockStatement(listOf(statement)))
             stack.pop()
             result
         }

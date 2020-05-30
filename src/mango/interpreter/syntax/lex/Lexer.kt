@@ -112,7 +112,7 @@ class Lexer(
             ':' -> Token(syntaxTree, SyntaxType.Colon, position++, string = ":")
             '"' -> readString()
             //'\n', '\r' -> Token(SyntaxType.NewLine, position++)
-            '\u0000' -> Token(syntaxTree, SyntaxType.EOF, position++)
+            '\u0000' -> Token(syntaxTree, SyntaxType.EOF, sourceText.lastIndex)
             else -> {
                 diagnostics.reportBadCharacter(TextLocation(sourceText, TextSpan(position, 1)), char)
                 Token(syntaxTree, SyntaxType.Bad, position++)

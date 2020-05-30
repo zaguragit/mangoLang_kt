@@ -148,6 +148,17 @@ class Binder(
 
     private fun bindExpressionStatement(node: ExpressionStatementNode): BoundExpressionStatement {
         val expression = bindExpression(node.expression, canBeUnit = true)
+        if (function?.declarationNode?.lambdaArrow == null) {
+            val kind = expression.boundType
+            val isAllowedExpression =
+                kind == BoundNodeType.AssignmentExpression ||
+                kind == BoundNodeType.CallExpression ||
+                kind == BoundNodeType.ErrorExpression
+            if (!isAllowedExpression) {
+                diagnostics.reportInvalidExpressionStatement(node.location)
+                return bindErrorStatement()
+            }
+        }
         return BoundExpressionStatement(expression)
     }
 
@@ -408,32 +419,34 @@ class Binder(
             return result
         }
 
-        fun bindProgram(globalScope: BoundGlobalScope): BoundProgram {
+        fun bindProgram(previous: BoundProgram?, globalScope: BoundGlobalScope): BoundProgram {
 
             val parentScope = createParentScopes(globalScope)
             val functionBodies = HashMap<FunctionSymbol, BoundStatement>()
             val diagnostics = DiagnosticList()
 
-            var scope: BoundGlobalScope? = globalScope
-            while (scope != null) {
-                for (symbol in scope.symbols) {
-                    if (symbol is FunctionSymbol) {
-                        val binder = Binder(parentScope, symbol)
-                        val body = binder.bindStatement(symbol.declarationNode!!.body)
+            for (symbol in globalScope.symbols) {
+                if (symbol is FunctionSymbol) {
+                    val binder = Binder(parentScope, symbol)
+                    if (symbol.declarationNode!!.lambdaArrow == null) {
+                        val body = binder.bindBlockStatement(symbol.declarationNode.body as BlockStatementNode)
                         val loweredBody = Lowerer.lower(body)
                         if (symbol.type != TypeSymbol.unit && !ControlFlowGraph.allPathsReturn(loweredBody)) {
                             diagnostics.reportAllPathsMustReturn(symbol.declarationNode.identifier.location)
                         }
                         functionBodies[symbol] = loweredBody
-                        diagnostics.append(binder.diagnostics)
+                    } else {
+                        val body = binder.bindExpressionStatement(symbol.declarationNode.body as ExpressionStatementNode)
+                        val loweredBody = Lowerer.lower(body)
+                        functionBodies[symbol] = loweredBody
                     }
+                    diagnostics.append(binder.diagnostics)
                 }
-                scope = scope.previous
             }
 
             val statement = Lowerer.lower(BoundBlockStatement(globalScope.statements))
 
-            return BoundProgram(diagnostics, functionBodies, statement)
+            return BoundProgram(previous, diagnostics, functionBodies, statement)
         }
     }
 
