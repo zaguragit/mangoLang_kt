@@ -1,9 +1,8 @@
 package mango.interpreter.text
 
-import mango.compilation.TextSpan
-
-class SourceText(
-    private val text: String
+class SourceText internal constructor(
+    private val text: String,
+    val fileName: String
 ) {
 
     val lines = ArrayList<Line>()

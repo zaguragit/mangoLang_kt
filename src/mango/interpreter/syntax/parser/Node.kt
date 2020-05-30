@@ -1,16 +1,18 @@
 package mango.interpreter.syntax.parser
 
 import mango.console.Console
-import mango.compilation.TextSpan
+import mango.interpreter.text.TextSpan
 import mango.interpreter.syntax.SyntaxType
 import mango.interpreter.syntax.lex.Token
+import mango.interpreter.text.TextLocation
 
-abstract class Node {
+abstract class Node(val syntaxTree: SyntaxTree) {
 
     abstract val kind: SyntaxType
     abstract val children: Collection<Node>
-    open val span: TextSpan
-        get() = TextSpan(children.first().span.start, children.last().span.end - children.first().span.start)
+    open val span: TextSpan get() = TextSpan.fromBounds(children.first().span.start, children.last().span.end)
+
+    val location get() = TextLocation(syntaxTree.sourceText, span)
 
     var isMissing = false
 

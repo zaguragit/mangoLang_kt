@@ -1,4 +1,4 @@
-package mango.compilation
+package mango.interpreter.text
 
 class TextSpan {
     val start: Int

@@ -1,12 +1,13 @@
 package mango.interpreter.binding
 
 import mango.compilation.DiagnosticList
-import mango.compilation.TextSpan
+import mango.interpreter.text.TextSpan
 import mango.interpreter.lowering.Lowerer
 import mango.interpreter.symbols.*
 import mango.interpreter.syntax.SyntaxType
 import mango.interpreter.syntax.lex.Token
 import mango.interpreter.syntax.parser.*
+import mango.interpreter.text.TextLocation
 import java.util.*
 import kotlin.Exception
 import kotlin.collections.ArrayList
@@ -56,7 +57,7 @@ class Binder(
             if (elseStatement is BoundBlockStatement &&
                 elseStatement.statements.size == 1 &&
                 elseStatement.statements.elementAt(0) is BoundIfStatement) {
-                diagnostics.styleElseIfStatement(node.elseClause.span)
+                diagnostics.styleElseIfStatement(node.elseClause.location)
             }
         } else {
             elseStatement = null
@@ -96,7 +97,7 @@ class Binder(
 
     private fun bindBreakStatement(node: BreakStatementNode): BoundStatement {
         if (loopStack.count() == 0) {
-            diagnostics.reportBreakContinueOutsideLoop(node.keyword.span, node.keyword.string!!)
+            diagnostics.reportBreakContinueOutsideLoop(node.keyword.location, node.keyword.string!!)
             return bindErrorStatement()
         }
         val breakLabel = loopStack.peek().first
@@ -105,7 +106,7 @@ class Binder(
 
     private fun bindContinueStatement(node: ContinueStatementNode): BoundStatement {
         if (loopStack.count() == 0) {
-            diagnostics.reportBreakContinueOutsideLoop(node.keyword.span, node.keyword.string!!)
+            diagnostics.reportBreakContinueOutsideLoop(node.keyword.location, node.keyword.string!!)
             return bindErrorStatement()
         }
         val continueLabel = loopStack.peek().second
@@ -115,19 +116,19 @@ class Binder(
     private fun bindReturnStatement(node: ReturnStatementNode): BoundStatement {
         val expression = node.expression?.let { bindExpression(it) }
         if (function == null) {
-            diagnostics.reportReturnOutsideFunction(node.keyword.span)
+            diagnostics.reportReturnOutsideFunction(node.keyword.location)
         }
         else if (function.type == TypeSymbol.unit) {
             if (expression != null) {
-                diagnostics.reportCantReturnInUnitFunction(node.expression.span)
+                diagnostics.reportCantReturnInUnitFunction(node.expression.location)
             }
         }
         else {
             if (expression == null) {
-                diagnostics.reportCantReturnWithoutValue(node.keyword.span)
+                diagnostics.reportCantReturnWithoutValue(node.keyword.location)
             }
             else if (!expression.type.isOfType(function.type)) {
-                diagnostics.reportWrongType(node.expression.span, expression.type, function.type)
+                diagnostics.reportWrongType(node.expression.location, expression.type, function.type)
             }
         }
         return BoundReturnStatement(expression)
@@ -156,7 +157,7 @@ class Binder(
         val initializer = bindExpression(node.initializer)
         val actualType = type ?: initializer.type
         if (!initializer.type.isOfType(actualType) && initializer.type != TypeSymbol.error) {
-            diagnostics.reportWrongType(node.initializer.span, initializer, type!!)
+            diagnostics.reportWrongType(node.initializer.location, initializer, type!!)
         }
         val variable = bindVariable(node.identifier, actualType, isReadOnly)
         return BoundVariableDeclaration(variable, initializer)
@@ -168,7 +169,7 @@ class Binder(
         }
         val type = TypeSymbol.lookup(node.identifier.string!!)
         if (type == null) {
-            diagnostics.reportUndefinedType(node.identifier.span, node.identifier.string)
+            diagnostics.reportUndefinedType(node.identifier.location, node.identifier.string)
         }
         return type
     }
@@ -179,7 +180,7 @@ class Binder(
             if (function == null) { GlobalVariableSymbol(name, type, isReadOnly) }
             else { LocalVariableSymbol(name, type, isReadOnly) }
         if (!identifier.isMissing && !scope.tryDeclare(variable)) {
-            diagnostics.reportSymbolAlreadyDeclared(identifier.span, name)
+            diagnostics.reportSymbolAlreadyDeclared(identifier.location, name)
         }
         return variable
     }
@@ -187,7 +188,7 @@ class Binder(
     private fun bindExpression(node: ExpressionNode, canBeUnit: Boolean = false): BoundExpression {
         val result = bindExpressionInternal(node)
         if (!canBeUnit && result.type == TypeSymbol.unit) {
-            diagnostics.reportExpressionMustHaveValue(node.span)
+            diagnostics.reportExpressionMustHaveValue(node.location)
             return BoundErrorExpression()
         }
         return result
@@ -211,7 +212,7 @@ class Binder(
         if (type != TypeSymbol.error &&
             result.type != TypeSymbol.error &&
             result.type != type) {
-            diagnostics.reportWrongType(node.span, result, type)
+            diagnostics.reportWrongType(node.location, result, type)
         }
         return result
     }
@@ -233,7 +234,7 @@ class Binder(
         val (function, result) = scope.tryLookupFunction(node.identifier.string!!)
 
         if (!result) {
-            diagnostics.reportUndefinedName(node.identifier.span, node.identifier.string)
+            diagnostics.reportUndefinedName(node.identifier.location, node.identifier.string)
             return BoundErrorExpression()
         }
 
@@ -244,10 +245,11 @@ class Binder(
                 node.arguments[0]
             }
             val span = TextSpan.fromBounds(firstExceedingNode.span.start, node.arguments.last().span.end)
-            diagnostics.reportWrongArgumentCount(span, function.name, node.arguments.nodeCount, function.parameters.size)
+            val location = TextLocation(firstExceedingNode.syntaxTree.sourceText, span)
+            diagnostics.reportWrongArgumentCount(location, function.name, node.arguments.nodeCount, function.parameters.size)
             return  BoundErrorExpression()
         } else if (node.arguments.nodeCount < function.parameters.size) {
-            diagnostics.reportWrongArgumentCount(node.rightBracket.span, function.name, node.arguments.nodeCount, function.parameters.size)
+            diagnostics.reportWrongArgumentCount(node.rightBracket.location, function.name, node.arguments.nodeCount, function.parameters.size)
             return  BoundErrorExpression()
         }
 
@@ -257,7 +259,7 @@ class Binder(
 
             if (!arg.type.isOfType(param.type)) {
                 if (arg.type != TypeSymbol.error) {
-                    diagnostics.reportWrongArgumentType(node.arguments[i].span, param.name, arg.type, param.type)
+                    diagnostics.reportWrongArgumentType(node.arguments[i].location, param.name, arg.type, param.type)
                 }
                 return BoundErrorExpression()
             }
@@ -273,7 +275,7 @@ class Binder(
         }
         val conversion = Conversion.classify(expression.type, type)
         if (!conversion.exists) {
-            diagnostics.reportCantCast(node.span, expression.type, type)
+            diagnostics.reportCantCast(node.location, expression.type, type)
             return BoundErrorExpression()
         }
         if (conversion.isIdentity) {
@@ -287,15 +289,15 @@ class Binder(
         val boundExpression = bindExpression(node.expression)
         val (variable, result) = scope.tryLookupVariable(name)
         if (!result) {
-            diagnostics.reportUndefinedName(node.identifierToken.span, name)
+            diagnostics.reportUndefinedName(node.identifierToken.location, name)
             return boundExpression
         }
         if (variable!!.isReadOnly) {
-            diagnostics.reportVarIsImmutable(node.equalsToken.span, name)
+            diagnostics.reportVarIsImmutable(node.equalsToken.location, name)
             return boundExpression
         }
         if (variable.type != boundExpression.type) {
-            diagnostics.reportWrongType(node.identifierToken.span, name, boundExpression.type)
+            diagnostics.reportWrongType(node.identifierToken.location, name, boundExpression.type)
             return boundExpression
         }
         return BoundAssignmentExpression(variable, boundExpression)
@@ -305,7 +307,7 @@ class Binder(
         val name = node.identifierToken.string ?: return BoundErrorExpression()
         val (variable, result) = scope.tryLookupVariable(name)
         if (!result) {
-            diagnostics.reportUndefinedName(node.identifierToken.span, name)
+            diagnostics.reportUndefinedName(node.identifierToken.location, name)
             return BoundErrorExpression()
         }
         return BoundVariableExpression(variable!!)
@@ -326,7 +328,7 @@ class Binder(
         }
         val operator = BoundUnaryOperator.bind(node.operator.kind, operand.type)
         if (operator == null) {
-            diagnostics.reportUnaryOperator(node.operator.span, node.operator.kind, operand.type)
+            diagnostics.reportUnaryOperator(node.operator.location, node.operator.kind, operand.type)
             return BoundErrorExpression()
         }
         return BoundUnaryExpression(operator, operand)
@@ -340,7 +342,7 @@ class Binder(
         }
         val operator = BoundBinaryOperator.bind(node.operator.kind, left.type, right.type)
         if (operator == null) {
-            diagnostics.reportBinaryOperator(node.operator.span, left.type, node.operator.kind, right.type)
+            diagnostics.reportBinaryOperator(node.operator.location, left.type, node.operator.kind, right.type)
             return BoundErrorExpression()
         }
         return BoundBinaryExpression(left, operator, right)
@@ -420,7 +422,7 @@ class Binder(
                         val body = binder.bindStatement(symbol.declarationNode!!.body)
                         val loweredBody = Lowerer.lower(body)
                         if (symbol.type != TypeSymbol.unit && !ControlFlowGraph.allPathsReturn(loweredBody)) {
-                            diagnostics.reportAllPathsMustReturn(symbol.declarationNode.identifier.span)
+                            diagnostics.reportAllPathsMustReturn(symbol.declarationNode.identifier.location)
                         }
                         functionBodies[symbol] = loweredBody
                         diagnostics.append(binder.diagnostics)
@@ -444,7 +446,7 @@ class Binder(
             for (paramNode in node.params.iterator()) {
                 val name = paramNode.identifier.string!!
                 if (!seenParameterNames.add(name)) {
-                    diagnostics.reportParamAlreadyExists(paramNode.identifier.span, name)
+                    diagnostics.reportParamAlreadyExists(paramNode.identifier.location, name)
                 } else {
                     val type = bindTypeClause(paramNode.typeClause)!!
                     val parameter = ParameterSymbol(name, type)
@@ -467,7 +469,7 @@ class Binder(
 
         val function = FunctionSymbol(node.identifier.string!!, params.toTypedArray(), type, node)
         if (!scope.tryDeclare(function)) {
-            diagnostics.reportSymbolAlreadyDeclared(node.identifier.span, function.name)
+            diagnostics.reportSymbolAlreadyDeclared(node.identifier.location, function.name)
         }
     }
 }

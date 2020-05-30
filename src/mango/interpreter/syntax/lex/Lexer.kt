@@ -1,12 +1,17 @@
 package mango.interpreter.syntax.lex
 
 import mango.compilation.DiagnosticList
-import mango.compilation.TextSpan
+import mango.interpreter.text.TextSpan
 import mango.interpreter.symbols.TypeSymbol
 import mango.interpreter.syntax.SyntaxType
+import mango.interpreter.syntax.parser.SyntaxTree
 import mango.interpreter.text.SourceText
+import mango.interpreter.text.TextLocation
 
-class Lexer(private val sourceText: SourceText) {
+class Lexer(
+    private val syntaxTree: SyntaxTree
+) {
+    private val sourceText = syntaxTree.sourceText
 
     private var position = 0
 
@@ -29,88 +34,88 @@ class Lexer(private val sourceText: SourceText) {
 
         return when (char) {
             '0', '1', '2', '3', '4', '5', '6', '7', '8', '9' -> readNumberToken()
-            '+' -> Token(SyntaxType.Plus, position++, string = "+")
+            '+' -> Token(syntaxTree, SyntaxType.Plus, position++, string = "+")
             '-' -> {
                 if (lookAhead() == '>') {
-                    Token(SyntaxType.LambdaArrow, position, string = "->").also { position += 2 }
+                    Token(syntaxTree, SyntaxType.LambdaArrow, position, string = "->").also { position += 2 }
                 } else {
-                    Token(SyntaxType.Minus, position++, string = "-")
+                    Token(syntaxTree, SyntaxType.Minus, position++, string = "-")
                 }
             }
-            '*' -> Token(SyntaxType.Mul, position++, string = "*")
-            '/' -> Token(SyntaxType.Div, position++, string = "/")
-            '%' -> Token(SyntaxType.Rem, position++, string = "%")
+            '*' -> Token(syntaxTree, SyntaxType.Mul, position++, string = "*")
+            '/' -> Token(syntaxTree, SyntaxType.Div, position++, string = "/")
+            '%' -> Token(syntaxTree, SyntaxType.Rem, position++, string = "%")
             '&' -> {
                 if (lookAhead() == '&') {
-                    Token(SyntaxType.LogicAnd, position, string = "&&").also { position += 2 }
+                    Token(syntaxTree, SyntaxType.LogicAnd, position, string = "&&").also { position += 2 }
                 } else {
-                    Token(SyntaxType.BitAnd, position++, string = "&")
+                    Token(syntaxTree, SyntaxType.BitAnd, position++, string = "&")
                 }
             }
             '|' -> {
                 if (lookAhead() == '|') {
-                    Token(SyntaxType.LogicOr, position, string = "||").also { position += 2 }
+                    Token(syntaxTree, SyntaxType.LogicOr, position, string = "||").also { position += 2 }
                 } else {
-                    Token(SyntaxType.BitOr, position++, string = "|")
+                    Token(syntaxTree, SyntaxType.BitOr, position++, string = "|")
                 }
             }
-            '(' -> Token(SyntaxType.OpenRoundedBracket, position++, string = "(")
-            ')' -> Token(SyntaxType.ClosedRoundedBracket, position++, string = ")")
-            '{' -> Token(SyntaxType.OpenCurlyBracket, position++, string = "{")
-            '}' -> Token(SyntaxType.ClosedCurlyBracket, position++, string = "}")
-            '[' -> Token(SyntaxType.OpenSquareBracket, position++, string = "[")
-            ']' -> Token(SyntaxType.ClosedSquareBracket, position++, string = "]")
+            '(' -> Token(syntaxTree, SyntaxType.OpenRoundedBracket, position++, string = "(")
+            ')' -> Token(syntaxTree, SyntaxType.ClosedRoundedBracket, position++, string = ")")
+            '{' -> Token(syntaxTree, SyntaxType.OpenCurlyBracket, position++, string = "{")
+            '}' -> Token(syntaxTree, SyntaxType.ClosedCurlyBracket, position++, string = "}")
+            '[' -> Token(syntaxTree, SyntaxType.OpenSquareBracket, position++, string = "[")
+            ']' -> Token(syntaxTree, SyntaxType.ClosedSquareBracket, position++, string = "]")
             '!' -> {
                 if (lookAhead() == '=') {
                     if (peek(2) == '=') {
-                        Token(SyntaxType.IsNotIdentityEqual, position, string = "!==").also { position += 3 }
+                        Token(syntaxTree, SyntaxType.IsNotIdentityEqual, position, string = "!==").also { position += 3 }
                     } else {
-                        Token(SyntaxType.IsNotEqual, position, string = "!=").also { position += 2 }
+                        Token(syntaxTree, SyntaxType.IsNotEqual, position, string = "!=").also { position += 2 }
                     }
                 } else {
-                    Token(SyntaxType.Not, position++, string = "!")
+                    Token(syntaxTree, SyntaxType.Not, position++, string = "!")
                 }
             }
             '=' -> {
                 if (lookAhead() == '=') {
                     if (peek(2) == '=') {
-                        Token(SyntaxType.IsIdentityEqual, position, string = "===").also { position += 3 }
+                        Token(syntaxTree, SyntaxType.IsIdentityEqual, position, string = "===").also { position += 3 }
                     } else {
-                        Token(SyntaxType.IsEqual, position, string = "==").also { position += 2 }
+                        Token(syntaxTree, SyntaxType.IsEqual, position, string = "==").also { position += 2 }
                     }
                 } else {
-                    Token(SyntaxType.Equals, position++, string = "=")
+                    Token(syntaxTree, SyntaxType.Equals, position++, string = "=")
                 }
             }
             '>' -> {
                 if (lookAhead() == '=') {
-                    Token(SyntaxType.IsEqualOrMore, position, string = ">=").also { position += 2 }
+                    Token(syntaxTree, SyntaxType.IsEqualOrMore, position, string = ">=").also { position += 2 }
                 } else {
-                    Token(SyntaxType.MoreThan, position++, string = ">")
+                    Token(syntaxTree, SyntaxType.MoreThan, position++, string = ">")
                 }
             }
             '<' -> {
                 if (lookAhead() == '=') {
-                    Token(SyntaxType.IsEqualOrLess, position, string = ">=").also { position += 2 }
+                    Token(syntaxTree, SyntaxType.IsEqualOrLess, position, string = ">=").also { position += 2 }
                 } else {
-                    Token(SyntaxType.LessThan, position++, string = ">")
+                    Token(syntaxTree, SyntaxType.LessThan, position++, string = ">")
                 }
             }
             '.' -> {
                 if (lookAhead() == '.') {
-                    Token(SyntaxType.Range, position, string = "..").also { position += 2 }
+                    Token(syntaxTree, SyntaxType.Range, position, string = "..").also { position += 2 }
                 } else {
-                    Token(SyntaxType.Dot, position++, string = ".")
+                    Token(syntaxTree, SyntaxType.Dot, position++, string = ".")
                 }
             }
-            ',' -> Token(SyntaxType.Comma, position++, string = ",")
-            ':' -> Token(SyntaxType.Colon, position++, string = ":")
+            ',' -> Token(syntaxTree, SyntaxType.Comma, position++, string = ",")
+            ':' -> Token(syntaxTree, SyntaxType.Colon, position++, string = ":")
             '"' -> readString()
             //'\n', '\r' -> Token(SyntaxType.NewLine, position++)
-            '\u0000' -> Token(SyntaxType.EOF, position++)
+            '\u0000' -> Token(syntaxTree, SyntaxType.EOF, position++)
             else -> {
-                diagnostics.reportBadCharacter(TextSpan(position, 1), char)
-                Token(SyntaxType.Bad, position++)
+                diagnostics.reportBadCharacter(TextLocation(sourceText, TextSpan(position, 1)), char)
+                Token(syntaxTree, SyntaxType.Bad, position++)
             }
         }
     }
@@ -123,10 +128,10 @@ class Lexer(private val sourceText: SourceText) {
         val text = sourceText.getText(start, position - start)
         val value = text.toIntOrNull()
         if (value == null) {
-            diagnostics.reportWrongType(TextSpan(start, position - start), text, TypeSymbol.int)
-            return Token(SyntaxType.Int, start, 1, text)
+            diagnostics.reportWrongType(TextLocation(sourceText, TextSpan(start, position - start)), text, TypeSymbol.int)
+            return Token(syntaxTree, SyntaxType.Int, start, 1, text)
         }
-        return Token(SyntaxType.Int, start, value, text)
+        return Token(syntaxTree, SyntaxType.Int, start, value, text)
     }
 
     fun readIdentifierOrKeyword(): Token {
@@ -136,7 +141,7 @@ class Lexer(private val sourceText: SourceText) {
         }
         val text = sourceText.getText(start, position - start)
         val type = Translator.stringToTokenKind(text)
-        return Token(type, start, string = text)
+        return Token(syntaxTree, type, start, string = text)
     }
 
     fun readString(): Token {
@@ -168,14 +173,14 @@ class Lexer(private val sourceText: SourceText) {
                         }
                         else -> {
                             diagnostics.reportInvalidCharacterEscape(
-                                    TextSpan(position, 1),
+                                    TextLocation(sourceText, TextSpan(position, 1)),
                                     char.toString())
                             position++
                         }
                     }
                 }
                 '\u0000' -> {
-                    diagnostics.reportUnterminatedString(TextSpan(start, builder.length))
+                    diagnostics.reportUnterminatedString(TextLocation(sourceText, TextSpan(start, builder.length)))
                     break@loop
                 }
                 else -> {
@@ -186,6 +191,6 @@ class Lexer(private val sourceText: SourceText) {
         }
         val text = builder.toString()
         position++
-        return Token(SyntaxType.String, start - 1, text, '"' + text + '"')
+        return Token(syntaxTree, SyntaxType.String, start - 1, text, '"' + text + '"')
     }
 }

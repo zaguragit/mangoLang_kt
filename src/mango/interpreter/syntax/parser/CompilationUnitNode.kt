@@ -4,12 +4,11 @@ import mango.interpreter.syntax.SyntaxType
 import mango.interpreter.syntax.lex.Token
 
 class CompilationUnitNode(
+    syntaxTree: SyntaxTree,
     val members: Collection<MemberNode>,
     val endOfFileToken: Token
-) : Node() {
+) : Node(syntaxTree) {
 
-    override val kind
-        get() = SyntaxType.CompilationUnit
-    override val children
-        get() = members.toList()
+    override val kind = SyntaxType.CompilationUnit
+    override val children = members
 }

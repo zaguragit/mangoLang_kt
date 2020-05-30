@@ -4,10 +4,13 @@ import mango.console.Console
 import mango.interpreter.symbols.TypeSymbol
 import mango.interpreter.syntax.SyntaxType
 import mango.interpreter.syntax.parser.SyntaxTree
+import mango.interpreter.text.SourceText
+import mango.interpreter.text.TextLocation
+import mango.interpreter.text.TextSpan
 import kotlin.math.min
 
 class Diagnostic(
-    val span: TextSpan,
+    val location: TextLocation,
     val message: String,
     val diagnosticType: Type = Type.Error
 ) {
@@ -20,6 +23,7 @@ class Diagnostic(
     }
 
     fun print(syntaxTree: SyntaxTree) {
+        val span = location.span
         val lineI = syntaxTree.sourceText.getLineI(span.start)
         val charI = span.start - syntaxTree.sourceText.lines[lineI].start
         val line = syntaxTree.sourceText.lines[lineI]
@@ -27,7 +31,7 @@ class Diagnostic(
         val spanStart = span.start
         val spanEnd = min(span.end, line.end)
 
-        print(Console.RED + "error(" + Console.BLUE_BRIGHT + "$lineI, $charI" + Console.RED + "): $message" + Console.RESET + " {\n\t")
+        print(Console.RED + "${location.text.fileName} [" + Console.BLUE_BRIGHT + "$lineI, $charI" + Console.RED + "]: $message" + Console.RESET + " {\n\t")
         print(syntaxTree.sourceText.getTextRange(line.start, spanStart))
         print(Console.RED_BOLD_BRIGHT)
         print(syntaxTree.sourceText.getTextRange(spanStart, spanEnd))
@@ -42,9 +46,9 @@ class DiagnosticList {
 
     fun sortBySpan() {
         val comparator = Comparator { d0: Diagnostic, d1 ->
-            var cmp = d0.span.start - d1.span.start
+            var cmp = d0.location.span.start - d1.location.span.start
             if (cmp == 0) {
-                cmp = d0.span.length - d1.span.length
+                cmp = d0.location.span.length - d1.location.span.length
             }
             cmp
         }
@@ -65,136 +69,136 @@ class DiagnosticList {
     fun hasErrors() = arrayList.any()
 
     private inline fun style(
-        span: TextSpan,
+        location: TextLocation,
         message: String
-    ) = nonErrors.add(Diagnostic(span, message, Diagnostic.Type.Style))
+    ) = nonErrors.add(Diagnostic(location, message, Diagnostic.Type.Style))
 
     fun styleElseIfStatement(
-        span: TextSpan
-    ) = style(span, "You can write \"else if <condition> {}\" instead of \"else { if <condition> {} }\"")
+        location: TextLocation
+    ) = style(location, "You can write \"else if <condition> {}\" instead of \"else { if <condition> {} }\"")
 
     private inline fun warn(
-        span: TextSpan,
+        location: TextLocation,
         message: String
-    ) = nonErrors.add(Diagnostic(span, message, Diagnostic.Type.Warning))
+    ) = nonErrors.add(Diagnostic(location, message, Diagnostic.Type.Warning))
 
     private inline fun report(
-        span: TextSpan,
+        location: TextLocation,
         message: String
-    ) = arrayList.add(Diagnostic(span, message, Diagnostic.Type.Error))
+    ) = arrayList.add(Diagnostic(location, message, Diagnostic.Type.Error))
 
     fun reportWrongType(
-        span: TextSpan,
+        location: TextLocation,
         value: Any?,
         expectedType: TypeSymbol
-    ) = report(span, "$value isn't of type $expectedType")
+    ) = report(location, "$value isn't of type $expectedType")
 
     fun reportWrongType(
-        span: TextSpan,
+        location: TextLocation,
         presentType: TypeSymbol,
         expectedType: TypeSymbol
-    ) = report(span, "Wrong type (found $presentType, expected $expectedType)")
+    ) = report(location, "Wrong type (found $presentType, expected $expectedType)")
 
     fun reportUnexpectedToken(
-        span: TextSpan,
+        location: TextLocation,
         tokenType: SyntaxType,
         expectedType: SyntaxType
-    ) = report(span, "Unexpected token <$tokenType>, expected <$expectedType>")
+    ) = report(location, "Unexpected token <$tokenType>, expected <$expectedType>")
 
     fun reportUnaryOperator(
-        span: TextSpan,
+        location: TextLocation,
         operatorType: SyntaxType,
         operandType: TypeSymbol
-    ) = report(span, "$operatorType isn't compatible with $operandType")
+    ) = report(location, "$operatorType isn't compatible with $operandType")
 
     fun reportBinaryOperator(
-        span: TextSpan,
+        location: TextLocation,
         leftType: TypeSymbol,
         operatorType: SyntaxType,
         rightType: TypeSymbol
-    ) = report(span, "$operatorType isn't compatible with $leftType and $rightType")
+    ) = report(location, "$operatorType isn't compatible with $leftType and $rightType")
 
     fun reportUndefinedName(
-        span: TextSpan,
+        location: TextLocation,
         name: String
-    ) = report(span, "Undefined name \"$name\"")
+    ) = report(location, "Undefined name \"$name\"")
 
     fun reportSymbolAlreadyDeclared(
-        span: TextSpan,
+        location: TextLocation,
         name: String
-    ) = report(span, "\"$name\" is already declared")
+    ) = report(location, "\"$name\" is already declared")
 
     fun reportParamAlreadyExists(
-        span: TextSpan,
+        location: TextLocation,
         name: String
-    ) = report(span, "Param \"$name\" already exists")
+    ) = report(location, "Param \"$name\" already exists")
 
     fun reportVarIsImmutable(
-        span: TextSpan,
+        location: TextLocation,
         name: String
-    ) = report(span, "Variable \"$name\" immutable and can't be assigned to")
+    ) = report(location, "Variable \"$name\" immutable and can't be assigned to")
 
     fun reportInvalidCharacterEscape(
-        span: TextSpan,
+        location: TextLocation,
         string: String
-    ) = report(span, "The character escape \\$string doesn't exist")
+    ) = report(location, "The character escape \\$string doesn't exist")
 
     fun reportUnterminatedString(
-        span: TextSpan
-    ) = report(span, "Unterminated string")
+        location: TextLocation
+    ) = report(location, "Unterminated string")
 
     fun reportWrongArgumentCount(
-        span: TextSpan,
+        location: TextLocation,
         name: String,
         count: Int,
         correctCount: Int
-    ) = report(span, "Wrong argument count in function \"$name\" (found $count, expected $correctCount)")
+    ) = report(location, "Wrong argument count in function \"$name\" (found $count, expected $correctCount)")
 
     fun reportWrongArgumentType(
-        span: TextSpan,
+        location: TextLocation,
         paramName: String,
         paramType: TypeSymbol,
         expectedType: TypeSymbol
-    ) = report(span, "Argument \"${paramName}\" is of type $paramType, but $expectedType was expected")
+    ) = report(location, "Argument \"${paramName}\" is of type $paramType, but $expectedType was expected")
 
     fun reportExpressionMustHaveValue(
-        span: TextSpan
-    ) = report(span, "Expression must have a value")
+        location: TextLocation
+    ) = report(location, "Expression must have a value")
 
     fun reportUndefinedType(
-        span: TextSpan,
+        location: TextLocation,
         name: String
-    ) = report(span, "Type \"$name\" doesn't exist")
+    ) = report(location, "Type \"$name\" doesn't exist")
 
     fun reportBadCharacter(
-        span: TextSpan,
+        location: TextLocation,
         char: Char
-    ) = report(span, "Invalid character '$char'")
+    ) = report(location, "Invalid character '$char'")
 
     fun reportCantCast(
-        span: TextSpan,
+        location: TextLocation,
         from: TypeSymbol,
         to: TypeSymbol
-    ) = report(span, "Can't cast from type $from to type $to")
+    ) = report(location, "Can't cast from type $from to type $to")
 
     fun reportBreakContinueOutsideLoop(
-        span: TextSpan,
+        location: TextLocation,
         keyword: String
-    ) = report(span, "\"$keyword\" can't be outside a loop")
+    ) = report(location, "\"$keyword\" can't be outside a loop")
 
     fun reportCantReturnInUnitFunction(
-        span: TextSpan
-    ) = report(span, "Can't return expressions in Unit functions")
+        location: TextLocation
+    ) = report(location, "Can't return expressions in Unit functions")
 
     fun reportCantReturnWithoutValue(
-        span: TextSpan
-    ) = report(span, "Can't use empty return statements in typed functions")
+        location: TextLocation
+    ) = report(location, "Can't use empty return statements in typed functions")
 
     fun reportReturnOutsideFunction(
-        span: TextSpan
-    ) = report(span, "Can't have return statements outside functions")
+        location: TextLocation
+    ) = report(location, "Can't have return statements outside functions")
 
     fun reportAllPathsMustReturn(
-        span: TextSpan
-    ) = report(span, "Not all paths return a value")
+        location: TextLocation
+    ) = report(location, "Not all paths return a value")
 }

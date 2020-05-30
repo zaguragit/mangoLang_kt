@@ -1,5 +1,5 @@
 package mango.interpreter.syntax.parser
 
-abstract class StatementNode : Node() {
+abstract class StatementNode(syntaxTree: SyntaxTree) : Node(syntaxTree) {
 
 }

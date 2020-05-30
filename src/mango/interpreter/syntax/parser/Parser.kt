@@ -6,15 +6,18 @@ import mango.interpreter.syntax.lex.Lexer
 import mango.interpreter.syntax.lex.Token
 import mango.interpreter.text.SourceText
 
-class Parser(val sourceText: SourceText) {
+class Parser(
+    val syntaxTree: SyntaxTree
+) {
 
+    val sourceText: SourceText = syntaxTree.sourceText
     val diagnostics = DiagnosticList()
     private val tokens: Array<Token>
     var position = 0
 
     init {
         val tokens = ArrayList<Token>()
-        val lexer = Lexer(sourceText)
+        val lexer = Lexer(syntaxTree)
         var token: Token
         do {
             token = lexer.nextToken()
@@ -41,13 +44,13 @@ class Parser(val sourceText: SourceText) {
 
     private inline fun match(type: SyntaxType) = if (current.kind == type) next()
         else {
-            diagnostics.reportUnexpectedToken(current.span, current.kind, type)
-            Token(type, current.position).apply { isMissing = true }
+            diagnostics.reportUnexpectedToken(current.location, current.kind, type)
+            Token(syntaxTree, type, current.position).apply { isMissing = true }
         }
 
     fun parseCompilationUnit(): CompilationUnitNode {
         val statement = parseMembers()
-        return CompilationUnitNode(statement, match(SyntaxType.EOF))
+        return CompilationUnitNode(syntaxTree, statement, match(SyntaxType.EOF))
     }
 
     private fun parseMembers(): Collection<MemberNode> {
@@ -95,7 +98,7 @@ class Parser(val sourceText: SourceText) {
         } else {
             body = parseBlockStatement()
         }
-        return FunctionDeclarationNode(keyword, identifier, type, params, lambdaArrow, body)
+        return FunctionDeclarationNode(syntaxTree, keyword, identifier, type, params, lambdaArrow, body)
     }
 
     private fun parseParamList(): SeparatedNodeList<ParameterNode> {
@@ -123,12 +126,12 @@ class Parser(val sourceText: SourceText) {
     private fun parseParam(): ParameterNode {
         val identifier = match(SyntaxType.Identifier)
         val type = parseTypeClause()
-        return ParameterNode(identifier, type)
+        return ParameterNode(syntaxTree, identifier, type)
     }
 
     private fun parseGlobalStatement(): MemberNode {
         val statement = parseStatement()
-        return GlobalStatementNode(statement)
+        return GlobalStatementNode(syntaxTree, statement)
     }
 
 
@@ -152,7 +155,7 @@ class Parser(val sourceText: SourceText) {
         val typeClause = parseOptionalValueTypeClause()
         val equals = match(SyntaxType.Equals)
         val initializer = parseExpression()
-        return VariableDeclarationNode(keyword, identifier, typeClause, equals, initializer)
+        return VariableDeclarationNode(syntaxTree, keyword, identifier, typeClause, equals, initializer)
     }
 
     private fun parseOptionalValueTypeClause(): TypeClauseNode? {
@@ -164,12 +167,12 @@ class Parser(val sourceText: SourceText) {
 
     private fun parseTypeClause(): TypeClauseNode {
         val identifier = match(SyntaxType.Identifier)
-        return TypeClauseNode(identifier)
+        return TypeClauseNode(syntaxTree, identifier)
     }
 
     private fun parseExpressionStatement(): ExpressionStatementNode {
         val expression = parseExpression()
-        return ExpressionStatementNode(expression)
+        return ExpressionStatementNode(syntaxTree, expression)
     }
 
     private fun parseBlockStatement(): BlockStatementNode {
@@ -191,7 +194,7 @@ class Parser(val sourceText: SourceText) {
         }
 
         val closeBrace = match(SyntaxType.ClosedCurlyBracket)
-        return BlockStatementNode(openBrace, statements, closeBrace)
+        return BlockStatementNode(syntaxTree, openBrace, statements, closeBrace)
     }
 
     private fun parseIfStatement(): IfStatementNode {
@@ -199,7 +202,7 @@ class Parser(val sourceText: SourceText) {
         val condition = parseExpression()
         val statement = parseBlockStatement()
         val elseClause = parseElseClause()
-        return IfStatementNode(keyword, condition, statement, elseClause)
+        return IfStatementNode(syntaxTree, keyword, condition, statement, elseClause)
     }
 
     private fun parseElseClause(): ElseClauseNode? {
@@ -209,14 +212,14 @@ class Parser(val sourceText: SourceText) {
         val keyword = next()
         val isIfNext = current.kind == SyntaxType.If
         val statement = if (isIfNext) { parseIfStatement() } else { parseBlockStatement() }
-        return ElseClauseNode(keyword, statement)
+        return ElseClauseNode(syntaxTree, keyword, statement)
     }
 
     private fun parseWhileStatement(): WhileStatementNode {
         val keyword = match(SyntaxType.While)
         val condition = parseExpression()
         val body = parseBlockStatement()
-        return WhileStatementNode(keyword, condition, body)
+        return WhileStatementNode(syntaxTree, keyword, condition, body)
     }
 
     private fun parseForStatement(): ForStatementNode {
@@ -227,17 +230,17 @@ class Parser(val sourceText: SourceText) {
         val rangeToken = match(SyntaxType.Range)
         val upperBound = parseExpression()
         val body = parseBlockStatement()
-        return ForStatementNode(keyword, identifier, inToken, lowerBound, rangeToken, upperBound, body)
+        return ForStatementNode(syntaxTree, keyword, identifier, inToken, lowerBound, rangeToken, upperBound, body)
     }
 
     private fun parseBreakStatement(): StatementNode {
         val keyword = match(SyntaxType.Break)
-        return BreakStatementNode(keyword)
+        return BreakStatementNode(syntaxTree, keyword)
     }
 
     private fun parseContinueStatement(): StatementNode {
         val keyword = match(SyntaxType.Continue)
-        return ContinueStatementNode(keyword)
+        return ContinueStatementNode(syntaxTree, keyword)
     }
 
     private fun parseReturnStatement(): StatementNode {
@@ -247,7 +250,7 @@ class Parser(val sourceText: SourceText) {
         val expression = if (currentLine == keywordLine && current.kind != SyntaxType.EOF) {
             parseExpression()
         } else null
-        return ReturnStatementNode(keyword, expression)
+        return ReturnStatementNode(syntaxTree, keyword, expression)
     }
 
     private fun parseExpression() = parseAssignmentExpression()
@@ -258,7 +261,7 @@ class Parser(val sourceText: SourceText) {
             val identifierToken = next()
             val operatorToken = next()
             val right = parseAssignmentExpression()
-            return AssignmentExpressionNode(identifierToken, operatorToken, right)
+            return AssignmentExpressionNode(syntaxTree, identifierToken, operatorToken, right)
         }
         return parseBinaryExpression()
     }
@@ -270,7 +273,7 @@ class Parser(val sourceText: SourceText) {
         if (unaryOperatorPrecedence != 0 && unaryOperatorPrecedence >= parentPrecedence) {
             val operatorToken = next()
             val operand = parseBinaryExpression(unaryOperatorPrecedence)
-            left = UnaryExpressionNode(operatorToken, operand)
+            left = UnaryExpressionNode(syntaxTree, operatorToken, operand)
         } else {
             left = parsePrimaryExpression()
         }
@@ -281,7 +284,7 @@ class Parser(val sourceText: SourceText) {
                 break
             val operatorToken = next()
             val right = parseBinaryExpression(precedence)
-            left = BinaryExpressionNode(left, operatorToken, right)
+            left = BinaryExpressionNode(syntaxTree, left, operatorToken, right)
         }
         return left
     }
@@ -299,18 +302,18 @@ class Parser(val sourceText: SourceText) {
         val left = match(SyntaxType.OpenRoundedBracket)
         val expression = parseExpression()
         val right = match(SyntaxType.ClosedRoundedBracket)
-        return ParenthesizedExpressionNode(left, expression, right)
+        return ParenthesizedExpressionNode(syntaxTree, left, expression, right)
     }
 
     private fun parseBooleanLiteral(): LiteralExpressionNode {
         val token = next()
         val isTrue = token.kind == SyntaxType.True
-        return LiteralExpressionNode(token, isTrue)
+        return LiteralExpressionNode(syntaxTree, token, isTrue)
     }
 
-    private fun parseNumberLiteral() = LiteralExpressionNode(match(SyntaxType.Int))
+    private fun parseNumberLiteral() = LiteralExpressionNode(syntaxTree, match(SyntaxType.Int))
 
-    private fun parseStringLiteral() = LiteralExpressionNode(match(SyntaxType.String))
+    private fun parseStringLiteral() = LiteralExpressionNode(syntaxTree, match(SyntaxType.String))
 
     private fun parseNameOrCallExpression(): ExpressionNode {
         if (peek(0).kind == SyntaxType.Identifier &&
@@ -322,7 +325,7 @@ class Parser(val sourceText: SourceText) {
 
     private fun parseNameExpression(): NameExpressionNode {
         val identifierToken = match(SyntaxType.Identifier)
-        return NameExpressionNode(identifierToken)
+        return NameExpressionNode(syntaxTree, identifierToken)
     }
 
     private fun parseCallExpression(): CallExpressionNode {
@@ -330,7 +333,7 @@ class Parser(val sourceText: SourceText) {
         val leftBracket = match(SyntaxType.OpenRoundedBracket)
         val arguments = parseArguments()
         val rightBracket = match(SyntaxType.ClosedRoundedBracket)
-        return CallExpressionNode(identifierToken, leftBracket, arguments, rightBracket)
+        return CallExpressionNode(syntaxTree, identifierToken, leftBracket, arguments, rightBracket)
     }
 
     private fun parseArguments(): SeparatedNodeList<ExpressionNode> {

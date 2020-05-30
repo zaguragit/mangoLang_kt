@@ -4,13 +4,14 @@ import mango.interpreter.syntax.SyntaxType
 import mango.interpreter.syntax.lex.Token
 
 class FunctionDeclarationNode(
+    syntaxTree: SyntaxTree,
     val keyword: Token,
     val identifier: Token,
     val typeClause: TypeClauseNode?,
     val params: SeparatedNodeList<ParameterNode>?,
     val lambdaArrow: Token?,
     val body: StatementNode
-) : MemberNode() {
+) : MemberNode(syntaxTree) {
 
     override val kind = SyntaxType.FunctionDeclaration
     override val children: Collection<Node> get() = arrayListOf<Node>(keyword, identifier).apply {

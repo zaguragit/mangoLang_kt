@@ -20,9 +20,7 @@ fun main(args: Array<String>) {
                 printHelp()
                 return
             }
-            val path = System.getProperty("user.dir") + File.separatorChar + args[1]
-            val text = File(path).readText()
-            val syntaxTree = SyntaxTree.parse(text)
+            val syntaxTree = SyntaxTree.load(args[1])
             val compilation = Compilation(syntaxTree, null)
             val errors = compilation.evaluate(HashMap()).errors
 
