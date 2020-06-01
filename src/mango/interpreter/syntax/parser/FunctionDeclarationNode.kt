@@ -11,7 +11,7 @@ class FunctionDeclarationNode(
     val params: SeparatedNodeList<ParameterNode>?,
     val lambdaArrow: Token?,
     val body: StatementNode
-) : MemberNode(syntaxTree) {
+) : TopLevelNode(syntaxTree) {
 
     override val kind = SyntaxType.FunctionDeclaration
     override val children: Collection<Node> get() = arrayListOf<Node>(keyword, identifier).apply {

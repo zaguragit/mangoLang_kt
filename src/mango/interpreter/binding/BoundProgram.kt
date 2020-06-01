@@ -6,6 +6,7 @@ import mango.interpreter.symbols.FunctionSymbol
 class BoundProgram(
     val previous: BoundProgram?,
     val diagnostics: DiagnosticList,
+    val mainFn: FunctionSymbol,
     val functionBodies: HashMap<FunctionSymbol, BoundStatement>,
     val statement: BoundBlockStatement
 )

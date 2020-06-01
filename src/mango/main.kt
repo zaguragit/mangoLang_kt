@@ -5,12 +5,15 @@ import mango.compilation.Compilation
 import mango.interpreter.syntax.parser.SyntaxTree
 import kotlin.system.exitProcess
 
+var isRepl = false; private set
+
 fun main(args: Array<String>) {
     if (args.isEmpty()) {
         exitAndPrintHelp()
     }
     when (args[0]) {
         "repl" -> {
+            isRepl = true
             val repl = MangoRepl()
             repl.run()
         }

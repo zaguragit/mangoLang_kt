@@ -8,6 +8,7 @@ import mango.interpreter.syntax.SyntaxType
 import mango.interpreter.syntax.lex.Token
 import mango.interpreter.syntax.parser.*
 import mango.interpreter.text.TextLocation
+import mango.isRepl
 import java.util.*
 import kotlin.Exception
 import kotlin.collections.ArrayList
@@ -148,7 +149,7 @@ class Binder(
 
     private fun bindExpressionStatement(node: ExpressionStatementNode): BoundExpressionStatement {
         val expression = bindExpression(node.expression, canBeUnit = true)
-        if (function?.declarationNode?.lambdaArrow == null) {
+        if (function == null && !isRepl || function != null && function.declarationNode?.lambdaArrow == null) {
             val kind = expression.boundType
             val isAllowedExpression =
                 kind == BoundNodeType.AssignmentExpression ||
@@ -307,8 +308,8 @@ class Binder(
             diagnostics.reportVarIsImmutable(node.equalsToken.location, name)
             return boundExpression
         }
-        if (variable.type != boundExpression.type) {
-            diagnostics.reportWrongType(node.identifierToken.location, name, boundExpression.type)
+        if (!boundExpression.type.isOfType(variable.type)) {
+            diagnostics.reportWrongType(node.identifierToken.location, variable.type, boundExpression.type)
             return boundExpression
         }
         return BoundAssignmentExpression(variable, boundExpression)
@@ -360,34 +361,68 @@ class Binder(
     }
 
     companion object {
-        fun bindGlobalScope(node: CompilationUnitNode, previous: BoundGlobalScope?): BoundGlobalScope {
+
+        fun bindGlobalScope(
+            node: CompilationUnitNode,
+            previous: BoundGlobalScope?
+        ): BoundGlobalScope {
+
             val parentScope = createParentScopes(previous)
             val binder = Binder(BoundScope(parentScope), null)
 
-            for (function in node.members) {
-                if (function is FunctionDeclarationNode) {
-                    binder.bindFunctionDeclaration(function)
-                }
-            }
-
             val statementBuilder = ArrayList<BoundStatement>()
-
-            for (globalStatement in node.members) {
-                if (globalStatement is GlobalStatementNode) {
-                    val statement = binder.bindStatement(globalStatement.statement)
-                    statementBuilder.add(statement)
+            for (s in node.members) {
+                when (s) {
+                    is FunctionDeclarationNode -> {
+                        binder.bindFunctionDeclaration(s)
+                    }
+                    is VariableDeclarationNode -> {
+                        val statement = binder.bindVariableDeclaration(s)
+                        statementBuilder.add(statement)
+                    }
+                    is ReplStatementNode -> {
+                        val statement = binder.bindStatement(s.statementNode)
+                        statementBuilder.add(statement)
+                    }
                 }
             }
 
             val symbols = binder.scope.symbols
+            var mainFn = symbols.find {
+                it.kind == Symbol.Kind.Function &&
+                (it as FunctionSymbol).name == "main" &&
+                it.parameters.isEmpty() &&
+                it.type == TypeSymbol.unit
+            } as FunctionSymbol?
+
             val diagnostics = binder.diagnostics
+
+            if (mainFn == null) {
+                mainFn = FunctionSymbol(
+                    "main",
+                    arrayOf(),
+                    if (isRepl) TypeSymbol.any else TypeSymbol.unit,
+                    null
+                )
+                if (!isRepl) {
+                    diagnostics.reportNoMainFn()
+                }
+            }
+
             if (previous != null) {
                 diagnostics.append(previous.diagnostics)
             }
-            return BoundGlobalScope(previous, diagnostics, symbols, statementBuilder)
+            return BoundGlobalScope(
+                    previous,
+                    diagnostics,
+                    symbols,
+                    statementBuilder,
+                    mainFn)
         }
 
-        private fun createParentScopes(previous: BoundGlobalScope?): BoundScope {
+        private fun createParentScopes(
+            previous: BoundGlobalScope?
+        ): BoundScope {
 
             val stack = Stack<BoundGlobalScope>()
             var prev = previous
@@ -419,7 +454,10 @@ class Binder(
             return result
         }
 
-        fun bindProgram(previous: BoundProgram?, globalScope: BoundGlobalScope): BoundProgram {
+        fun bindProgram(
+            previous: BoundProgram?,
+            globalScope: BoundGlobalScope
+        ): BoundProgram {
 
             val parentScope = createParentScopes(globalScope)
             val functionBodies = HashMap<FunctionSymbol, BoundStatement>()
@@ -443,10 +481,38 @@ class Binder(
                     diagnostics.append(binder.diagnostics)
                 }
             }
+            val statement: BoundBlockStatement
+            if (isRepl) {
+                val statements = globalScope.statements
+                if (statements.size == 1) {
+                    val s = statements[0]
+                    if (s is BoundExpressionStatement &&
+                        s.expression.type != TypeSymbol.unit) {
+                        statements[0] = BoundReturnStatement(s.expression)
+                    }
+                }
+                else if (statements.size != 0){
+                    val nullValue = BoundLiteralExpression("")
+                    statements[0] = BoundReturnStatement(nullValue)
+                }
+                val body = Lowerer.lower(BoundBlockStatement(
+                    globalScope.statements
+                ))
+                functionBodies[globalScope.mainFn] = body
+                statement = BoundBlockStatement(listOf())
+            }
+            else {
+                statement = Lowerer.lower(BoundBlockStatement(
+                    globalScope.statements
+                ))
+            }
 
-            val statement = Lowerer.lower(BoundBlockStatement(globalScope.statements))
-
-            return BoundProgram(previous, diagnostics, functionBodies, statement)
+            return BoundProgram(
+                    previous,
+                    diagnostics,
+                    globalScope.mainFn,
+                    functionBodies,
+                    statement)
         }
     }
 

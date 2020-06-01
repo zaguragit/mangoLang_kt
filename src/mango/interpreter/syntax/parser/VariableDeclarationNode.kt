@@ -10,10 +10,8 @@ class VariableDeclarationNode(
     val typeClauseNode: TypeClauseNode?,
     val equals: Token,
     val initializer: ExpressionNode
-) : StatementNode(syntaxTree) {
+) : TopLevelNode(syntaxTree) {
 
-    override val kind
-        get() = SyntaxType.VariableDeclaration
-    override val children: Collection<Node>
-        get() = listOf(keyword, identifier, equals, initializer)
+    override val kind = SyntaxType.VariableDeclaration
+    override val children: Collection<Node> get() = listOf(keyword, identifier, equals, initializer)
 }

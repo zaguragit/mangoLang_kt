@@ -29,15 +29,14 @@ enum class SyntaxType {
     // Statements
     BlockStatement,
     ExpressionStatement,
-    VariableDeclaration,
-    FunctionDeclaration,
     IfStatement,
     WhileStatement,
     ForStatement,
-    GlobalStatement,
     BreakStatement,
     ContinueStatement,
     ReturnStatement,
+    VariableDeclaration,
+    FunctionDeclaration,
 
     // Brackets
     OpenRoundedBracket,

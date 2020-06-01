@@ -13,10 +13,10 @@ class TypeSymbol private constructor(
         val any = TypeSymbol("Any", null)
 
         val int = TypeSymbol("Int", any)
-        val short = TypeSymbol("Short", any)
-        val long = TypeSymbol("Long", any)
-        val double = TypeSymbol("Double", any)
-        val float = TypeSymbol("Float", any)
+        //val short = TypeSymbol("Short", any)
+        //val long = TypeSymbol("Long", any)
+        //val double = TypeSymbol("Double", any)
+        //val float = TypeSymbol("Float", any)
 
         val bool = TypeSymbol("Bool", any)
 
@@ -30,10 +30,10 @@ class TypeSymbol private constructor(
         fun lookup(name: String) = when (name) {
             "Any" -> any
             "Int" -> int
-            "Short" -> short
-            "Long" -> long
-            "Double" -> double
-            "Float" -> float
+            //"Short" -> short
+            //"Long" -> long
+            //"Double" -> double
+            //"Float" -> float
             "Bool" -> bool
             "String" -> string
             "Unit" -> unit
@@ -41,5 +41,7 @@ class TypeSymbol private constructor(
         }
     }
 
-    fun isOfType(other: TypeSymbol): Boolean = this == other || parentType?.isOfType(other) ?: false
+    fun isOfType(other: TypeSymbol): Boolean {
+        return this == other || parentType?.isOfType(other) ?: false
+    }
 }

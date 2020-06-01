@@ -49,4 +49,5 @@ class BoundGlobalScope(
     val previous: BoundGlobalScope?,
     val diagnostics: DiagnosticList,
     val symbols: Collection<Symbol>,
-    val statements: Collection<BoundStatement>)
+    val statements: MutableList<BoundStatement>,
+    val mainFn: FunctionSymbol)

@@ -45,15 +45,19 @@ abstract class Symbol {
         this as FunctionSymbol
         print("fn ")
         print(name)
-        print(':')
-        for (i in parameters.indices) {
-            if (i != 0) {
-                print(',')
+        if (parameters.isNotEmpty()) {
+            print(" (")
+            for (i in parameters.indices) {
+                if (i != 0) {
+                    print(',')
+                    print(' ')
+                }
+                parameters[i].printStructure()
             }
-            print(' ')
-            parameters[i].printStructure()
+            print(')')
         }
         print(' ')
+        type.printStructure()
     }
 
     private fun printParameter() {

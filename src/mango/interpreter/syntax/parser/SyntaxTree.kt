@@ -9,12 +9,12 @@ class SyntaxTree(
 ) {
 
     val root: CompilationUnitNode
-    val errors: DiagnosticList
+    val diagnostics: DiagnosticList
 
     init {
         val parser = Parser(this)
         root = parser.parseCompilationUnit()
-        errors = parser.diagnostics
+        diagnostics = parser.diagnostics
     }
 
     companion object {

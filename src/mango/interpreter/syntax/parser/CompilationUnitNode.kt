@@ -5,7 +5,7 @@ import mango.interpreter.syntax.lex.Token
 
 class CompilationUnitNode(
     syntaxTree: SyntaxTree,
-    val members: Collection<MemberNode>,
+    val members: Collection<TopLevelNode>,
     val endOfFileToken: Token
 ) : Node(syntaxTree) {
 

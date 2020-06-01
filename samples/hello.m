@@ -1,17 +1,13 @@
 
-val name = getName()
-println("Hi, " + name + "!")
+val creatorsName = "leo"
 
-val x = 32
-val y = 64
+fn main {
+    val name = getName()
 
-10 * 3235
-
-fn add Int -> x + y
-
-{
-    {
-        println(String(add()))
+    if name == creatorsName {
+        println("Hi, " + name + "!!")
+    } else {
+        println("Hi, " + name + "!")
     }
 }
 

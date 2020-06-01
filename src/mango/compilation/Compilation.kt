@@ -2,6 +2,7 @@ package mango.compilation
 
 import mango.interpreter.Evaluator
 import mango.interpreter.binding.*
+import mango.interpreter.symbols.FunctionSymbol
 import mango.interpreter.symbols.VariableSymbol
 import mango.interpreter.syntax.parser.SyntaxTree
 
@@ -10,16 +11,24 @@ class Compilation(
     val syntaxTree: SyntaxTree
 ) {
 
-    val globalScope: BoundGlobalScope = Binder.bindGlobalScope(syntaxTree.root, previous?.globalScope)
+    val globalScope: BoundGlobalScope by lazy {
+        Binder.bindGlobalScope(syntaxTree.root, previous?.globalScope)
+    }
+
+    inline val mainFn get() = globalScope.mainFn
 
     private fun getProgram(): BoundProgram = Binder.bindProgram(previous?.getProgram(), globalScope)
 
     fun evaluate(variables: HashMap<VariableSymbol, Any?>): EvaluationResult {
 
-        val errors = syntaxTree.errors.apply { append(globalScope.diagnostics) }
+        val errors = syntaxTree.diagnostics
         if (errors.hasErrors()) {
             errors.sortBySpan()
-            return EvaluationResult(errors.list, errors.nonErrorList)
+            return EvaluationResult(null, errors.errorList, errors.nonErrorList)
+        }
+        if (globalScope.diagnostics.hasErrors()) {
+            errors.apply { append(globalScope.diagnostics) }.sortBySpan()
+            return EvaluationResult(null, errors.errorList, errors.nonErrorList)
         }
 
         val program = getProgram()
@@ -36,28 +45,25 @@ class Compilation(
 
         if (program.diagnostics.hasErrors()) {
             val d = program.diagnostics.apply { sortBySpan() }
-            return EvaluationResult(d.list, d.nonErrorList)
+            return EvaluationResult(null, d.errorList, d.nonErrorList)
         }
 
         val evaluator = Evaluator(program, variables)
-        evaluator.evaluate()
+        val value = evaluator.evaluate()
         errors.sortBySpan()
-        return EvaluationResult(errors.list, errors.nonErrorList)
+        return EvaluationResult(value, errors.errorList, errors.nonErrorList)
     }
 
     fun printTree() {
+        printTree(globalScope.mainFn)
+    }
+
+    fun printTree(symbol: FunctionSymbol) {
         val program = getProgram()
-        if (program.statement.statements.any()) {
-            program.statement.printStructure()
-        }
-        else {
-            for (functionBody in program.functionBodies) {
-                if (!globalScope.symbols.contains(functionBody.key)) {
-                    continue
-                }
-                functionBody.key.printStructure()
-                functionBody.value.printStructure()
-            }
-        }
+        symbol.printStructure()
+        print(' ')
+        val body = program.functionBodies[symbol]
+        body?.printStructure()
+        println()
     }
 }

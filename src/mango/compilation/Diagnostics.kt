@@ -3,14 +3,10 @@ package mango.compilation
 import mango.console.Console
 import mango.interpreter.symbols.TypeSymbol
 import mango.interpreter.syntax.SyntaxType
-import mango.interpreter.syntax.parser.SyntaxTree
-import mango.interpreter.text.SourceText
 import mango.interpreter.text.TextLocation
-import mango.interpreter.text.TextSpan
-import kotlin.math.min
 
 class Diagnostic(
-    val location: TextLocation,
+    val location: TextLocation?,
     val message: String,
     val diagnosticType: Type = Type.Error
 ) {
@@ -23,6 +19,10 @@ class Diagnostic(
     }
 
     fun print() {
+        if (location == null) {
+            print(Console.RED + "error: $message" + Console.RESET)
+            return
+        }
         val span = location.span
         val charI = location.startCharI
         val startLine = location.text.lines[location.startLineI]
@@ -46,27 +46,30 @@ class DiagnosticList {
 
     fun sortBySpan() {
         val comparator = Comparator { d0: Diagnostic, d1 ->
+            if (d0.location == null || d1.location == null) {
+                return@Comparator 0
+            }
             var cmp = d0.location.span.start - d1.location.span.start
             if (cmp == 0) {
                 cmp = d0.location.span.length - d1.location.span.length
             }
             cmp
         }
-        arrayList.sortWith(comparator)
+        errors.sortWith(comparator)
         nonErrors.sortWith(comparator)
     }
 
-    private val arrayList = ArrayList<Diagnostic>()
+    private val errors = ArrayList<Diagnostic>()
     private val nonErrors = ArrayList<Diagnostic>()
 
-    val list: List<Diagnostic> get() = arrayList
+    val errorList: List<Diagnostic> get() = errors
     val nonErrorList: List<Diagnostic> get() = nonErrors
 
     fun append(other: DiagnosticList) {
-        arrayList.addAll(other.arrayList)
+        errors.addAll(other.errors)
         nonErrors.addAll(other.nonErrors)
     }
-    fun hasErrors() = arrayList.any()
+    fun hasErrors() = errors.any()
 
     private inline fun style(
         location: TextLocation,
@@ -85,7 +88,7 @@ class DiagnosticList {
     private inline fun report(
         location: TextLocation,
         message: String
-    ) = arrayList.add(Diagnostic(location, message, Diagnostic.Type.Error))
+    ) = errors.add(Diagnostic(location, message, Diagnostic.Type.Error))
 
     fun reportWrongType(
         location: TextLocation,
@@ -205,4 +208,10 @@ class DiagnosticList {
     fun reportInvalidExpressionStatement(
         location: TextLocation
     ) = report(location, "Only assignment and call expressions can be used as statements")
+
+    fun reportNoMainFn() = errors.add(Diagnostic(null, "No main function found", Diagnostic.Type.Error))
+
+    fun reportStatementCantBeGlobal(
+        location: TextLocation
+    ) = report(location, "Only variables and functions can be global")
 }

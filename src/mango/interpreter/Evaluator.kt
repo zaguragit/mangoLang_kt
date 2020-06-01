@@ -8,17 +8,17 @@ import kotlin.collections.HashMap
 import kotlin.random.Random
 
 class Evaluator(
-    boundProgram: BoundProgram,
+    val program: BoundProgram,
     val globals: HashMap<VariableSymbol, Any?>
 ) {
 
     val functionBodies = HashMap<FunctionSymbol, BoundStatement>()
-    val root = boundProgram.statement
+    val root = program.statement
 
     val stack = Stack<HashMap<VariableSymbol, Any?>>().apply { push(HashMap()) }
 
     init {
-        var current: BoundProgram? = boundProgram
+        var current: BoundProgram? = program
         while (current != null) {
             for (f in current.functionBodies) {
                 functionBodies.putIfAbsent(f.key, f.value)
@@ -27,7 +27,18 @@ class Evaluator(
         }
     }
 
-    fun evaluate(): Any? = evaluateStatement(root)
+    fun evaluate(): Any? {
+        val function = program.mainFn
+        val body = functionBodies[function]!!
+        evaluateStatement(program.statement)
+        return if (body is BoundBlockStatement) {
+            evaluateStatement(body)
+        }
+        else {
+            body as BoundExpressionStatement
+            evaluateExpressionStatement(body)
+        }
+    }
 
     private fun evaluateStatement(body: BoundBlockStatement): Any? {
         val labelToIndex = HashMap<BoundLabel, Int>()

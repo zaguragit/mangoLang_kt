@@ -50,6 +50,11 @@ class MangoRepl : Repl() {
 
         if (errors.isEmpty()) {
             previous = compilation
+            if (result.value != null) {
+                print(Console.YELLOW_BOLD_BRIGHT)
+                println(result.value)
+                print(Console.RESET)
+            }
         } else {
             println()
             for (error in errors) {

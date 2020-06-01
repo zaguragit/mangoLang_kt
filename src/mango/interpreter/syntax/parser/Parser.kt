@@ -5,6 +5,7 @@ import mango.interpreter.syntax.SyntaxType
 import mango.interpreter.syntax.lex.Lexer
 import mango.interpreter.syntax.lex.Token
 import mango.interpreter.text.SourceText
+import mango.isRepl
 
 class Parser(
     val syntaxTree: SyntaxTree
@@ -53,8 +54,8 @@ class Parser(
         return CompilationUnitNode(syntaxTree, statement, match(SyntaxType.EOF))
     }
 
-    private fun parseMembers(): Collection<MemberNode> {
-        val members = ArrayList<MemberNode>()
+    private fun parseMembers(): Collection<TopLevelNode> {
+        val members = ArrayList<TopLevelNode>()
 
         while (current.kind != SyntaxType.EOF) {
             val startToken = current
@@ -123,12 +124,18 @@ class Parser(
         return ParameterNode(syntaxTree, identifier, type)
     }
 
-    private fun parseGlobalStatement(): MemberNode {
+    private fun parseGlobalStatement(): TopLevelNode {
         if (current.kind == SyntaxType.Fn) {
             return parseFunctionDeclaration()
         }
         val statement = parseStatement()
-        return GlobalStatementNode(syntaxTree, statement)
+        if (statement !is TopLevelNode) {
+            if (!isRepl) {
+                diagnostics.reportStatementCantBeGlobal(statement.location)
+            }
+            return ReplStatementNode(statement)
+        }
+        return statement
     }
 
 
