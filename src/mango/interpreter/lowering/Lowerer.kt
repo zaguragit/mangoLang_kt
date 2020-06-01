@@ -107,9 +107,15 @@ class Lowerer private constructor() : BoundTreeRewriter() {
     }
 
     companion object {
-        fun lower(statement: BoundStatement): BoundBlockStatement {
+        fun lower(expression: BoundExpression): BoundBlockStatement {
             val lowerer = Lowerer()
-            val result = lowerer.rewriteStatement(statement)
+            val block = BoundBlockStatement(listOf(BoundReturnStatement(expression)))
+            val result = lowerer.rewriteStatement(block)
+            return lowerer.flatten(result)
+        }
+        fun lower(block: BoundBlockStatement): BoundBlockStatement {
+            val lowerer = Lowerer()
+            val result = lowerer.rewriteBlockStatement(block)
             return lowerer.flatten(result)
         }
     }

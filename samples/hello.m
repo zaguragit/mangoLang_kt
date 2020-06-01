@@ -5,10 +5,12 @@ fn main {
     val name = getName()
 
     if name == creatorsName {
-        println("Hi, " + name + "!!")
+        println("Hi, \" + name + \"!!")
     } else {
-        println("Hi, " + name + "!")
+        println("Hi, \" + name + \"!")
     }
+
+    println(name)
 }
 
 fn getName String -> ask("What's your name?")

@@ -1,4 +1,6 @@
-package mango.compilation
+package mango.interpreter.eval
+
+import mango.compilation.Diagnostic
 
 class EvaluationResult(
     val value: Any?,

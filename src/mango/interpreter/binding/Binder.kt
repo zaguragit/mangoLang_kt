@@ -460,7 +460,7 @@ class Binder(
         ): BoundProgram {
 
             val parentScope = createParentScopes(globalScope)
-            val functionBodies = HashMap<FunctionSymbol, BoundStatement>()
+            val functionBodies = HashMap<FunctionSymbol, BoundBlockStatement>()
             val diagnostics = DiagnosticList()
 
             for (symbol in globalScope.symbols) {
@@ -475,7 +475,7 @@ class Binder(
                         functionBodies[symbol] = loweredBody
                     } else {
                         val body = binder.bindExpressionStatement(symbol.declarationNode.body as ExpressionStatementNode)
-                        val loweredBody = Lowerer.lower(body)
+                        val loweredBody = Lowerer.lower(body.expression)
                         functionBodies[symbol] = loweredBody
                     }
                     diagnostics.append(binder.diagnostics)

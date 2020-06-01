@@ -1,4 +1,4 @@
-package mango.interpreter
+package mango.interpreter.eval
 
 import mango.interpreter.binding.*
 import mango.interpreter.symbols.*
@@ -12,8 +12,7 @@ class Evaluator(
     val globals: HashMap<VariableSymbol, Any?>
 ) {
 
-    val functionBodies = HashMap<FunctionSymbol, BoundStatement>()
-    val root = program.statement
+    val functionBodies = HashMap<FunctionSymbol, BoundBlockStatement>()
 
     val stack = Stack<HashMap<VariableSymbol, Any?>>().apply { push(HashMap()) }
 
@@ -31,13 +30,7 @@ class Evaluator(
         val function = program.mainFn
         val body = functionBodies[function]!!
         evaluateStatement(program.statement)
-        return if (body is BoundBlockStatement) {
-            evaluateStatement(body)
-        }
-        else {
-            body as BoundExpressionStatement
-            evaluateExpressionStatement(body)
-        }
+        return evaluateStatement(body)
     }
 
     private fun evaluateStatement(body: BoundBlockStatement): Any? {
@@ -202,9 +195,7 @@ class Evaluator(
             }
             stack.push(locals)
             val statement = functionBodies[node.function]!!
-            val result = evaluateStatement(
-                if (statement is BoundBlockStatement) statement
-                else BoundBlockStatement(listOf(statement)))
+            val result = evaluateStatement(statement)
             stack.pop()
             result
         }
@@ -213,15 +204,9 @@ class Evaluator(
     private fun evaluateCastExpression(node: BoundCastExpression): Any? {
         val value = evaluateExpression(node.expression)
         return when (node.type) {
-            TypeSymbol.bool -> {
-                value.toString().toBoolean()
-            }
-            TypeSymbol.int -> {
-                value.toString().toInt()
-            }
-            TypeSymbol.string -> {
-                value.toString()
-            }
+            TypeSymbol.bool -> value.toString().toBoolean()
+            TypeSymbol.int -> value.toString().toInt()
+            TypeSymbol.string -> value.toString()
             else -> value
         }
     }
