@@ -70,50 +70,58 @@ class ModuleBuilder {
     private val functions = LinkedList<FunctionBuilder>()
     private val globalVariables = LinkedList<GlobalVariable>()
 
-    fun intGlobalVariable(name: String, type: LLVMType = LLVMType.I32, value: Int = 0): GlobalVariable {
+    private val included = LinkedList<String>()
+
+    fun include (path: String) {
+        if (!included.contains(path)) {
+            included.add(path)
+        }
+    }
+
+    fun intGlobalVariable (name: String, type: LLVMType = LLVMType.I32, value: Int = 0): GlobalVariable {
         val gvar = GlobalVariable(name, type, value)
         globalVariables.add(gvar)
         return gvar
     }
 
-    fun floatGlobalVariable(name: String, type: LLVMType = LLVMType.Float, value: Float = 0.0f): GlobalVariable {
+    fun floatGlobalVariable (name: String, type: LLVMType = LLVMType.Float, value: Float = 0.0f): GlobalVariable {
         val gvar = GlobalVariable(name, type, value)
         globalVariables.add(gvar)
         return gvar
     }
 
-    fun stringGlobalVariable(name: String, type: LLVMType = LLVMType.Pointer(LLVMType.I8), value: Any = Null(LLVMType.Pointer(LLVMType.I8))): GlobalVariable {
+    fun stringGlobalVariable (name: String, type: LLVMType = LLVMType.Pointer(LLVMType.I8), value: Any = Null(LLVMType.Pointer(LLVMType.I8))): GlobalVariable {
         val gvar = GlobalVariable(name, type, value)
         globalVariables.add(gvar)
         return gvar
     }
 
-    fun globalVariable(name: String, type: LLVMType, value: Any): GlobalVariable {
+    fun globalVariable (name: String, type: LLVMType, value: Any): GlobalVariable {
         val gvar = GlobalVariable(name, type, value)
         globalVariables.add(gvar)
         return gvar
     }
 
-    fun stringConstForContent(content: String): StringConst {
+    fun stringConstForContent (content: String): StringConst {
         if (!stringConsts.containsKey(content)) {
             stringConsts[content] = StringConst(".str${stringConsts.size}", content)
         }
         return stringConsts[content]!!
     }
 
-    fun addDeclaration(declaration: FunctionDeclaration) {
+    fun addDeclaration (declaration: FunctionDeclaration) {
         declarations.add(declaration)
     }
 
-    fun addImportedDeclaration(code: String) {
+    fun addImportedDeclaration (code: String) {
         importedDeclarations.add(code)
     }
 
-    fun addImportedDefinition(code: String) {
+    fun addImportedDefinition (code: String) {
         importedDefinitions.add(code)
     }
 
-    fun createFunction(symbol: FunctionSymbol): FunctionBuilder {
+    fun createFunction (symbol: FunctionSymbol): FunctionBuilder {
         val function = FunctionBuilder(this, List(symbol.parameters.size) {
             LLVMType.valueOf(symbol.parameters[it].type)
         }, symbol)
@@ -122,7 +130,8 @@ class ModuleBuilder {
     }
 
     fun code(): String {
-        return "${stringConsts.values.map { it.IRDeclaration() }.joinToString("\n")}\n" +
+        return "${included.map { javaClass.getResourceAsStream("/mango/compilation/llvm/builtin/$it").reader().readText() }.joinToString("\n")}\n" +
+                "${stringConsts.values.map { it.IRDeclaration() }.joinToString("\n")}\n" +
                 "${globalVariables.map { it.IRDeclaration() }.joinToString("\n")}\n" +
                 "${importedDefinitions.joinToString("\n")}\n" +
                 "${declarations.map { it.IRDeclaration() }.joinToString("\n")}\n" +

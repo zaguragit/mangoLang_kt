@@ -4,7 +4,7 @@ enum class SyntaxType {
 
     EOF,
     Bad,
-    NewLine,
+    LineSeparator,
     Dot,
     Comma,
 

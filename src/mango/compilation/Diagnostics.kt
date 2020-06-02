@@ -214,4 +214,8 @@ class DiagnosticList {
     fun reportStatementCantBeGlobal(
         location: TextLocation
     ) = report(location, "Only variables and functions can be global")
+
+    fun reportDeclarationAndNameOnSameLine(
+        location: TextLocation
+    ) = report(location, "The declaration keyword and name should be on the same line")
 }

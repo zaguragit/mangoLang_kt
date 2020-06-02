@@ -77,15 +77,33 @@ class Compilation(
         println()
     }
 
-    fun emit(moduleName: String, references: Array<String>, outputPath: String, target: String) {
+    fun emit(moduleName: String, references: Array<String>, outputPath: String, target: String, emissionType: EmissionType) {
         val program = getProgram()
         val code = LLVMEmitter.emit(program, moduleName, references, outputPath)
+        if (emissionType == EmissionType.IR) {
+            File(outputPath).writeText(code)
+            return
+        }
         val llFile = File.createTempFile("mangoLang", ".ll").apply {
             deleteOnExit()
             writeText(code)
         }
+        if (emissionType == EmissionType.Assembly) {
+            ProcessBuilder("llc", llFile.absolutePath, "-o=$outputPath", "-filetype=asm", "-relocation-model=pic").run {
+                inheritIO()
+                start().waitFor()
+            }
+            return
+        }
+        if (emissionType == EmissionType.Object) {
+            ProcessBuilder("llc", llFile.absolutePath, "-o=$outputPath", "-filetype=obj", "-relocation-model=pic").run {
+                inheritIO()
+                start().waitFor()
+            }
+            return
+        }
         val objFile = File.createTempFile("mangoLang", ".o").apply {
-            //deleteOnExit()
+            deleteOnExit()
             ProcessBuilder("llc", llFile.absolutePath, "-o=$absolutePath", "-filetype=obj", "-relocation-model=pic").run {
                 inheritIO()
                 start().waitFor()

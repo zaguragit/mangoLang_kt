@@ -4,6 +4,7 @@ import mango.interpreter.binding.*
 import mango.interpreter.symbols.LocalVariableSymbol
 import mango.interpreter.symbols.TypeSymbol
 import mango.interpreter.syntax.SyntaxType
+import mango.interpreter.syntax.parser.ExpressionStatementNode
 import java.util.*
 import kotlin.collections.ArrayList
 
@@ -109,7 +110,11 @@ class Lowerer private constructor() : BoundTreeRewriter() {
     companion object {
         fun lower(expression: BoundExpression): BoundBlockStatement {
             val lowerer = Lowerer()
-            val block = BoundBlockStatement(listOf(BoundReturnStatement(expression)))
+            val block = if (expression.type == TypeSymbol.unit) {
+                BoundBlockStatement(listOf(BoundExpressionStatement(expression)))
+            } else {
+                BoundBlockStatement(listOf(BoundReturnStatement(expression)))
+            }
             val result = lowerer.rewriteStatement(block)
             return lowerer.flatten(result)
         }

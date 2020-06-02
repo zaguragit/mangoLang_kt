@@ -2,6 +2,7 @@ package mango
 
 import mango.console.MangoRepl
 import mango.compilation.Compilation
+import mango.compilation.EmissionType
 import mango.interpreter.syntax.parser.SyntaxTree
 import java.io.File
 import kotlin.system.exitProcess
@@ -25,6 +26,7 @@ fun main(args: Array<String>) {
             val inFileName = args[1]
             var outName: String? = null
             var target: String? = null
+            var emissionType: EmissionType = EmissionType.Binary
             var i = 2
             while (i < args.lastIndex) {
                 if (args[i].startsWith('-')) {
@@ -39,12 +41,25 @@ fun main(args: Array<String>) {
                                 target = args[i].toLowerCase()
                             }
                         }
+                        "-type" -> if (++i < args.size) {
+                            when(args[i].toLowerCase()) {
+                                "asm", "assembly" -> emissionType = EmissionType.Assembly
+                                "ir", "llvm" -> emissionType = EmissionType.IR
+                                "obj", "object" -> emissionType = EmissionType.Object
+                                "bin", "binary" -> emissionType = EmissionType.Binary
+                            }
+                        }
                     }
                 }
                 i++
             }
             if (outName == null) {
-                outName = inFileName.substringBeforeLast('.')
+                outName = when (emissionType) {
+                    EmissionType.Binary -> inFileName.substringBeforeLast('.')
+                    EmissionType.Object -> inFileName.substringBeforeLast('.') + ".o"
+                    EmissionType.Assembly -> inFileName.substringBeforeLast('.') + ".asm"
+                    EmissionType.IR -> inFileName.substringBeforeLast('.') + ".ll"
+                }
             }
             if (target == null) {
                 target = System.getProperty("os.name").substringBefore(' ').toLowerCase()
@@ -52,7 +67,7 @@ fun main(args: Array<String>) {
             val moduleName = inFileName.substringAfterLast(File.separatorChar).substringBefore('.')
             val syntaxTree = SyntaxTree.load(inFileName)
             val compilation = Compilation(null, syntaxTree)
-            compilation.emit(moduleName, arrayOf(), outName, target)
+            compilation.emit(moduleName, arrayOf(), outName, target, emissionType)
             val errors = compilation.evaluate(HashMap()).errors
 
             if (errors.isNotEmpty()) {
@@ -73,6 +88,18 @@ private fun exitAndPrintHelp() {
     //println("build           | Compile the project")
     //println("run             | Build and run project")
     println("repl            | Use the repl")
+    ExitCodes.ERROR()
+}
+
+private fun exitAndPrintCompileHelp() {
+    println("usage: compile <file> [parameters]")
+    println("-out       | Path of the output file")
+    println("-target    | Path of the output file")
+    println("-type      | Type of the output")
+    println("  asm / assembly")
+    println("  ir / llvm")
+    println("  obj / object")
+    println("  bin / binary")
     ExitCodes.ERROR()
 }
 

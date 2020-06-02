@@ -22,7 +22,9 @@ class Parser(
         var token: Token
         do {
             token = lexer.nextToken()
-            if (token.kind != SyntaxType.Bad) tokens.add(token)
+            if (token.kind != SyntaxType.Bad) {
+                tokens.add(token)
+            }
         }
         while (token.kind != SyntaxType.EOF)
 
@@ -43,11 +45,23 @@ class Parser(
         return current
     }
 
-    private inline fun match(type: SyntaxType) = if (current.kind == type) next()
-        else {
+    private fun match(type: SyntaxType): Token = when (current.kind) {
+        type -> next()
+        SyntaxType.LineSeparator -> {
+            skipSeparators()
+            match(type)
+        }
+        else -> {
             diagnostics.reportUnexpectedToken(current.location, current.kind, type)
             Token(syntaxTree, type, current.position).apply { isMissing = true }
         }
+    }
+
+    private inline fun skipSeparators() {
+        while (current.kind == SyntaxType.LineSeparator) {
+            position++
+        }
+    }
 
     fun parseCompilationUnit(): CompilationUnitNode {
         val statement = parseMembers()
@@ -73,19 +87,26 @@ class Parser(
 
     private fun parseFunctionDeclaration(): FunctionDeclarationNode {
         val keyword = match(SyntaxType.Fn)
+        val isError = current.kind == SyntaxType.LineSeparator
         val identifier = match(SyntaxType.Identifier)
+        if (isError) {
+            diagnostics.reportDeclarationAndNameOnSameLine(keyword.location)
+        }
         var params: SeparatedNodeList<ParameterNode>? = null
+        skipSeparators()
         if (current.kind == SyntaxType.OpenRoundedBracket) {
-            next()
+            position++
             params = parseParamList()
             match(SyntaxType.ClosedRoundedBracket)
         }
 
+        skipSeparators()
         var type: TypeClauseNode? = null
         if (current.kind == SyntaxType.Identifier) {
             type = parseTypeClause()
         }
 
+        skipSeparators()
         var lambdaArrow: Token? = null
         val body: StatementNode
         if (current.kind == SyntaxType.LambdaArrow) {
@@ -125,6 +146,7 @@ class Parser(
     }
 
     private fun parseGlobalStatement(): TopLevelNode {
+        skipSeparators()
         if (current.kind == SyntaxType.Fn) {
             return parseFunctionDeclaration()
         }
@@ -139,23 +161,31 @@ class Parser(
     }
 
 
-    private fun parseStatement() = when (current.kind) {
-        SyntaxType.OpenCurlyBracket -> parseBlockStatement()
-        SyntaxType.Val, SyntaxType.Var -> parseVariableDeclaration()
-        SyntaxType.If -> parseIfStatement()
-        SyntaxType.While -> parseWhileStatement()
-        SyntaxType.For -> parseForStatement()
-        SyntaxType.Break -> parseBreakStatement()
-        SyntaxType.Continue -> parseContinueStatement()
-        SyntaxType.Return -> parseReturnStatement()
-        else -> parseExpressionStatement()
+    private fun parseStatement(): StatementNode {
+        skipSeparators()
+        return when (current.kind) {
+            SyntaxType.OpenCurlyBracket -> parseBlockStatement()
+            SyntaxType.Val, SyntaxType.Var -> parseVariableDeclaration()
+            SyntaxType.If -> parseIfStatement()
+            SyntaxType.While -> parseWhileStatement()
+            SyntaxType.For -> parseForStatement()
+            SyntaxType.Break -> parseBreakStatement()
+            SyntaxType.Continue -> parseContinueStatement()
+            SyntaxType.Return -> parseReturnStatement()
+            else -> parseExpressionStatement()
+        }
     }
 
     private fun parseVariableDeclaration(): VariableDeclarationNode {
+        skipSeparators()
         val expected = if (current.kind == SyntaxType.Val) { SyntaxType.Val }
             else { SyntaxType.Var }
         val keyword = match(expected)
+        val isError = current.kind == SyntaxType.LineSeparator
         val identifier = match(SyntaxType.Identifier)
+        if (isError) {
+            diagnostics.reportDeclarationAndNameOnSameLine(identifier.location)
+        }
         val typeClause = parseOptionalValueTypeClause()
         val equals = match(SyntaxType.Equals)
         val initializer = parseExpression()
@@ -187,16 +217,18 @@ class Parser(
             current.kind != SyntaxType.EOF &&
             current.kind != SyntaxType.ClosedCurlyBracket
         ) {
+            skipSeparators()
             val startToken = current
 
             val statement = parseStatement()
             statements.add(statement)
 
+            skipSeparators()
             if (startToken == current) {
+                skipSeparators()
                 next()
             }
         }
-
         val closeBrace = match(SyntaxType.ClosedCurlyBracket)
         return BlockStatementNode(syntaxTree, openBrace, statements, closeBrace)
     }
@@ -320,24 +352,14 @@ class Parser(
     private fun parseStringLiteral() = LiteralExpressionNode(syntaxTree, match(SyntaxType.String))
 
     private fun parseNameOrCallExpression(): ExpressionNode {
-        if (peek(0).kind == SyntaxType.Identifier &&
-            peek(1).kind == SyntaxType.OpenRoundedBracket) {
-            return parseCallExpression()
+        val identifier = match(SyntaxType.Identifier)
+        if (peek(0).kind == SyntaxType.OpenRoundedBracket) {
+            val leftBracket = match(SyntaxType.OpenRoundedBracket)
+            val arguments = parseArguments()
+            val rightBracket = match(SyntaxType.ClosedRoundedBracket)
+            return CallExpressionNode(syntaxTree, identifier, leftBracket, arguments, rightBracket)
         }
-        return parseNameExpression()
-    }
-
-    private fun parseNameExpression(): NameExpressionNode {
-        val identifierToken = match(SyntaxType.Identifier)
-        return NameExpressionNode(syntaxTree, identifierToken)
-    }
-
-    private fun parseCallExpression(): CallExpressionNode {
-        val identifierToken = match(SyntaxType.Identifier)
-        val leftBracket = match(SyntaxType.OpenRoundedBracket)
-        val arguments = parseArguments()
-        val rightBracket = match(SyntaxType.ClosedRoundedBracket)
-        return CallExpressionNode(syntaxTree, identifierToken, leftBracket, arguments, rightBracket)
+        return NameExpressionNode(syntaxTree, identifier)
     }
 
     private fun parseArguments(): SeparatedNodeList<ExpressionNode> {
@@ -351,6 +373,7 @@ class Parser(
             val expression = parseExpression()
             nodesNSeparators.add(expression)
 
+            skipSeparators()
             if (current.kind == SyntaxType.Comma) {
                 val comma = match(SyntaxType.Comma)
                 nodesNSeparators.add(comma)

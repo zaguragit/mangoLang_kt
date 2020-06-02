@@ -5,7 +5,6 @@ import mango.interpreter.text.TextSpan
 import mango.interpreter.symbols.TypeSymbol
 import mango.interpreter.syntax.SyntaxType
 import mango.interpreter.syntax.parser.SyntaxTree
-import mango.interpreter.text.SourceText
 import mango.interpreter.text.TextLocation
 
 class Lexer(
@@ -26,7 +25,7 @@ class Lexer(
 
     fun nextToken(): Token {
 
-        while (char == ' ' || char == '\t' || char == ';' || char == ';' || char == '\n' || char == '\r') { position++ }
+        while (char == ' ' || char == '\t') { position++ }
 
         if (char.isLetter() || char == '_') {
             return readIdentifierOrKeyword()
@@ -111,7 +110,7 @@ class Lexer(
             ',' -> Token(syntaxTree, SyntaxType.Comma, position++, string = ",")
             ':' -> Token(syntaxTree, SyntaxType.Colon, position++, string = ":")
             '"' -> readString()
-            //'\n', '\r' -> Token(SyntaxType.NewLine, position++)
+            '\n', '\r', ';', ';' -> Token(syntaxTree, SyntaxType.LineSeparator, position++)
             '\u0000' -> Token(syntaxTree, SyntaxType.EOF, sourceText.lastIndex)
             else -> {
                 diagnostics.reportBadCharacter(TextLocation(sourceText, TextSpan(position, 1)), char)

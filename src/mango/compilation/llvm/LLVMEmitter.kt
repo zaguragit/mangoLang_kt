@@ -127,12 +127,6 @@ object LLVMEmitter : Emitter {
         return builder.code()
     }
 
-    private var addedPrint = false
-    private var addedPrintln = false
-    private var addedReadln = false
-    private var addedTypeOf = false
-    private var addedRandom = false
-
     private fun emitValue(function: BlockBuilder, expression: BoundExpression): LLVMValue? {
         return when (expression.boundType) {
             BoundNodeType.AssignmentExpression -> {
@@ -177,17 +171,17 @@ object LLVMEmitter : Emitter {
                     }
                 }
             }
+            BoundNodeType.ErrorExpression -> return null
             else -> {
                 val instruction = emitInstruction(function, expression)!!
                 val type = instruction.type
-                if (type != null && type != LLVMType.Void) {
+                if (type == null || type == LLVMType.Void) {
+                    function.addInstruction(instruction)
+                    null
+                } else {
                     val uid = newUID()
                     function.addInstruction(TempValue(uid, instruction))
                     LocalValueRef(uid, type)
-                }
-                else {
-                    function.addInstruction(instruction)
-                    null
                 }
             }
         }
@@ -203,49 +197,20 @@ object LLVMEmitter : Emitter {
                 when {
                     expression.function === BuiltinFunctions.print -> {
                         name = "printf"
-                        if (!addedPrint) {
-                            function.functionBuilder.moduleBuilder.addImportedDeclaration("declare void @printf(i8* nocapture) nounwind")
-                            addedPrint = true
-                        }
+                        function.functionBuilder.moduleBuilder.include("print.ll")
                     }
                     expression.function === BuiltinFunctions.println -> {
                         name = "puts"
-                        if (!addedPrintln) {
-                            function.functionBuilder.moduleBuilder.addImportedDeclaration("declare void @puts(i8* nocapture) nounwind")
-                            addedPrintln = true
-                        }
+                        function.functionBuilder.moduleBuilder.include("println.ll")
                     }
                     expression.function === BuiltinFunctions.readln -> {
-                        if (!addedReadln) {
-                            /*function.functionBuilder.moduleBuilder.addImportedDeclaration("declare i32 @gets(i8* nocapture) nounwind")
-                            function.functionBuilder.moduleBuilder.addImportedDeclaration(
-                            "define i8* @readln() {\n" +
-                            "    %1 = alloca [100 x i8], align 16\n" +
-                            "    %2 = getelementptr inbounds [100 x i8], [100 x i8]* %1, i32 0, i32 0\n" +
-                            "    call i32 @gets(i8* %2)\n" +
-                            "    ret i8* %2\n" +
-                            "}")*/
-                            function.functionBuilder.moduleBuilder.addImportedDeclaration(
-                                javaClass.getResourceAsStream("/mango/compilation/llvm/builtin/readln.ll").reader().readText()
-                            )
-                            addedReadln = true
-                        }
+                        function.functionBuilder.moduleBuilder.include("readln.ll")
                     }
                     expression.function === BuiltinFunctions.typeOf -> {
-                        type = LLVMType.Void
-                        name = "puts"
-                        if (!addedTypeOf) {
-                            function.functionBuilder.moduleBuilder.addImportedDeclaration("declare void @puts(i8* nocapture) nounwind")
-                            addedTypeOf = true
-                        }
+                        function.functionBuilder.moduleBuilder.include("typeOf.ll")
                     }
                     expression.function === BuiltinFunctions.random -> {
-                        type = LLVMType.Void
-                        name = "puts"
-                        if (!addedRandom) {
-                            function.functionBuilder.moduleBuilder.addImportedDeclaration("declare void @puts(i8* nocapture) nounwind")
-                            addedRandom = true
-                        }
+                        function.functionBuilder.moduleBuilder.include("random.ll")
                     }
                 }
                 val call = Call(type, name, *Array(expression.arguments.size) {
@@ -289,7 +254,8 @@ object LLVMEmitter : Emitter {
                     BoundBinaryOperatorType.IsNotIdentityEqual -> {}
                 }
             }
-            else -> throw Exception("internal error: Unknown expression to LLVM")
+            BoundNodeType.ErrorExpression -> return null
+            else -> throw Exception("internal error: Unknown expression to LLVM (${expression.boundType})")
         }
         return null
     }
