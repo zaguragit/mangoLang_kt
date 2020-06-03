@@ -12,6 +12,7 @@ enum class SyntaxType {
     CompilationUnit,
     ElseClause,
     Parameter,
+    Annotation,
 
     // Expressions
     LiteralExpression,

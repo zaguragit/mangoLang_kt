@@ -30,5 +30,12 @@ class BoundUnaryOperator(
             BoundUnaryOperatorType.Negation -> "-"
             BoundUnaryOperatorType.Not -> "!"
         }
+
+        fun getString(type: SyntaxType): String = when (type) {
+            SyntaxType.Plus -> "+"
+            SyntaxType.Minus -> "-"
+            SyntaxType.Not -> "!"
+            else -> type.toString()
+        }
     }
 }

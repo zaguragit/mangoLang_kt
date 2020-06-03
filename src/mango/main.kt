@@ -3,6 +3,7 @@ package mango
 import mango.console.MangoRepl
 import mango.compilation.Compilation
 import mango.compilation.EmissionType
+import mango.console.Console
 import mango.interpreter.syntax.parser.SyntaxTree
 import java.io.File
 import kotlin.system.exitProcess
@@ -21,14 +22,15 @@ fun main(args: Array<String>) {
         }
         "compile" -> {
             if (args.size < 2) {
-                exitAndPrintHelp()
+                exitAndPrintCompileHelp()
             }
             val inFileName = args[1]
             var outName: String? = null
             var target: String? = null
             var emissionType: EmissionType = EmissionType.Binary
+            var doSuggestions = true
             var i = 2
-            while (i < args.lastIndex) {
+            while (i < args.size) {
                 if (args[i].startsWith('-')) {
                     when (args[i]) {
                         "-out" -> {
@@ -47,8 +49,11 @@ fun main(args: Array<String>) {
                                 "ir", "llvm" -> emissionType = EmissionType.IR
                                 "obj", "object" -> emissionType = EmissionType.Object
                                 "bin", "binary" -> emissionType = EmissionType.Binary
+                                else -> exitAndPrintCompileHelp()
                             }
                         }
+                        "-nosuggest" -> doSuggestions = false
+                        else -> exitAndPrintCompileHelp()
                     }
                 }
                 i++
@@ -67,14 +72,29 @@ fun main(args: Array<String>) {
             val moduleName = inFileName.substringAfterLast(File.separatorChar).substringBefore('.')
             val syntaxTree = SyntaxTree.load(inFileName)
             val compilation = Compilation(null, syntaxTree)
-            compilation.emit(moduleName, arrayOf(), outName, target, emissionType)
-            val errors = compilation.evaluate(HashMap()).errors
+            val result = compilation.evaluate(HashMap())
+            val errors = result.errors
+            val nonErrors = result.nonErrors
 
-            if (errors.isNotEmpty()) {
+            if (errors.isEmpty()) {
+                compilation.emit(moduleName, arrayOf(), outName, target, emissionType)
+                if (doSuggestions) {
+                    for (nonError in nonErrors) {
+                        nonError.printAsSuggestion()
+                        println()
+                    }
+                }
+            } else {
                 println()
                 for (error in errors) {
-                    error.print()
+                    error.printAsError()
                     println()
+                }
+                if (doSuggestions) {
+                    for (nonError in nonErrors) {
+                        nonError.printAsSuggestion()
+                        println()
+                    }
                 }
                 ExitCodes.ERROR()
             }
@@ -84,22 +104,30 @@ fun main(args: Array<String>) {
 }
 
 private fun exitAndPrintHelp() {
-    println("compile <file>  | Compile one file")
-    //println("build           | Compile the project")
-    //println("run             | Build and run project")
-    println("repl            | Use the repl")
+    val p = Console.GREEN_BOLD_BRIGHT
+    val d = Console.GRAY
+    val r = Console.RESET
+    println("${Console.BOLD}Usage of mango:${Console.RESET}")
+    println("${p}compile $d<${r}file$d>$r  $d│$r Compile one file")
+    //println("${p}build           $d│$r Compile the project")
+    //println("${p}run             $d│$r Build and run project")
+    println("${p}repl            $d│$r Use the repl")
     ExitCodes.ERROR()
 }
 
 private fun exitAndPrintCompileHelp() {
-    println("usage: compile <file> [parameters]")
-    println("-out       | Path of the output file")
-    println("-target    | Path of the output file")
-    println("-type      | Type of the output")
+    val p = Console.CYAN_BOLD_BRIGHT
+    val d = Console.GRAY
+    val r = Console.RESET
+    println("usage: ${Console.GREEN_BOLD_BRIGHT}compile $d<${r}file$d>$r $d[${r}parameters$d]$r")
+    println("$p-out           $d│$r Path of the output file")
+    println("$p-target        $d│$r Path of the output file")
+    println("$p-type          $d│$r Type of the output")
     println("  asm / assembly")
     println("  ir / llvm")
     println("  obj / object")
     println("  bin / binary")
+    println("$p-nosuggest     $d│$r Disable warnings and style suggestions")
     ExitCodes.ERROR()
 }
 

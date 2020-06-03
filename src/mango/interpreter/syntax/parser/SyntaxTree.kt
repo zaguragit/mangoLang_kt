@@ -5,7 +5,6 @@ import mango.compilation.DiagnosticList
 import mango.console.Console
 import mango.interpreter.text.SourceText
 import java.io.File
-import java.nio.file.Files
 
 class SyntaxTree(
     val sourceText: SourceText

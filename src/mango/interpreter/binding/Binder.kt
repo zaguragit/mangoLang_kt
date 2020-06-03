@@ -58,7 +58,12 @@ class Binder(
             if (elseStatement is BoundBlockStatement &&
                 elseStatement.statements.size == 1 &&
                 elseStatement.statements.elementAt(0) is BoundIfStatement) {
-                diagnostics.styleElseIfStatement(node.elseClause.location)
+                diagnostics.styleElseIfStatement(TextLocation(
+                        node.location.text,
+                        TextSpan.fromBounds(
+                                node.elseClause.keyword.span.start,
+                                node.elseClause.statement.children.elementAt(1)
+                                        .children.elementAt(0).span.end)))
             }
         } else {
             elseStatement = null
@@ -243,7 +248,7 @@ class Binder(
             arguments.add(arg)
         }
 
-        val (function, result) = scope.tryLookupFunction(node.identifier.string!!)
+        val (function, result) = scope.tryLookupFunction(node.identifier.string)
 
         if (!result) {
             diagnostics.reportUndefinedName(node.identifier.location, node.identifier.string)
@@ -388,21 +393,22 @@ class Binder(
             }
 
             val symbols = binder.scope.symbols
-            var mainFn = symbols.find {
+            var entryFn = symbols.find {
                 it.kind == Symbol.Kind.Function &&
                 (it as FunctionSymbol).name == "main" &&
-                it.parameters.isEmpty() &&
-                it.type == TypeSymbol.unit
+                it.type == TypeSymbol.unit &&
+                it.parameters.isEmpty()
             } as FunctionSymbol?
 
             val diagnostics = binder.diagnostics
 
-            if (mainFn == null) {
-                mainFn = FunctionSymbol(
+            if (entryFn == null) {
+                entryFn = FunctionSymbol(
                     "main",
                     arrayOf(),
                     if (isRepl) TypeSymbol.any else TypeSymbol.unit,
-                    null
+                    null,
+                        FunctionSymbol.MetaData()
                 )
                 if (!isRepl) {
                     diagnostics.reportNoMainFn()
@@ -417,7 +423,7 @@ class Binder(
                     diagnostics,
                     symbols,
                     statementBuilder,
-                    mainFn)
+                    entryFn)
         }
 
         private fun createParentScopes(
@@ -460,23 +466,27 @@ class Binder(
         ): BoundProgram {
 
             val parentScope = createParentScopes(globalScope)
-            val functionBodies = HashMap<FunctionSymbol, BoundBlockStatement>()
+            val functionBodies = HashMap<FunctionSymbol, BoundBlockStatement?>()
             val diagnostics = DiagnosticList()
 
             for (symbol in globalScope.symbols) {
                 if (symbol is FunctionSymbol) {
                     val binder = Binder(parentScope, symbol)
-                    if (symbol.declarationNode!!.lambdaArrow == null) {
-                        val body = binder.bindBlockStatement(symbol.declarationNode.body as BlockStatementNode)
-                        val loweredBody = Lowerer.lower(body)
-                        if (symbol.type != TypeSymbol.unit && !ControlFlowGraph.allPathsReturn(loweredBody)) {
-                            diagnostics.reportAllPathsMustReturn(symbol.declarationNode.identifier.location)
+                    when {
+                        symbol.meta.isExtern -> functionBodies[symbol] = null
+                        symbol.declarationNode!!.lambdaArrow == null -> {
+                            val body = binder.bindBlockStatement(symbol.declarationNode.body as BlockStatementNode)
+                            val loweredBody = Lowerer.lower(body)
+                            if (symbol.type != TypeSymbol.unit && !ControlFlowGraph.allPathsReturn(loweredBody)) {
+                                diagnostics.reportAllPathsMustReturn(symbol.declarationNode.identifier.location)
+                            }
+                            functionBodies[symbol] = loweredBody
                         }
-                        functionBodies[symbol] = loweredBody
-                    } else {
-                        val body = binder.bindExpressionStatement(symbol.declarationNode.body as ExpressionStatementNode)
-                        val loweredBody = Lowerer.lower(body.expression)
-                        functionBodies[symbol] = loweredBody
+                        else -> {
+                            val body = binder.bindExpressionStatement(symbol.declarationNode.body as ExpressionStatementNode)
+                            val loweredBody = Lowerer.lower(body.expression)
+                            functionBodies[symbol] = loweredBody
+                        }
                     }
                     diagnostics.append(binder.diagnostics)
                 }
@@ -534,19 +544,28 @@ class Binder(
             }
         }
 
-        val type: TypeSymbol
-
-        if (node.typeClause == null) {
-            if (node.lambdaArrow == null) {
-                type = TypeSymbol.unit
-            } else {
-                type = TypeSymbol.unit
-            }
+        val type: TypeSymbol = if (node.typeClause == null) {
+            TypeSymbol.unit
         } else {
-            type = bindTypeClause(node.typeClause)!!
+            bindTypeClause(node.typeClause)!!
         }
 
-        val function = FunctionSymbol(node.identifier.string!!, params.toTypedArray(), type, node)
+        val meta = FunctionSymbol.MetaData()
+        val function = FunctionSymbol(node.identifier.string!!, params.toTypedArray(), type, node, meta)
+        for (annotation in node.annotations) {
+            when (annotation.identifier.string) {
+                "inline" -> meta.isInline = true
+                "extern" -> meta.isExtern = true
+                "cname" -> {
+                    val expression = bindLiteralExpression(annotation.value as LiteralExpressionNode)
+                    meta.cName = expression.value as String
+                }
+                else -> {
+                    diagnostics.reportInvalidAnnotation(annotation.location)
+                }
+            }
+        }
+
         if (!scope.tryDeclare(function)) {
             diagnostics.reportSymbolAlreadyDeclared(node.identifier.location, function.name)
         }

@@ -1,10 +1,9 @@
 package mango.interpreter.syntax.lex
 
-import mango.interpreter.text.TextSpan
 import mango.interpreter.syntax.SyntaxType
 import mango.interpreter.syntax.parser.Node
 import mango.interpreter.syntax.parser.SyntaxTree
-import mango.interpreter.text.TextLocation
+import mango.interpreter.text.TextSpan
 
 open class Token(
     syntaxTree: SyntaxTree,

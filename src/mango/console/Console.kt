@@ -1,8 +1,5 @@
 package mango.console
 
-import javax.tools.Diagnostic
-import kotlin.math.min
-
 object Console {
 
     const val ESCAPE = '\u001b'
@@ -21,6 +18,9 @@ object Console {
     const val BLUE_BRIGHT = "$ESCAPE[0;94m"
     const val PURPLE_BRIGHT = "$ESCAPE[0;95m"
     const val CYAN_BRIGHT = "$ESCAPE[0;96m"
+
+    const val GRAY = "$ESCAPE[0;90m"
+    const val BOLD = "$ESCAPE[1m"
 
     const val RED_BOLD = "$ESCAPE[1;31m"
     const val GREEN_BOLD = "$ESCAPE[1;32m"

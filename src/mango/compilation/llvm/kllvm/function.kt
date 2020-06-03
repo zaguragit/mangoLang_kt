@@ -33,7 +33,7 @@ class BlockBuilder(
         return tempValue
     }
 
-    fun code() = (if (name != null) "$name:\n    " else "") + instructions.map { it.IRCode }.joinToString(separator = "\n    ")
+    fun code() = (if (name != null) "$name:\n    " else "") + instructions.joinToString(separator = "\n    ") { it.code }
 
     fun stringConstForContent(content: String): StringConst {
         return this.functionBuilder.stringConstForContent(content)
@@ -68,14 +68,15 @@ class FunctionBuilder(
     private val variables = LinkedList<LocalVariable>()
     private var nextTmpIndex = 0
     private val blocks = LinkedList<BlockBuilder>()
+    private val attributes = LinkedList<String>()
 
     init {
         blocks.add(BlockBuilder(this))
     }
 
-    fun tmpIndex(): Int {
-        return nextTmpIndex++
-    }
+    fun tmpIndex() = nextTmpIndex++
+
+    fun addAttribute(string: String) = attributes.add(string)
 
     fun addLocalVariable(type: LLVMType, name: String): LocalVariable {
         val variable = LocalVariable(name, type)
@@ -84,15 +85,15 @@ class FunctionBuilder(
     }
 
     fun code(): String {
-        return """|define ${returnType.code} @${symbol.name}(${paramTypes.map(LLVMType::code).joinToString(separator = ", ")}) {
-                  |    ${variables.map { it.allocCode() }.joinToString("\n    ")}
-                  |    ${blocks.map { it.code() }.joinToString("\n    ")}
+        return """|define ${returnType.code} @${symbol.name}(${paramTypes.map(LLVMType::code).joinToString(separator = ", ")}) ${attributes.joinToString(" ")} {
+                  |    ${variables.joinToString("\n    ") { it.allocCode() }}
+                  |    ${blocks.joinToString("\n    ") { it.code() }}
                   |}
                   |""".trimMargin("|")
     }
 
 
-    fun entryBlock() = blocks.first
+    fun entryBlock(): BlockBuilder = blocks.first
     fun addInstruction(instruction: LLVMInstruction) = entryBlock().addInstruction(instruction)
     fun tempValue(value: LLVMInstruction) = entryBlock().tempValue(value)
 

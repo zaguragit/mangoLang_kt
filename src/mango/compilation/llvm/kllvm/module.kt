@@ -130,12 +130,12 @@ class ModuleBuilder {
     }
 
     fun code(): String {
-        return "${included.map { javaClass.getResourceAsStream("/mango/compilation/llvm/builtin/$it").reader().readText() }.joinToString("\n")}\n" +
-                "${stringConsts.values.map { it.IRDeclaration() }.joinToString("\n")}\n" +
-                "${globalVariables.map { it.IRDeclaration() }.joinToString("\n")}\n" +
+        return "${included.joinToString("\n") { javaClass.getResourceAsStream("/mango/compilation/llvm/builtin/$it").reader().readText() }}\n" +
+                "${stringConsts.values.joinToString("\n") { it.IRDeclaration() }}\n" +
+                "${globalVariables.joinToString("\n") { it.IRDeclaration() }}\n" +
                 "${importedDefinitions.joinToString("\n")}\n" +
-                "${declarations.map { it.IRDeclaration() }.joinToString("\n")}\n" +
-                "${functions.map { it.code() }.joinToString("\n")}\n" +
+                "${declarations.joinToString("\n") { it.IRDeclaration() }}\n" +
+                "${functions.joinToString("\n") { it.code() }}\n" +
                 "${importedDeclarations.joinToString("\n")}\n"
     }
 }

@@ -20,12 +20,19 @@ object LLVMEmitter : Emitter {
         for (f in program.functionBodies) {
             val symbol = f.key
             val body = f.value
+            if (symbol.meta.isExtern) {
+                builder.addImportedDeclaration("declare ${LLVMType.valueOf(symbol.type).code} @${symbol.meta.cName ?: symbol.name}(${symbol.parameters.joinToString(", ") { LLVMType.valueOf(it.type).code }})")
+                continue
+            }
             val function = builder.createFunction(symbol)
+            if (symbol.meta.isInline) {
+                function.addAttribute("alwaysinline")
+            }
             var currentBlock = if (symbol == program.mainFn) {
                 initBlock = function.entryBlock()
                 function.createBlock(null)
             } else function.entryBlock()
-            for (instruction in body.statements) {
+            for (instruction in body!!.statements) {
                 when (instruction.boundType) {
                     BoundNodeType.ExpressionStatement -> {
                         instruction as BoundExpressionStatement
@@ -127,13 +134,13 @@ object LLVMEmitter : Emitter {
         return builder.code()
     }
 
-    private fun emitValue(function: BlockBuilder, expression: BoundExpression): LLVMValue? {
+    private fun emitValue(block: BlockBuilder, expression: BoundExpression): LLVMValue? {
         return when (expression.boundType) {
             BoundNodeType.AssignmentExpression -> {
                 expression as BoundAssignmentExpression
-                val value = emitValue(function, expression.expression)!!
-                val name = emitValue(function, BoundVariableExpression(expression.variable))!!
-                function.addInstruction(Store(value, name))
+                val value = emitValue(block, expression.expression)!!
+                val name = emitValue(block, BoundVariableExpression(expression.variable))!!
+                block.addInstruction(Store(value, name))
                 value
             }
             BoundNodeType.CastExpression -> {
@@ -144,7 +151,7 @@ object LLVMEmitter : Emitter {
                 expression as BoundLiteralExpression
                 when (expression.type) {
                     TypeSymbol.string -> {
-                        StringReference(function.stringConstForContent(expression.value as String))
+                        StringReference(block.stringConstForContent(expression.value as String))
                     }
                     TypeSymbol.int -> IntConst(expression.value as Int, LLVMType.I32)
                     TypeSymbol.bool -> BoolConst(expression.value as Boolean)
@@ -155,15 +162,15 @@ object LLVMEmitter : Emitter {
                 expression as BoundVariableExpression
                 when (expression.variable.kind) {
                     Symbol.Kind.Parameter -> {
-                        val i = function.functionBuilder.symbol.parameters.indexOfFirst {
+                        val i = block.functionBuilder.symbol.parameters.indexOfFirst {
                             it.name == expression.variable.name
                         }
-                        function.functionBuilder.paramReference(i)
+                        block.functionBuilder.paramReference(i)
                     }
                     Symbol.Kind.GlobalVariable -> {
                         val uid = newUID()
                         val tmp = TempValue(uid, Load(GlobalValueRef(expression.variable.name, LLVMType.valueOf(expression.variable.type))))
-                        function.addInstruction(tmp)
+                        block.addInstruction(tmp)
                         tmp.reference()
                     }
                     else -> {
@@ -173,14 +180,14 @@ object LLVMEmitter : Emitter {
             }
             BoundNodeType.ErrorExpression -> return null
             else -> {
-                val instruction = emitInstruction(function, expression)!!
+                val instruction = emitInstruction(block, expression)!!
                 val type = instruction.type
                 if (type == null || type == LLVMType.Void) {
-                    function.addInstruction(instruction)
+                    block.addInstruction(instruction)
                     null
                 } else {
                     val uid = newUID()
-                    function.addInstruction(TempValue(uid, instruction))
+                    block.addInstruction(TempValue(uid, instruction))
                     LocalValueRef(uid, type)
                 }
             }
@@ -188,35 +195,27 @@ object LLVMEmitter : Emitter {
     }
 
 
-    private fun emitInstruction(function: BlockBuilder, expression: BoundExpression): LLVMInstruction? {
+    private fun emitInstruction(block: BlockBuilder, expression: BoundExpression): LLVMInstruction? {
         when (expression.boundType) {
             BoundNodeType.CallExpression -> {
                 expression as BoundCallExpression
-                var type = LLVMType.valueOf(expression.type)
-                var name = expression.function.name
+                val type = LLVMType.valueOf(expression.type)
+                val function = expression.function
+                val name = function.meta.cName ?: function.name
                 when {
-                    expression.function === BuiltinFunctions.print -> {
-                        name = "printf"
-                        function.functionBuilder.moduleBuilder.include("print.ll")
-                    }
-                    expression.function === BuiltinFunctions.println -> {
-                        name = "puts"
-                        function.functionBuilder.moduleBuilder.include("println.ll")
-                    }
                     expression.function === BuiltinFunctions.readln -> {
-                        function.functionBuilder.moduleBuilder.include("readln.ll")
+                        block.functionBuilder.moduleBuilder.include("readln.ll")
                     }
                     expression.function === BuiltinFunctions.typeOf -> {
-                        function.functionBuilder.moduleBuilder.include("typeOf.ll")
+                        block.functionBuilder.moduleBuilder.include("typeOf.ll")
                     }
                     expression.function === BuiltinFunctions.random -> {
-                        function.functionBuilder.moduleBuilder.include("random.ll")
+                        block.functionBuilder.moduleBuilder.include("random.ll")
                     }
                 }
-                val call = Call(type, name, *Array(expression.arguments.size) {
-                    emitValue(function, expression.arguments.elementAt(it))!!
+                return Call(type, name, *Array(expression.arguments.size) {
+                    emitValue(block, expression.arguments.elementAt(it))!!
                 })
-                return call
             }
             BoundNodeType.CastExpression -> {
                 expression as BoundCastExpression
@@ -232,8 +231,8 @@ object LLVMEmitter : Emitter {
             }
             BoundNodeType.BinaryExpression -> {
                 expression as BoundBinaryExpression
-                val left = emitValue(function, expression.left)!!
-                val right = emitValue(function, expression.right)!!
+                val left = emitValue(block, expression.left)!!
+                val right = emitValue(block, expression.right)!!
                 when (expression.operator.type) {
                     BoundBinaryOperatorType.Add -> {}
                     BoundBinaryOperatorType.Sub -> {}

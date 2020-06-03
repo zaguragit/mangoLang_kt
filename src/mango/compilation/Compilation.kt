@@ -28,14 +28,15 @@ class Compilation(
 
     fun evaluate(variables: HashMap<VariableSymbol, Any?>): EvaluationResult {
 
-        val errors = syntaxTree.diagnostics
-        if (errors.hasErrors()) {
-            errors.sortBySpan()
-            return EvaluationResult(null, errors.errorList, errors.nonErrorList)
+        val diagnostics = syntaxTree.diagnostics
+        if (diagnostics.hasErrors()) {
+            diagnostics.sortBySpan()
+            return EvaluationResult(null, diagnostics.errorList, diagnostics.nonErrorList)
         }
+        diagnostics.append(globalScope.diagnostics)
         if (globalScope.diagnostics.hasErrors()) {
-            errors.apply { append(globalScope.diagnostics) }.sortBySpan()
-            return EvaluationResult(null, errors.errorList, errors.nonErrorList)
+            diagnostics.sortBySpan()
+            return EvaluationResult(null, diagnostics.errorList, diagnostics.nonErrorList)
         }
 
         val program = getProgram()
@@ -49,19 +50,19 @@ class Compilation(
             //val cfg = ControlFlowGraph.create(cfgStatement)
             //cfg.print()
         }*/
-
+        diagnostics.append(program.diagnostics)
         if (program.diagnostics.hasErrors()) {
             val d = program.diagnostics.apply { sortBySpan() }
             return EvaluationResult(null, d.errorList, d.nonErrorList)
         }
 
         val evaluator = Evaluator(program, variables)
-        errors.sortBySpan()
+        diagnostics.sortBySpan()
         if (isRepl) {
             val value = evaluator.evaluate()
-            return EvaluationResult(value, errors.errorList, errors.nonErrorList)
+            return EvaluationResult(value, diagnostics.errorList, diagnostics.nonErrorList)
         }
-        return EvaluationResult(null, errors.errorList, errors.nonErrorList)
+        return EvaluationResult(null, diagnostics.errorList, diagnostics.nonErrorList)
     }
 
     fun printTree() {

@@ -5,6 +5,8 @@ import mango.interpreter.syntax.SyntaxType
 import mango.interpreter.syntax.lex.Lexer
 import mango.interpreter.syntax.lex.Token
 import mango.interpreter.text.SourceText
+import mango.interpreter.text.TextLocation
+import mango.interpreter.text.TextSpan
 import mango.isRepl
 
 class Parser(
@@ -85,7 +87,39 @@ class Parser(
         return members
     }
 
-    private fun parseFunctionDeclaration(): FunctionDeclarationNode {
+    private fun parseAnnotations(): Collection<AnnotationNode> {
+        val list = ArrayList<AnnotationNode>()
+        var lastAnnotationLine = 0
+        while (current.kind == SyntaxType.OpenSquareBracket) {
+            val left = next()
+            if (left.location.startLineI > lastAnnotationLine + 1 && list.isNotEmpty()) {
+                val last = list.last()
+                diagnostics.reportInvalidAnnotation(last.location)
+            }
+            skipSeparators()
+            if (current.kind == SyntaxType.Identifier) {
+                val identifier = next()
+                var colon: Token? = null
+                var expression: ExpressionNode? = null
+                if (current.kind == SyntaxType.Colon) {
+                    colon = next()
+                    expression = parseStringLiteral()
+                }
+                skipSeparators()
+                val right = match(SyntaxType.ClosedSquareBracket)
+                if (current.kind == SyntaxType.LineSeparator) {
+                    position++
+                }
+                lastAnnotationLine = right.location.endLineI
+                list.add(AnnotationNode(syntaxTree, left, identifier, colon, expression, right))
+            } else {
+                diagnostics.reportInvalidAnnotation(TextLocation(left.location.text, TextSpan(left.span.start, 2)))
+            }
+        }
+        return list
+    }
+
+    private fun parseFunctionDeclaration(annotations: Collection<AnnotationNode>): FunctionDeclarationNode {
         val keyword = match(SyntaxType.Fn)
         val isError = current.kind == SyntaxType.LineSeparator
         val identifier = match(SyntaxType.Identifier)
@@ -106,16 +140,20 @@ class Parser(
             type = parseTypeClause()
         }
 
-        skipSeparators()
-        var lambdaArrow: Token? = null
-        val body: StatementNode
-        if (current.kind == SyntaxType.LambdaArrow) {
-            lambdaArrow = next()
-            body = parseExpressionStatement()
+        return if (annotations.find { it.identifier.string == "extern" } == null) {
+            skipSeparators()
+            var lambdaArrow: Token? = null
+            val body: StatementNode
+            if (current.kind == SyntaxType.LambdaArrow) {
+                lambdaArrow = next()
+                body = parseExpressionStatement()
+            } else {
+                body = parseBlockStatement()
+            }
+            FunctionDeclarationNode(syntaxTree, keyword, identifier, type, params, lambdaArrow, body, annotations)
         } else {
-            body = parseBlockStatement()
+            FunctionDeclarationNode(syntaxTree, keyword, identifier, type, params, null, null, annotations)
         }
-        return FunctionDeclarationNode(syntaxTree, keyword, identifier, type, params, lambdaArrow, body)
     }
 
     private fun parseParamList(): SeparatedNodeList<ParameterNode> {
@@ -147,8 +185,9 @@ class Parser(
 
     private fun parseGlobalStatement(): TopLevelNode {
         skipSeparators()
+        val annotations = parseAnnotations()
         if (current.kind == SyntaxType.Fn) {
-            return parseFunctionDeclaration()
+            return parseFunctionDeclaration(annotations)
         }
         val statement = parseStatement()
         if (statement !is TopLevelNode) {
@@ -242,6 +281,7 @@ class Parser(
     }
 
     private fun parseElseClause(): ElseClauseNode? {
+        skipSeparators()
         if (current.kind != SyntaxType.Else) {
             return null
         }
@@ -306,12 +346,12 @@ class Parser(
         var left: ExpressionNode
 
         val unaryOperatorPrecedence = current.kind.getUnaryOperatorPrecedence()
-        if (unaryOperatorPrecedence != 0 && unaryOperatorPrecedence >= parentPrecedence) {
+        left = if (unaryOperatorPrecedence != 0 && unaryOperatorPrecedence >= parentPrecedence) {
             val operatorToken = next()
             val operand = parseBinaryExpression(unaryOperatorPrecedence)
-            left = UnaryExpressionNode(syntaxTree, operatorToken, operand)
+            UnaryExpressionNode(syntaxTree, operatorToken, operand)
         } else {
-            left = parsePrimaryExpression()
+            parsePrimaryExpression()
         }
 
         while (true) {

@@ -10,7 +10,8 @@ class FunctionDeclarationNode(
     val typeClause: TypeClauseNode?,
     val params: SeparatedNodeList<ParameterNode>?,
     val lambdaArrow: Token?,
-    val body: StatementNode
+    val body: StatementNode?,
+    val annotations: Collection<AnnotationNode>
 ) : TopLevelNode(syntaxTree) {
 
     override val kind = SyntaxType.FunctionDeclaration
@@ -22,6 +23,6 @@ class FunctionDeclarationNode(
         }
         lambdaArrow?.let { add(it) }
         typeClause?.let { add(it) }
-        add(body)
+        body?.let { add(it) }
     }
 }

@@ -1,6 +1,8 @@
 package mango.compilation
 
 import mango.console.Console
+import mango.interpreter.binding.BoundBinaryOperator
+import mango.interpreter.binding.BoundUnaryOperator
 import mango.interpreter.symbols.TypeSymbol
 import mango.interpreter.syntax.SyntaxType
 import mango.interpreter.text.TextLocation
@@ -18,7 +20,7 @@ class Diagnostic(
         Style
     }
 
-    fun print() {
+    fun printAsError() {
         if (location == null) {
             print(Console.RED + "error: $message" + Console.RESET)
             return
@@ -31,9 +33,36 @@ class Diagnostic(
         val spanStart = span.start
         val spanEnd = span.end
 
-        print(Console.RED + "${location.text.fileName} [" + Console.BLUE_BRIGHT + "${location.startLineI}, $charI" + Console.RED + "]: $message" + Console.RESET + " {\n\t")
+        print(Console.RED + "${location.text.fileName}[" + Console.BLUE_BRIGHT + "${location.startLineI}, $charI" + Console.RED + "]: $message" + Console.RESET + " {\n\t")
         print(location.text.getTextRange(startLine.start, spanStart))
         print(Console.RED_BOLD_BRIGHT)
+        print(location.text.getTextRange(spanStart, spanEnd).replace("\n", "\n\t"))
+        print(Console.RESET)
+        print(location.text.getTextRange(spanEnd, endLine.end))
+        println()
+        println('}')
+    }
+
+    fun printAsSuggestion() {
+        val span = location!!.span
+        val charI = location.startCharI
+        val startLine = location.text.lines[location.startLineI]
+        val endLine = location.text.lines[location.endLineI]
+
+        val spanStart = span.start
+        val spanEnd = span.end
+
+        val color = when (diagnosticType) {
+            Type.Warning -> Console.YELLOW_BRIGHT
+            else -> Console.CYAN
+        }
+
+        print(color + "${location.text.fileName}[" + Console.BLUE_BRIGHT + "${location.startLineI}, $charI" + color + "]: $message" + Console.RESET + " {\n\t")
+        print(location.text.getTextRange(startLine.start, spanStart))
+        when (diagnosticType) {
+            Type.Warning -> print(Console.YELLOW_BOLD_BRIGHT)
+            else -> print(Console.CYAN_BOLD_BRIGHT)
+        }
         print(location.text.getTextRange(spanStart, spanEnd).replace("\n", "\n\t"))
         print(Console.RESET)
         print(location.text.getTextRange(spanEnd, endLine.end))
@@ -71,6 +100,11 @@ class DiagnosticList {
     }
     fun hasErrors() = errors.any()
 
+    fun clear() {
+        errors.clear()
+        nonErrors.clear()
+    }
+
     private inline fun style(
         location: TextLocation,
         message: String
@@ -78,7 +112,7 @@ class DiagnosticList {
 
     fun styleElseIfStatement(
         location: TextLocation
-    ) = style(location, "You can write \"else if <condition> {}\" instead of \"else { if <condition> {} }\"")
+    ) = style(location, "Unnecessary brackets (Use \"else if {}\" instead of \"else { if {} }\")")
 
     private inline fun warn(
         location: TextLocation,
@@ -112,14 +146,14 @@ class DiagnosticList {
         location: TextLocation,
         operatorType: SyntaxType,
         operandType: TypeSymbol
-    ) = report(location, "$operatorType isn't compatible with $operandType")
+    ) = report(location, "\"${BoundUnaryOperator.getString(operatorType)}\" isn't compatible with $operandType")
 
     fun reportBinaryOperator(
         location: TextLocation,
         leftType: TypeSymbol,
         operatorType: SyntaxType,
         rightType: TypeSymbol
-    ) = report(location, "$operatorType isn't compatible with $leftType and $rightType")
+    ) = report(location, "\"${BoundBinaryOperator.getString(operatorType)}\" isn't compatible with $leftType and $rightType")
 
     fun reportUndefinedName(
         location: TextLocation,
@@ -218,4 +252,8 @@ class DiagnosticList {
     fun reportDeclarationAndNameOnSameLine(
         location: TextLocation
     ) = report(location, "The declaration keyword and name should be on the same line")
+
+    fun reportInvalidAnnotation(
+        location: TextLocation
+    ) = report(location, "Invalid annotation")
 }

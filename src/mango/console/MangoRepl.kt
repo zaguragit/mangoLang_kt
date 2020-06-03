@@ -3,7 +3,6 @@ package mango.console
 import mango.interpreter.symbols.VariableSymbol
 import mango.compilation.Compilation
 import mango.interpreter.syntax.parser.SyntaxTree
-import kotlin.math.min
 
 class MangoRepl : Repl() {
 
@@ -49,6 +48,10 @@ class MangoRepl : Repl() {
         val nonErrors = result.nonErrors
 
         if (errors.isEmpty()) {
+            for (nonError in nonErrors) {
+                nonError.printAsSuggestion()
+            }
+            compilation.globalScope.diagnostics.clear()
             previous = compilation
             if (result.value != null) {
                 print(Console.YELLOW_BOLD_BRIGHT)
@@ -58,35 +61,13 @@ class MangoRepl : Repl() {
         } else {
             println()
             for (error in errors) {
-                error.print()
+                error.printAsError()
                 println()
             }
+            for (nonError in nonErrors) {
+                nonError.printAsSuggestion()
+            }
         }
-/*
-        for (suggestion in nonErrors) {
-            val lineNumber = syntaxTree.sourceText.getLineI(suggestion.span.start)
-            val charNumber = suggestion.span.start - syntaxTree.sourceText.lines[lineNumber].start
-            val locationStr = Console.BLUE_BRIGHT + "$lineNumber, $charNumber"
-            val prefix = when (suggestion.diagnosticType) {
-                Diagnostic.Type.Warning -> Console.YELLOW_BRIGHT + "warning(" + locationStr + Console.YELLOW_BRIGHT + "): "
-                else -> Console.CYAN + "style(" + locationStr + Console.CYAN + "): "
-            }
-            val textLine = syntaxTree.sourceText.lines[lineNumber]
-            val spanStart = suggestion.span.start
-            val spanEnd = min(suggestion.span.end, textLine.end)
-            print(prefix + suggestion + Console.RESET + " {\n\t")
-            print(text.substring(textLine.start, spanStart))
-            when (suggestion.diagnosticType) {
-                Diagnostic.Type.Warning -> print(Console.YELLOW_BOLD_BRIGHT)
-                else -> print(Console.CYAN_BOLD_BRIGHT)
-            }
-            print(text.substring(spanStart, spanEnd))
-            print(Console.RESET)
-            print(text.substring(spanEnd, textLine.end))
-            println()
-            println('}')
-            println()
-        }*/
     }
 
     override fun evaluateMetaCommand(cmd: String) = when (cmd) {

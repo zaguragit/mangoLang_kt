@@ -1,29 +1,20 @@
 
+[extern]
+[cname: "printf"]
+fn print (text String)
 
 [extern]
-[private]
-fn getchar Int
+[cname: "puts"]
+fn println (text String)
 
-[extern]
-[private]
-fn printf (text String)
-
-[extern]
-[private]
-fn puts (text String)
 
 
 
 [extern]
 fn readln String
 
+[extern]
+fn typeOf (object Any)
 
-
-[inline]
-fn read Int -> getchar()
-
-[inline]
-fn print (text String) -> printf(text)
-
-[inline]
-fn println (text String) -> puts(text)
+[extern]
+fn random (max Int)

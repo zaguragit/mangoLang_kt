@@ -23,35 +23,35 @@ class BoundBinaryOperator(
 
             BoundBinaryOperator(SyntaxType.LessThan, BoundBinaryOperatorType.LessThan, TypeSymbol.int, resultType = TypeSymbol.bool),
             BoundBinaryOperator(SyntaxType.MoreThan, BoundBinaryOperatorType.MoreThan, TypeSymbol.int, resultType = TypeSymbol.bool),
-            BoundBinaryOperator(SyntaxType.IsEqual, BoundBinaryOperatorType.IsEqual, TypeSymbol.int, resultType = TypeSymbol.bool),
             BoundBinaryOperator(SyntaxType.IsEqualOrLess, BoundBinaryOperatorType.IsEqualOrLess, TypeSymbol.int, resultType = TypeSymbol.bool),
             BoundBinaryOperator(SyntaxType.IsEqualOrMore, BoundBinaryOperatorType.IsEqualOrMore, TypeSymbol.int, resultType = TypeSymbol.bool),
-            BoundBinaryOperator(SyntaxType.IsNotEqual, BoundBinaryOperatorType.IsNotEqual, TypeSymbol.int, resultType = TypeSymbol.bool),
 
-            BoundBinaryOperator(SyntaxType.IsIdentityEqual, BoundBinaryOperatorType.IsIdentityEqual, TypeSymbol.int, resultType = TypeSymbol.bool),
-            BoundBinaryOperator(SyntaxType.IsNotIdentityEqual, BoundBinaryOperatorType.IsNotIdentityEqual, TypeSymbol.int, resultType = TypeSymbol.bool),
+            BoundBinaryOperator(SyntaxType.IsEqual, BoundBinaryOperatorType.IsEqual, TypeSymbol.any, resultType = TypeSymbol.bool),
+            BoundBinaryOperator(SyntaxType.IsNotEqual, BoundBinaryOperatorType.IsNotEqual, TypeSymbol.any, resultType = TypeSymbol.bool),
+
+            BoundBinaryOperator(SyntaxType.IsIdentityEqual, BoundBinaryOperatorType.IsIdentityEqual, TypeSymbol.any, resultType = TypeSymbol.bool),
+            BoundBinaryOperator(SyntaxType.IsNotIdentityEqual, BoundBinaryOperatorType.IsNotIdentityEqual, TypeSymbol.any, resultType = TypeSymbol.bool),
 
             BoundBinaryOperator(SyntaxType.BitAnd, BoundBinaryOperatorType.BitAnd, TypeSymbol.bool),
             BoundBinaryOperator(SyntaxType.BitOr, BoundBinaryOperatorType.BitOr, TypeSymbol.bool),
             BoundBinaryOperator(SyntaxType.LogicAnd, BoundBinaryOperatorType.LogicAnd, TypeSymbol.bool),
             BoundBinaryOperator(SyntaxType.LogicOr, BoundBinaryOperatorType.LogicOr, TypeSymbol.bool),
-            BoundBinaryOperator(SyntaxType.IsEqual, BoundBinaryOperatorType.IsEqual, TypeSymbol.bool),
-            BoundBinaryOperator(SyntaxType.IsNotEqual, BoundBinaryOperatorType.IsNotEqual, TypeSymbol.bool),
 
-            BoundBinaryOperator(SyntaxType.IsIdentityEqual, BoundBinaryOperatorType.IsIdentityEqual, TypeSymbol.bool, resultType = TypeSymbol.bool),
-            BoundBinaryOperator(SyntaxType.IsNotIdentityEqual, BoundBinaryOperatorType.IsNotIdentityEqual, TypeSymbol.bool, resultType = TypeSymbol.bool),
-
-            BoundBinaryOperator(SyntaxType.Plus, BoundBinaryOperatorType.Add, TypeSymbol.string),
-            BoundBinaryOperator(SyntaxType.IsEqual, BoundBinaryOperatorType.IsEqual, TypeSymbol.string, resultType = TypeSymbol.bool),
-            BoundBinaryOperator(SyntaxType.IsNotEqual, BoundBinaryOperatorType.IsNotEqual, TypeSymbol.string, resultType = TypeSymbol.bool),
-            BoundBinaryOperator(SyntaxType.IsIdentityEqual, BoundBinaryOperatorType.IsIdentityEqual, TypeSymbol.string, resultType = TypeSymbol.bool),
-            BoundBinaryOperator(SyntaxType.IsNotIdentityEqual, BoundBinaryOperatorType.IsNotIdentityEqual, TypeSymbol.string, resultType = TypeSymbol.bool))
+            BoundBinaryOperator(SyntaxType.Plus, BoundBinaryOperatorType.Add, TypeSymbol.string))
 
         fun bind(syntaxType: SyntaxType, leftType: TypeSymbol, rightType: TypeSymbol): BoundBinaryOperator? {
+            if (syntaxType == SyntaxType.IsEqual ||
+                syntaxType == SyntaxType.IsNotEqual ||
+                syntaxType == SyntaxType.IsIdentityEqual ||
+                syntaxType == SyntaxType.IsNotIdentityEqual) {
+                if (!leftType.isOfType(rightType) && !rightType.isOfType(leftType)) {
+                    return null
+                }
+            }
             for (op in operators) {
                 if (op.syntaxType == syntaxType &&
-                    op.leftType == leftType &&
-                    op.rightType == rightType) {
+                    leftType.isOfType(op.leftType) &&
+                    rightType.isOfType(op.rightType)) {
                     return op
                 }
             }
@@ -77,6 +77,27 @@ class BoundBinaryOperator(
             BoundBinaryOperatorType.IsNotEqual -> "!="
             BoundBinaryOperatorType.IsIdentityEqual -> "==="
             BoundBinaryOperatorType.IsNotIdentityEqual -> "!=="
+        }
+
+        fun getString(type: SyntaxType): String = when (type) {
+            SyntaxType.Plus -> "+"
+            SyntaxType.Minus -> "-"
+            SyntaxType.Mul -> "*"
+            SyntaxType.Div -> "/"
+            SyntaxType.Rem -> "%"
+            SyntaxType.BitAnd -> "&"
+            SyntaxType.BitOr -> "|"
+            SyntaxType.LogicAnd -> "&&"
+            SyntaxType.LogicOr -> "||"
+            SyntaxType.LessThan -> "<"
+            SyntaxType.MoreThan -> ">"
+            SyntaxType.IsEqual -> "=="
+            SyntaxType.IsEqualOrMore -> ">="
+            SyntaxType.IsEqualOrLess -> "<="
+            SyntaxType.IsNotEqual -> "!="
+            SyntaxType.IsIdentityEqual -> "==="
+            SyntaxType.IsNotIdentityEqual -> "!=="
+            else -> type.toString()
         }
     }
 }

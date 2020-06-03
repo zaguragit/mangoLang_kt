@@ -12,7 +12,7 @@ class Evaluator(
     val globals: HashMap<VariableSymbol, Any?>
 ) {
 
-    val functionBodies = HashMap<FunctionSymbol, BoundBlockStatement>()
+    val functionBodies = HashMap<FunctionSymbol, BoundBlockStatement?>()
 
     val stack = Stack<HashMap<VariableSymbol, Any?>>().apply { push(HashMap()) }
 
@@ -105,14 +105,13 @@ class Evaluator(
         return value
     }
 
-    private fun evaluateVariableExpression(node: BoundVariableExpression): Any? {
+    private fun evaluateVariableExpression(node: BoundVariableExpression) =
         if (node.variable.kind == Symbol.Kind.GlobalVariable) {
-            return globals[node.variable]
+            globals[node.variable]
         } else {
             val locals = stack.peek()
-            return locals[node.variable]
+            locals[node.variable]
         }
-    }
 
     private fun evaluateUnaryExpression(node: BoundUnaryExpression): Any? {
         val operand = evaluateExpression(node.operand)

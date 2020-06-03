@@ -7,6 +7,6 @@ class BoundProgram(
     val previous: BoundProgram?,
     val diagnostics: DiagnosticList,
     val mainFn: FunctionSymbol,
-    val functionBodies: HashMap<FunctionSymbol, BoundBlockStatement>,
+    val functionBodies: HashMap<FunctionSymbol, BoundBlockStatement?>,
     val statement: BoundBlockStatement
 )
