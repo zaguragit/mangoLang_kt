@@ -14,7 +14,7 @@ Right now it doesn't always compile to LLVM, but it will get better support soon
 - Decimal numbers aren't supported yet
 
 As of now the language is in such an early stage that it doesn't even support comments, so the syntax is subject to change.
-```kotlin
+```rust
 val valueName = expression
 var variableName = expression
 val something = "some text and stuff, here are some character escapes \n\t\r\\\""
