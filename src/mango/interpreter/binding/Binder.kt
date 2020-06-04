@@ -83,7 +83,7 @@ class Binder(
 
         val previous = scope
         scope = BoundScope(scope)
-        val variable = bindVariable(node.identifier, TypeSymbol.int, true)
+        val variable = bindVariable(node.identifier, TypeSymbol.int, true, null)
         val (body, breakLabel, continueLabel) = bindLoopBody(node.body)
         scope = previous
 
@@ -176,7 +176,7 @@ class Binder(
         if (!initializer.type.isOfType(actualType) && initializer.type != TypeSymbol.error) {
             diagnostics.reportWrongType(node.initializer.location, initializer, type!!)
         }
-        val variable = bindVariable(node.identifier, actualType, isReadOnly)
+        val variable = bindVariable(node.identifier, actualType, isReadOnly, initializer.constantValue)
         return BoundVariableDeclaration(variable, initializer)
     }
 
@@ -191,11 +191,11 @@ class Binder(
         return type
     }
 
-    private fun bindVariable(identifier: Token, type: TypeSymbol, isReadOnly: Boolean): VariableSymbol {
+    private fun bindVariable(identifier: Token, type: TypeSymbol, isReadOnly: Boolean, constant: BoundConstant?): VariableSymbol {
         val name = identifier.string ?: "?"
         val variable =
-            if (function == null) { GlobalVariableSymbol(name, type, isReadOnly) }
-            else { LocalVariableSymbol(name, type, isReadOnly) }
+            if (function == null) { GlobalVariableSymbol(name, type, isReadOnly, constant) }
+            else { LocalVariableSymbol(name, type, isReadOnly, constant) }
         if (!identifier.isMissing && !scope.tryDeclare(variable)) {
             diagnostics.reportSymbolAlreadyDeclared(identifier.location, name)
         }

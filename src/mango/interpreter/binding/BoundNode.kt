@@ -28,6 +28,16 @@ abstract class BoundNode {
     }
 
     fun printStructure(indent: Int = 0, sameLine: Boolean = false) {
+        fun printPunctuation(char: Char) {
+            print(Console.GRAY)
+            print(char)
+            print(Console.RESET)
+        }
+        fun printPunctuation(string: String) {
+            print(Console.GRAY)
+            print(string)
+            print(Console.RESET)
+        }
         if (!sameLine && boundType != BoundNodeType.LabelStatement) {
             for (t in 0 until indent) {
                 print("    ")
@@ -53,14 +63,18 @@ abstract class BoundNode {
                 this as BoundLiteralExpression
                 if (type == TypeSymbol.string) {
                     val value = value as String
+                    print(Console.GREEN)
                     print('"' + value
                             .replace("\\", "\\\\")
                             .replace("\"", "\\\"")
                             .replace("\t", "\\t")
                             .replace("\n", "\\n")
                             .replace("\r", "\\r") + '"')
+                    print(Console.RESET)
                 } else {
+                    print(Console.BLUE_BRIGHT)
                     print(value.toString())
+                    print(Console.RESET)
                 }
             }
             BoundNodeType.VariableExpression -> {
@@ -70,48 +84,50 @@ abstract class BoundNode {
             BoundNodeType.AssignmentExpression -> {
                 this as BoundAssignmentExpression
                 print(variable.name)
-                print(" = ")
+                printPunctuation(" = ")
                 expression.printStructure(indent + 1, true)
             }
             BoundNodeType.CallExpression -> {
                 this as BoundCallExpression
                 print(function.name)
-                print('(')
+                printPunctuation('(')
                 var isFirst = true
                 for (arg in arguments) {
                     if (isFirst) {
                         isFirst = false
                     }
                     else {
-                        print(", ")
+                        printPunctuation(", ")
                     }
                     arg.printStructure(indent + 1, true)
                 }
-                print(')')
+                printPunctuation(')')
             }
             BoundNodeType.ErrorExpression -> {
                 this as BoundErrorExpression
                 print(Console.RED_BOLD_BRIGHT)
                 print("ERROR")
-                println(Console.RESET)
+                print(Console.RESET)
             }
             BoundNodeType.CastExpression -> {
                 this as BoundCastExpression
                 print(type.name)
-                print('(')
+                printPunctuation('(')
                 expression.printStructure(indent + 1, true)
-                print(')')
+                printPunctuation(')')
             }
             BoundNodeType.BlockStatement -> {
                 this as BoundBlockStatement
-                println('{')
+                printPunctuation('{')
+                println()
                 for (statement in statements) {
                     statement.printStructure(indent + 1)
                 }
                 for (t in 0 until indent) {
                     print("    ")
                 }
-                println('}')
+                printPunctuation('}')
+                println()
             }
             BoundNodeType.ExpressionStatement -> {
                 this as BoundExpressionStatement
@@ -122,7 +138,7 @@ abstract class BoundNode {
                 this as BoundVariableDeclaration
                 print(if (variable.isReadOnly) "val " else "var ")
                 print(variable.name)
-                print(" = ")
+                printPunctuation(" = ")
                 initializer.printStructure(indent + 1, true)
                 println()
             }
@@ -145,12 +161,12 @@ abstract class BoundNode {
             }
             BoundNodeType.GotoStatement -> {
                 this as BoundGotoStatement
-                print("jmp ")
+                print("br ")
                 println(label)
             }
             BoundNodeType.ConditionalGotoStatement -> {
                 this as BoundConditionalGotoStatement
-                print("jmp ")
+                print("br ")
                 print(label)
                 print(if (jumpIfTrue) " if " else " unless ")
                 condition.printStructure(indent + 1, true)
@@ -162,15 +178,14 @@ abstract class BoundNode {
                 expression?.printStructure(indent + 1, true)
                 println()
             }
+            BoundNodeType.NopStatement -> {
+                print(Console.GRAY)
+                print("nop")
+                println(Console.RESET)
+            }
         }
     }
 }
-
-abstract class BoundExpression : BoundNode() {
-    abstract val type: TypeSymbol
-}
-
-abstract class BoundStatement : BoundNode()
 
 enum class BoundNodeType {
     UnaryExpression,
@@ -191,5 +206,6 @@ enum class BoundNodeType {
     LabelStatement,
     GotoStatement,
     ConditionalGotoStatement,
-    ReturnStatement
+    ReturnStatement,
+    NopStatement
 }

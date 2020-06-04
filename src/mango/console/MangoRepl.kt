@@ -2,6 +2,9 @@ package mango.console
 
 import mango.interpreter.symbols.VariableSymbol
 import mango.compilation.Compilation
+import mango.interpreter.binding.Binder
+import mango.interpreter.symbols.FunctionSymbol
+import mango.interpreter.symbols.Symbol
 import mango.interpreter.syntax.parser.SyntaxTree
 
 class MangoRepl : Repl() {
@@ -70,26 +73,52 @@ class MangoRepl : Repl() {
         }
     }
 
-    override fun evaluateMetaCommand(cmd: String) = when (cmd) {
-        "#showTree" -> {
-            if (showParseTree) {
-                showParseTree = false
-                println("Parse tree is now invisible")
-            } else {
-                showParseTree = true
-                println("Parse tree is now visible")
+    override fun evaluateMetaCommand(cmd: String) {
+        val args = cmd.split(' ')
+        when (args[0]) {
+            "#show" -> {
+                when (args[1]) {
+                    "tree" -> if (showParseTree) {
+                            showParseTree = false
+                            println("Parse tree is now invisible")
+                        } else {
+                            showParseTree = true
+                            println("Parse tree is now visible")
+                        }
+                    "program" -> if (showBindTree) {
+                            showBindTree = false
+                            println("Bind tree is now invisible")
+                        } else {
+                            showBindTree = true
+                            println("Bind tree is now visible")
+                        }
+                }
             }
-        }
-        "#showProgram" -> {
-            if (showBindTree) {
-                showBindTree = false
-                println("Bind tree is now invisible")
-            } else {
-                showBindTree = true
-                println("Bind tree is now visible")
+            "#dump" -> {
+                if (args.size == 1) {
+
+                } else {
+                    for (i in 1 until args.size) {
+                        var compilation = previous
+                        while (compilation != null) {
+                            val result = compilation.globalScope.symbols.find { it.name == args[i] }
+                            if (result == null) {
+                                compilation = compilation.previous
+                                continue
+                            }
+                            if (result is FunctionSymbol) {
+                                compilation.printTree(result)
+                            } else {
+                                result.printStructure()
+                                println()
+                            }
+                            break
+                        }
+                    }
+                }
             }
+            "#reset" -> previous = null
+            else -> super.evaluateMetaCommand(cmd)
         }
-        "#reset" -> previous = null
-        else -> super.evaluateMetaCommand(cmd)
     }
 }

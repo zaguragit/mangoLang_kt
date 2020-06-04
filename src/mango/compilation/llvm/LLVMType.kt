@@ -1,4 +1,4 @@
-package mango.compilation.llvm.kllvm
+package mango.compilation.llvm
 
 import mango.interpreter.symbols.TypeSymbol
 

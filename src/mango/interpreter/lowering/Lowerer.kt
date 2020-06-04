@@ -7,36 +7,66 @@ import mango.interpreter.syntax.SyntaxType
 import java.util.*
 import kotlin.collections.ArrayList
 
-class Lowerer private constructor() : BoundTreeRewriter() {
+class Lowerer : BoundTreeRewriter() {
+
+    companion object {
+        fun lower(expression: BoundExpression): BoundBlockStatement {
+            val lowerer = Lowerer()
+            val block = if (expression.type == TypeSymbol.unit) {
+                BoundBlockStatement(listOf(BoundExpressionStatement(expression)))
+            } else {
+                BoundBlockStatement(listOf(BoundReturnStatement(expression)))
+            }
+            val result = lowerer.rewriteStatement(block)
+            return removeDeadCode(flatten(result))
+        }
+
+        fun lower(block: BoundBlockStatement): BoundBlockStatement {
+            val lowerer = Lowerer()
+            val result = lowerer.rewriteBlockStatement(block)
+            return removeDeadCode(flatten(result))
+        }
+
+        private fun flatten(statement: BoundStatement): BoundBlockStatement {
+            val arrayList = ArrayList<BoundStatement>()
+            val stack = Stack<BoundStatement>()
+            stack.push(statement)
+            while (stack.count() > 0) {
+                val current = stack.pop()
+                if (current is BoundBlockStatement) {
+                    for (s in current.statements.reversed()) {
+                        stack.push(s)
+                    }
+                } else {
+                    arrayList.add(current)
+                }
+            }
+            return BoundBlockStatement(arrayList)
+        }
+
+        private fun removeDeadCode(block: BoundBlockStatement): BoundBlockStatement {
+            val controlFlow = ControlFlowGraph.create(block)
+            val reachableStatements = controlFlow.blocks.flatMap { it.statements }.toHashSet()
+            val builder = block.statements.toMutableList()
+            for (i in builder.lastIndex downTo 0) {
+                if (!reachableStatements.contains(builder[i])) {
+                    builder.removeAt(i)
+                }
+            }
+            return BoundBlockStatement(builder)
+        }
+    }
 
     private var labelCount = 0
-
     private fun generateLabel(): BoundLabel {
         val name = "L${(++labelCount).toString(16)}"
         return BoundLabel(name)
     }
 
-    private fun flatten(statement: BoundStatement): BoundBlockStatement {
-        val arrayList = ArrayList<BoundStatement>()
-        val stack = Stack<BoundStatement>()
-        stack.push(statement)
-        while (stack.count() > 0) {
-            val current = stack.pop()
-            if (current is BoundBlockStatement) {
-                for (s in current.statements.reversed()) {
-                    stack.push(s)
-                }
-            } else {
-                arrayList.add(current)
-            }
-        }
-        return BoundBlockStatement(arrayList)
-    }
-
     override fun rewriteForStatement(node: BoundForStatement): BoundStatement {
         val variableDeclaration = BoundVariableDeclaration(node.variable, node.lowerBound)
         val variableExpression = BoundVariableExpression(node.variable)
-        val upperBoundSymbol = LocalVariableSymbol("0upperBound", TypeSymbol.int, true)
+        val upperBoundSymbol = LocalVariableSymbol("0upperBound", TypeSymbol.int, true, node.upperBound.constantValue)
         val upperBoundDeclaration = BoundVariableDeclaration(upperBoundSymbol, node.upperBound)
         val condition = BoundBinaryExpression(
             variableExpression,
@@ -101,26 +131,20 @@ class Lowerer private constructor() : BoundTreeRewriter() {
                 continueLabelStatement,
                 rewriteBlockStatement(node.body),
                 checkLabelStatement,
-                gotoTrue,
+                rewriteConditionalGotoStatement(gotoTrue),
                 breakLabelStatement
         ))
     }
 
-    companion object {
-        fun lower(expression: BoundExpression): BoundBlockStatement {
-            val lowerer = Lowerer()
-            val block = if (expression.type == TypeSymbol.unit) {
-                BoundBlockStatement(listOf(BoundExpressionStatement(expression)))
+    override fun rewriteConditionalGotoStatement(node: BoundConditionalGotoStatement): BoundStatement {
+        val constant = node.condition.constantValue
+        if (constant != null) {
+            return if (constant.value as Boolean == node.jumpIfTrue) {
+                BoundGotoStatement(node.label)
             } else {
-                BoundBlockStatement(listOf(BoundReturnStatement(expression)))
+                BoundNopStatement()
             }
-            val result = lowerer.rewriteStatement(block)
-            return lowerer.flatten(result)
         }
-        fun lower(block: BoundBlockStatement): BoundBlockStatement {
-            val lowerer = Lowerer()
-            val result = lowerer.rewriteBlockStatement(block)
-            return lowerer.flatten(result)
-        }
+        return super.rewriteConditionalGotoStatement(node)
     }
 }

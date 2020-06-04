@@ -1,4 +1,4 @@
-package mango.compilation.llvm.kllvm
+package mango.compilation.llvm
 
 import mango.interpreter.symbols.FunctionSymbol
 import java.util.*
@@ -16,8 +16,8 @@ class LocalVariable(val name: String, val type: LLVMType) : Variable {
 }
 
 class BlockBuilder(
-    val functionBuilder: FunctionBuilder,
-    val name: String? = null
+        val functionBuilder: FunctionBuilder,
+        val name: String? = null
 ) {
     private val instructions = LinkedList<LLVMInstruction>()
 
@@ -60,9 +60,9 @@ class BlockBuilder(
 }
 
 class FunctionBuilder(
-    val moduleBuilder: ModuleBuilder,
-    val paramTypes: List<LLVMType>,
-    val symbol: FunctionSymbol
+        val moduleBuilder: ModuleBuilder,
+        val paramTypes: List<LLVMType>,
+        val symbol: FunctionSymbol
 ) {
     val returnType = LLVMType.valueOf(symbol.type)
     private val variables = LinkedList<LocalVariable>()

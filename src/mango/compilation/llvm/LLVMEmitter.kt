@@ -1,7 +1,6 @@
 package mango.compilation.llvm
 
 import mango.compilation.Emitter
-import mango.compilation.llvm.kllvm.*
 import mango.interpreter.binding.*
 import mango.interpreter.symbols.BuiltinFunctions
 import mango.interpreter.symbols.Symbol
@@ -17,6 +16,7 @@ object LLVMEmitter : Emitter {
     ): String {
         val builder = ModuleBuilder()
         lateinit var initBlock: BlockBuilder
+        //builder.include("lib.m")
         for (f in program.functionBodies) {
             val symbol = f.key
             val body = f.value
@@ -78,6 +78,7 @@ object LLVMEmitter : Emitter {
                             currentBlock.addInstruction(Return(emitValue(currentBlock, instruction.expression)!!))
                         }
                     }
+                    BoundNodeType.NopStatement -> {}
                     else -> throw Exception("internal error: Unknown statement to LLVM")
                 }
             }

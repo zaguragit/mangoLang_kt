@@ -3,7 +3,7 @@ package mango.interpreter.binding
 import mango.interpreter.symbols.TypeSymbol
 
 class BoundLiteralExpression(
-    val value: Any?
+    value: Any?
 ) : BoundExpression() {
 
     override val type: TypeSymbol = when (value) {
@@ -17,4 +17,7 @@ class BoundLiteralExpression(
     override fun toString() =
         if (type == TypeSymbol.string) { '"' + value.toString() + '"' }
         else { value.toString() }
+
+    override val constantValue = BoundConstant(value)
+    val value get() = constantValue.value
 }

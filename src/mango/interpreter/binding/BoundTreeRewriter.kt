@@ -14,6 +14,7 @@ open class BoundTreeRewriter {
             BoundNodeType.GotoStatement -> rewriteGotoStatement(node as BoundGotoStatement)
             BoundNodeType.ConditionalGotoStatement -> rewriteConditionalGotoStatement(node as BoundConditionalGotoStatement)
             BoundNodeType.ReturnStatement -> rewriteReturnStatement(node as BoundReturnStatement)
+            BoundNodeType.NopStatement -> rewriteNopStatement(node as BoundNopStatement)
             else -> throw Exception("Unexpected node: ${node.boundType}")
         }
     }
@@ -87,10 +88,10 @@ open class BoundTreeRewriter {
         return BoundForStatement(node.variable, lowerBound, upperBound, body, node.breakLabel, node.continueLabel)
     }
 
-    protected fun rewriteLabelStatement(node: BoundLabelStatement) = node
-    protected fun rewriteGotoStatement(node: BoundGotoStatement) = node
+    protected open fun rewriteLabelStatement(node: BoundLabelStatement) = node
+    protected open fun rewriteGotoStatement(node: BoundGotoStatement) = node
 
-    protected fun rewriteConditionalGotoStatement(node: BoundConditionalGotoStatement): BoundStatement {
+    protected open fun rewriteConditionalGotoStatement(node: BoundConditionalGotoStatement): BoundStatement {
         val condition = rewriteExpression(node.condition)
         if (condition == node.condition) {
             return node
@@ -98,8 +99,12 @@ open class BoundTreeRewriter {
         return BoundConditionalGotoStatement(node.label, condition, node.jumpIfTrue)
     }
 
-    protected fun rewriteReturnStatement(node: BoundReturnStatement): BoundStatement {
+    protected open fun rewriteReturnStatement(node: BoundReturnStatement): BoundStatement {
         return BoundReturnStatement(node.expression?.let { rewriteExpression(it) })
+    }
+
+    private fun rewriteNopStatement(node: BoundNopStatement): BoundStatement {
+        return node
     }
 
     protected fun rewriteExpression(node: BoundExpression): BoundExpression {

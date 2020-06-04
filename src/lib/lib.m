@@ -7,9 +7,6 @@ fn print (text String)
 [cname: "puts"]
 fn println (text String)
 
-
-
-
 [extern]
 fn readln String
 

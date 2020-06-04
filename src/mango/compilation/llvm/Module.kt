@@ -1,4 +1,4 @@
-package mango.compilation.llvm.kllvm
+package mango.compilation.llvm
 
 import mango.interpreter.symbols.FunctionSymbol
 import java.util.*
@@ -130,7 +130,7 @@ class ModuleBuilder {
     }
 
     fun code(): String {
-        return "${included.joinToString("\n") { javaClass.getResourceAsStream("/mango/compilation/llvm/builtin/$it").reader().readText() }}\n" +
+        return "${included.joinToString("\n") { javaClass.getResourceAsStream("/lib/$it").reader().readText() }}\n" +
                 "${stringConsts.values.joinToString("\n") { it.IRDeclaration() }}\n" +
                 "${globalVariables.joinToString("\n") { it.IRDeclaration() }}\n" +
                 "${importedDefinitions.joinToString("\n")}\n" +

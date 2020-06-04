@@ -65,6 +65,7 @@ class ControlFlowGraph private constructor(
                     BoundNodeType.VariableDeclaration -> {
                         statements.add(statement)
                     }
+                    BoundNodeType.NopStatement -> {}
                     else -> throw Exception("Unexpected statement ${statement.boundType}")
                 }
             }
@@ -140,6 +141,7 @@ class ControlFlowGraph private constructor(
                                 connect(block, next)
                             }
                         }
+                        BoundNodeType.NopStatement -> {}
                         else -> throw Exception("Unexpected statement ${statement.boundType}")
                     }
                 }

@@ -74,6 +74,7 @@ class Evaluator(
                     s as BoundReturnStatement
                     return s.expression?.let { evaluateExpression(it) }
                 }
+                BoundNodeType.NopStatement -> { i++ }
                 else -> throw Exception("Unexpected node: ${s.boundType.name}")
             }
         }

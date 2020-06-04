@@ -24,12 +24,12 @@ abstract class Node(val syntaxTree: SyntaxTree) {
     }
 
     fun printTree(indent: String = "", isLast: Boolean = true) {
-        print(Console.CYAN)
+        print(Console.GRAY)
         print(indent)
         print(if (isLast) "└──" else "├──")
 
         if (this is Token) {
-            print(Console.PURPLE)
+            print(Console.CYAN_BRIGHT)
             print(kind.name)
             if (value != null) {
                 print(" ")

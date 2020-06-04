@@ -24,15 +24,17 @@ abstract class Symbol {
 
     private fun printGlobalVariable() {
         this as GlobalVariableSymbol
-        print(if (isReadOnly) "val " else "var ")
+        print(if (isReadOnly) { if (constant == null) "val " else "const " } else "var ")
         print(name)
+        print(' ')
         type.printStructure()
     }
 
     private fun printLocalVariable() {
         this as LocalVariableSymbol
-        print(if (isReadOnly) "val " else "var ")
+        print(if (isReadOnly) { if (constant == null) "val " else "const " } else "var ")
         print(name)
+        print(' ')
         type.printStructure()
     }
 

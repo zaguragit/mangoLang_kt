@@ -6,7 +6,8 @@ class ParameterSymbol(
 ) : LocalVariableSymbol(
     name,
     type,
-    true
+    true,
+    null
 ) {
     override val kind = Kind.Parameter
 }
