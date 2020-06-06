@@ -7,6 +7,7 @@ import mango.interpreter.syntax.lex.Token
 import mango.interpreter.text.SourceText
 import mango.interpreter.text.TextLocation
 import mango.interpreter.text.TextSpan
+import mango.isProject
 import mango.isRepl
 
 class Parser(
@@ -24,7 +25,9 @@ class Parser(
         var token: Token
         do {
             token = lexer.nextToken()
-            if (token.kind != SyntaxType.Bad) {
+            if (token.kind != SyntaxType.Bad &&
+                token.kind != SyntaxType.SingleLineComment &&
+                token.kind != SyntaxType.MultilineComment) {
                 tokens.add(token)
             }
         }
@@ -65,9 +68,10 @@ class Parser(
         }
     }
 
-    fun parseCompilationUnit(): CompilationUnitNode {
+    fun parseCompilationUnit(): NamespaceNode {
         val statement = parseMembers()
-        return CompilationUnitNode(syntaxTree, statement, match(SyntaxType.EOF))
+        match(SyntaxType.EOF)
+        return NamespaceNode(syntaxTree, statement)
     }
 
     private fun parseMembers(): Collection<TopLevelNode> {
@@ -188,6 +192,8 @@ class Parser(
         val annotations = parseAnnotations()
         if (current.kind == SyntaxType.Fn) {
             return parseFunctionDeclaration(annotations)
+        } else if (current.kind == SyntaxType.Use) {
+            return parseUseStatement()
         }
         val statement = parseStatement()
         if (statement !is TopLevelNode) {
@@ -199,6 +205,49 @@ class Parser(
         return statement
     }
 
+    private fun parseUseStatement(): TopLevelNode {
+
+        val keyword = match(SyntaxType.Use)
+
+        if (!isProject) {
+            diagnostics.reportUseOnlyInProjectMode(keyword.location)
+            return UseStatementNode(syntaxTree, keyword, "", false)
+        }
+
+        val directories = ArrayList<Token>()
+        var isInclude = false
+
+        while (current.kind != SyntaxType.LineSeparator) {
+            if (current.kind == SyntaxType.Identifier) {
+                directories.add(current)
+                position++
+                if (current.kind == SyntaxType.Dot) {
+                    position++
+                } else if (current.kind == SyntaxType.LineSeparator) {
+                    position++
+                    break
+                } else if (current.kind == SyntaxType.Star) {
+                    position++
+                    isInclude = true
+                    break
+                } else {
+                    diagnostics.reportIncorrectUseStatement(next().location)
+                    break
+                }
+            } else {
+                diagnostics.reportIncorrectUseStatement(current.location)
+                break
+            }
+        }
+
+        return UseStatementNode(
+            syntaxTree,
+            keyword,
+            directories.joinToString(separator = ".") {
+                it.string!!
+            },
+            isInclude)
+    }
 
     private fun parseStatement(): StatementNode {
         skipSeparators()

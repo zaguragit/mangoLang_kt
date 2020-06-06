@@ -140,7 +140,7 @@ class Lowerer : BoundTreeRewriter() {
         val constant = node.condition.constantValue
         if (constant != null) {
             return if (constant.value as Boolean == node.jumpIfTrue) {
-                BoundGotoStatement(node.label)
+                rewriteGotoStatement(BoundGotoStatement(node.label))
             } else {
                 BoundNopStatement()
             }

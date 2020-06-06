@@ -15,7 +15,7 @@ class BoundBinaryOperator(
         private val operators = arrayOf(
             BoundBinaryOperator(SyntaxType.Plus, BoundBinaryOperatorType.Add, TypeSymbol.int),
             BoundBinaryOperator(SyntaxType.Minus, BoundBinaryOperatorType.Sub, TypeSymbol.int),
-            BoundBinaryOperator(SyntaxType.Mul, BoundBinaryOperatorType.Mul, TypeSymbol.int),
+            BoundBinaryOperator(SyntaxType.Star, BoundBinaryOperatorType.Mul, TypeSymbol.int),
             BoundBinaryOperator(SyntaxType.Div, BoundBinaryOperatorType.Div, TypeSymbol.int),
             BoundBinaryOperator(SyntaxType.Rem, BoundBinaryOperatorType.Rem, TypeSymbol.int),
             BoundBinaryOperator(SyntaxType.BitAnd, BoundBinaryOperatorType.BitAnd, TypeSymbol.int),
@@ -82,7 +82,7 @@ class BoundBinaryOperator(
         fun getString(type: SyntaxType): String = when (type) {
             SyntaxType.Plus -> "+"
             SyntaxType.Minus -> "-"
-            SyntaxType.Mul -> "*"
+            SyntaxType.Star -> "*"
             SyntaxType.Div -> "/"
             SyntaxType.Rem -> "%"
             SyntaxType.BitAnd -> "&"

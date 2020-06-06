@@ -16,7 +16,7 @@ class Lexer(
 
     val diagnostics = DiagnosticList()
 
-    private inline val char get() = peek(0)
+    private inline val current get() = peek(0)
     private inline fun lookAhead() = peek(1)
     private inline fun peek(offset: Int): Char {
         val i = position + offset
@@ -25,13 +25,13 @@ class Lexer(
 
     fun nextToken(): Token {
 
-        while (char == ' ' || char == '\t') { position++ }
+        while (current == ' ' || current == '\t') { position++ }
 
-        if (char.isLetter() || char == '_') {
+        if (current.isLetter() || current == '_') {
             return readIdentifierOrKeyword()
         }
 
-        return when (char) {
+        return when (current) {
             '0', '1', '2', '3', '4', '5', '6', '7', '8', '9' -> readNumberToken()
             '+' -> Token(syntaxTree, SyntaxType.Plus, position++, string = "+")
             '-' -> {
@@ -41,8 +41,12 @@ class Lexer(
                     Token(syntaxTree, SyntaxType.Minus, position++, string = "-")
                 }
             }
-            '*' -> Token(syntaxTree, SyntaxType.Mul, position++, string = "*")
-            '/' -> Token(syntaxTree, SyntaxType.Div, position++, string = "/")
+            '*' -> Token(syntaxTree, SyntaxType.Star, position++, string = "*")
+            '/' -> when (lookAhead()) {
+                '/' -> readSingleLineComment()
+                '*' -> readMultilineComment()
+                else -> Token(syntaxTree, SyntaxType.Div, position++, string = "/")
+            }
             '%' -> Token(syntaxTree, SyntaxType.Rem, position++, string = "%")
             '&' -> {
                 if (lookAhead() == '&') {
@@ -113,7 +117,7 @@ class Lexer(
             '\n', '\r', ';', ';' -> Token(syntaxTree, SyntaxType.LineSeparator, position++)
             '\u0000' -> Token(syntaxTree, SyntaxType.EOF, sourceText.lastIndex)
             else -> {
-                diagnostics.reportBadCharacter(TextLocation(sourceText, TextSpan(position, 1)), char)
+                diagnostics.reportBadCharacter(TextLocation(sourceText, TextSpan(position, 1)), current)
                 Token(syntaxTree, SyntaxType.Bad, position++)
             }
         }
@@ -121,7 +125,7 @@ class Lexer(
 
     fun readNumberToken(): Token {
         val start = position++
-        while (char.isDigit()) {
+        while (current.isDigit()) {
             position++
         }
         val text = sourceText.getText(start, position - start)
@@ -135,7 +139,7 @@ class Lexer(
 
     fun readIdentifierOrKeyword(): Token {
         val start = position++
-        while (char.isLetterOrDigit() || char == '_') {
+        while (current.isLetterOrDigit() || current == '_') {
             position++
         }
         val text = sourceText.getText(start, position - start)
@@ -146,8 +150,8 @@ class Lexer(
     fun readString(): Token {
         val start = ++position
         val builder = StringBuilder()
-        loop@ while (char != '"') {
-            when (char) {
+        loop@ while (current != '"') {
+            when (current) {
                 '\\' -> {
                     when (lookAhead()) {
                         '"' -> {
@@ -173,7 +177,7 @@ class Lexer(
                         else -> {
                             diagnostics.reportInvalidCharacterEscape(
                                     TextLocation(sourceText, TextSpan(position, 1)),
-                                    char.toString())
+                                    current.toString())
                             position++
                         }
                     }
@@ -183,7 +187,7 @@ class Lexer(
                     break@loop
                 }
                 else -> {
-                    builder.append(char)
+                    builder.append(current)
                     position++
                 }
             }
@@ -191,5 +195,41 @@ class Lexer(
         val text = builder.toString()
         position++
         return Token(syntaxTree, SyntaxType.String, start - 1, text, '"' + text + '"')
+    }
+
+    private fun readSingleLineComment(): Token {
+        val start = position
+        position += 2
+        var reading = true
+        val builder = StringBuilder()
+        while (reading) {
+            when (current) {
+                '\u0000', '\n', '\r' -> reading = false
+                else -> {
+                    builder.append(current)
+                    position++
+                }
+            }
+        }
+        val text = builder.toString()
+        return Token(syntaxTree, SyntaxType.SingleLineComment, start, text, "//$text")
+    }
+
+    private fun readMultilineComment(): Token {
+        val start = position
+        position += 2
+        var reading = true
+        val builder = StringBuilder()
+        while (reading) {
+            when (current) {
+                '\u0000', '\n', '\r' -> reading = false
+                else -> {
+                    builder.append(current)
+                    position++
+                }
+            }
+        }
+        val text = builder.toString()
+        return Token(syntaxTree, SyntaxType.SingleLineComment, start, text, "/*$text*/")
     }
 }

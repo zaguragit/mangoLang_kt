@@ -6,9 +6,10 @@ class FunctionSymbol(
     override val name: String,
     val parameters: Array<ParameterSymbol>,
     val type: TypeSymbol,
+    override val path: String,
     val declarationNode: FunctionDeclarationNode?,
     val meta: MetaData
-) : Symbol() {
+) : Symbol(), VisibleSymbol {
 
     override val kind = Kind.Function
 

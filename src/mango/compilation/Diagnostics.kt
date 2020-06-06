@@ -105,6 +105,9 @@ class DiagnosticList {
         nonErrors.clear()
     }
 
+
+    /// STYLE //////////////////////////////////////////////////////////////////////////////////////////////////////////
+
     private inline fun style(
         location: TextLocation,
         message: String
@@ -114,10 +117,16 @@ class DiagnosticList {
         location: TextLocation
     ) = style(location, "Unnecessary brackets (Use \"else if {}\" instead of \"else { if {} }\")")
 
+
+    /// WARNINGS ///////////////////////////////////////////////////////////////////////////////////////////////////////
+
     private inline fun warn(
         location: TextLocation,
         message: String
     ) = nonErrors.add(Diagnostic(location, message, Diagnostic.Type.Warning))
+
+
+    /// ERRORS /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     private inline fun report(
         location: TextLocation,
@@ -256,4 +265,29 @@ class DiagnosticList {
     fun reportInvalidAnnotation(
         location: TextLocation
     ) = report(location, "Invalid annotation")
+
+    fun reportIncorrectUseStatement(
+        location: TextLocation
+    ) = report(location, "Incorrect use statement")
+
+    fun reportUseOnlyInProjectMode(
+        location: TextLocation
+    ) = report(location, "Use statements are only supported in project mode")
+
+
+    /// CONF ///////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    fun reportConfError(
+        location: TextLocation,
+        lineI: Int
+    ) = report(location, "Conf syntax error on line $lineI")
+
+    fun reportConfTokenNotColon(
+        location: TextLocation
+    ) = report(location, "Token should be ':'")
+
+    fun reportConfMissingMandatoryField(
+        name: String
+    ) = errors.add(Diagnostic(null, "Conf file is missing the \"$name\" field", Diagnostic.Type.Error))
+
 }

@@ -1,5 +1,6 @@
 package mango
 
+import conf.ConfParser
 import mango.console.MangoRepl
 import mango.compilation.Compilation
 import mango.compilation.EmissionType
@@ -9,6 +10,7 @@ import java.io.File
 import kotlin.system.exitProcess
 
 var isRepl = false; private set
+var isProject = false; private set
 
 fun main(args: Array<String>) {
     if (args.isEmpty()) {
@@ -59,48 +61,101 @@ fun main(args: Array<String>) {
                 i++
             }
             if (outName == null) {
-                outName = when (emissionType) {
-                    EmissionType.Binary -> inFileName.substringBeforeLast('.')
-                    EmissionType.Object -> inFileName.substringBeforeLast('.') + ".o"
-                    EmissionType.Assembly -> inFileName.substringBeforeLast('.') + ".asm"
-                    EmissionType.IR -> inFileName.substringBeforeLast('.') + ".ll"
-                }
+                outName = deduceOutputName(inFileName, emissionType)
             }
             if (target == null) {
                 target = System.getProperty("os.name").substringBefore(' ').toLowerCase()
             }
             val moduleName = inFileName.substringAfterLast(File.separatorChar).substringBefore('.')
             val syntaxTree = SyntaxTree.load(inFileName)
-            val compilation = Compilation(null, syntaxTree)
-            val result = compilation.evaluate(HashMap())
-            val errors = result.errors
-            val nonErrors = result.nonErrors
+            compile(moduleName, outName, target, emissionType, doSuggestions, listOf(syntaxTree))
+        }
+        "build" -> {
+            if (args.size != 1) {
+                exitAndPrintHelp()
+            }
+            val conf = File("project.conf")
+            if (!conf.exists() || !conf.isFile) {
+                println("This isn't a project directory (no project.conf file found)")
+                ExitCodes.ERROR()
+            }
+            val src = File("src")
+            if (!src.exists() || !src.isDirectory) {
+                println("This isn't a project directory (no src directory found)")
+                ExitCodes.ERROR()
+            }
 
-            if (errors.isEmpty()) {
-                compilation.emit(moduleName, arrayOf(), outName, target, emissionType)
-                if (doSuggestions) {
-                    for (nonError in nonErrors) {
-                        nonError.printAsSuggestion()
-                        println()
-                    }
-                }
-            } else {
-                println()
-                for (error in errors) {
+            val (confData, errors) = ConfParser.parse(conf)
+
+            val moduleName = confData["name"]
+            if (moduleName == null) {
+                errors.reportConfMissingMandatoryField("name")
+            }
+
+            if (errors.errorList.isNotEmpty()) {
+                for (error in errors.errorList) {
                     error.printAsError()
                     println()
                 }
-                if (doSuggestions) {
-                    for (nonError in nonErrors) {
-                        nonError.printAsSuggestion()
-                        println()
-                    }
-                }
                 ExitCodes.ERROR()
             }
+
+            val outName = "out/" + (confData["outFileName"] ?: "binary")
+
+            isProject = true
+            val target = System.getProperty("os.name").substringBefore(' ').toLowerCase()
+
+            val syntaxTrees = SyntaxTree.loadProject()
+            compile(moduleName!!, outName, target, EmissionType.Binary, true, syntaxTrees)
         }
         else -> exitAndPrintHelp()
     }
+}
+
+private fun compile(
+    moduleName: String,
+    outName: String,
+    target: String,
+    emissionType: EmissionType,
+    doSuggestions: Boolean,
+    syntaxTrees: Collection<SyntaxTree>
+) {
+    val compilation = Compilation(null, syntaxTrees)
+    val result = compilation.evaluate(HashMap())
+    val errors = result.errors
+    val nonErrors = result.nonErrors
+    if (errors.isEmpty()) {
+        compilation.emit(moduleName, arrayOf(), outName, target, emissionType)
+        if (doSuggestions) {
+            for (nonError in nonErrors) {
+                nonError.printAsSuggestion()
+                println()
+            }
+        }
+    } else {
+        println()
+        for (error in errors) {
+            error.printAsError()
+            println()
+        }
+        if (doSuggestions) {
+            for (nonError in nonErrors) {
+                nonError.printAsSuggestion()
+                println()
+            }
+        }
+        ExitCodes.ERROR()
+    }
+}
+
+private fun deduceOutputName(
+    inFileName: String,
+    emissionType: EmissionType
+) = when (emissionType) {
+    EmissionType.Binary -> inFileName.substringBeforeLast('.')
+    EmissionType.Object -> inFileName.substringBeforeLast('.') + ".o"
+    EmissionType.Assembly -> inFileName.substringBeforeLast('.') + ".asm"
+    EmissionType.IR -> inFileName.substringBeforeLast('.') + ".ll"
 }
 
 private fun exitAndPrintHelp() {
@@ -109,7 +164,7 @@ private fun exitAndPrintHelp() {
     val r = Console.RESET
     println("${Console.BOLD}Usage of mango:${Console.RESET}")
     println("${p}compile $d<${r}file$d>$r  $d│$r Compile one file")
-    //println("${p}build           $d│$r Compile the project")
+    println("${p}build           $d│$r Compile the project")
     //println("${p}run             $d│$r Build and run project")
     println("${p}repl            $d│$r Use the repl")
     ExitCodes.ERROR()

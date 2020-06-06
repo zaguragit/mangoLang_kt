@@ -27,6 +27,8 @@ object Translator {
         "as" -> SyntaxType.As
         "is" -> SyntaxType.Is
 
+        "use" -> SyntaxType.Use
+
         else -> SyntaxType.Identifier
     }
 }

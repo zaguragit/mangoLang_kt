@@ -15,11 +15,11 @@ import java.io.File
 
 class Compilation(
     val previous: Compilation?,
-    val syntaxTree: SyntaxTree
+    val syntaxTrees: Collection<SyntaxTree>
 ) {
 
     val globalScope: BoundGlobalScope by lazy {
-        Binder.bindGlobalScope(syntaxTree.root, previous?.globalScope)
+        Binder.bindGlobalScope(previous?.globalScope, syntaxTrees)
     }
 
     inline val mainFn get() = globalScope.mainFn
@@ -28,7 +28,7 @@ class Compilation(
 
     fun evaluate(variables: HashMap<VariableSymbol, Any?>): EvaluationResult {
 
-        val diagnostics = syntaxTree.diagnostics
+        val diagnostics = globalScope.diagnostics
         if (diagnostics.hasErrors()) {
             diagnostics.sortBySpan()
             return EvaluationResult(null, diagnostics.errorList, diagnostics.nonErrorList)
@@ -90,6 +90,7 @@ class Compilation(
             writeText(code)
         }
         if (emissionType == EmissionType.Assembly) {
+            File(outputPath).parentFile.mkdirs()
             ProcessBuilder("llc", llFile.absolutePath, "-o=$outputPath", "-filetype=asm", "-relocation-model=pic").run {
                 inheritIO()
                 start().waitFor()
@@ -97,6 +98,7 @@ class Compilation(
             return
         }
         if (emissionType == EmissionType.Object) {
+            File(outputPath).parentFile.mkdirs()
             ProcessBuilder("llc", llFile.absolutePath, "-o=$outputPath", "-filetype=obj", "-relocation-model=pic").run {
                 inheritIO()
                 start().waitFor()
@@ -110,6 +112,7 @@ class Compilation(
                 start().waitFor()
             }
         }
+        File(outputPath).parentFile.mkdirs()
         ProcessBuilder("gcc", objFile.absolutePath, "-o", outputPath).run {
             inheritIO()
             start().waitFor()

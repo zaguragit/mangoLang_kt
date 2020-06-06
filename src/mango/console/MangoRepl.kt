@@ -36,7 +36,7 @@ class MangoRepl : Repl() {
 
         val syntaxTree = SyntaxTree.parse(text)
 
-        val compilation = Compilation(previous, syntaxTree)
+        val compilation = Compilation(previous, listOf(syntaxTree))
 
         if (showParseTree) {
             syntaxTree.root.printTree()

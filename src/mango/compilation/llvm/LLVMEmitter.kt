@@ -16,7 +16,7 @@ object LLVMEmitter : Emitter {
     ): String {
         val builder = ModuleBuilder()
         lateinit var initBlock: BlockBuilder
-        //builder.include("lib.m")
+        //builder.include("io.m")
         for (f in program.functionBodies) {
             val symbol = f.key
             val body = f.value
@@ -206,12 +206,6 @@ object LLVMEmitter : Emitter {
                 when {
                     expression.function === BuiltinFunctions.readln -> {
                         block.functionBuilder.moduleBuilder.include("readln.ll")
-                    }
-                    expression.function === BuiltinFunctions.typeOf -> {
-                        block.functionBuilder.moduleBuilder.include("typeOf.ll")
-                    }
-                    expression.function === BuiltinFunctions.random -> {
-                        block.functionBuilder.moduleBuilder.include("random.ll")
                     }
                 }
                 return Call(type, name, *Array(expression.arguments.size) {

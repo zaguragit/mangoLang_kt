@@ -193,13 +193,21 @@ class Binder(
 
     private fun bindVariable(identifier: Token, type: TypeSymbol, isReadOnly: Boolean, constant: BoundConstant?): VariableSymbol {
         val name = identifier.string ?: "?"
-        val variable =
-            if (function == null) { GlobalVariableSymbol(name, type, isReadOnly, constant) }
-            else { LocalVariableSymbol(name, type, isReadOnly, constant) }
+        val variable: VariableSymbol
+        if (function == null) {
+            variable = VisibleVariableSymbol(name, type, isReadOnly, constant, (scope as BoundNamespace).path + '.' + name)
+        }
+        else {
+            variable = LocalVariableSymbol(name, type, isReadOnly, constant)
+        }
         if (!identifier.isMissing && !scope.tryDeclare(variable)) {
             diagnostics.reportSymbolAlreadyDeclared(identifier.location, name)
         }
         return variable
+    }
+
+    fun bindUseStatement(node: UseStatementNode) {
+        scope.use(BoundUse(node.path, node.isInclude))
     }
 
     private fun bindExpression(node: ExpressionNode, canBeUnit: Boolean = false): BoundExpression {
@@ -248,7 +256,7 @@ class Binder(
             arguments.add(arg)
         }
 
-        val (function, result) = scope.tryLookupFunction(node.identifier.string)
+        val (function, result) = scope.tryLookupFunction(listOf(node.identifier.string))
 
         if (!result) {
             diagnostics.reportUndefinedName(node.identifier.location, node.identifier.string)
@@ -304,7 +312,7 @@ class Binder(
     private fun bindAssignmentExpression(node: AssignmentExpressionNode): BoundExpression {
         val name = node.identifierToken.string ?: return BoundLiteralExpression(0)
         val boundExpression = bindExpression(node.expression)
-        val (variable, result) = scope.tryLookupVariable(name)
+        val (variable, result) = scope.tryLookupVariable(listOf(name))
         if (!result) {
             diagnostics.reportUndefinedName(node.identifierToken.location, name)
             return boundExpression
@@ -322,7 +330,7 @@ class Binder(
 
     private fun bindNameExpression(node: NameExpressionNode): BoundExpression {
         val name = node.identifierToken.string ?: return BoundErrorExpression()
-        val (variable, result) = scope.tryLookupVariable(name)
+        val (variable, result) = scope.tryLookupVariable(listOf(name))
         if (!result) {
             diagnostics.reportUndefinedName(node.identifierToken.location, name)
             return BoundErrorExpression()
@@ -368,31 +376,58 @@ class Binder(
     companion object {
 
         fun bindGlobalScope(
-            node: CompilationUnitNode,
-            previous: BoundGlobalScope?
+            previous: BoundGlobalScope?,
+            syntaxTrees: Collection<SyntaxTree>
         ): BoundGlobalScope {
 
             val parentScope = createParentScopes(previous)
-            val binder = Binder(BoundScope(parentScope), null)
+            val binder = Binder(parentScope, null)
 
+            val symbols = ArrayList<Symbol>()
             val statementBuilder = ArrayList<BoundStatement>()
-            for (s in node.members) {
-                when (s) {
-                    is FunctionDeclarationNode -> {
-                        binder.bindFunctionDeclaration(s)
+
+            for (syntaxTree in syntaxTrees) {
+                binder.diagnostics.append(syntaxTree.diagnostics)
+                val prev = binder.scope
+                val namespace = BoundNamespace(syntaxTree.projectPath, parentScope)
+                binder.scope = namespace
+                //println("namespace: " + namespace.path)
+                for (s in syntaxTree.root.members) {
+                    when (s) {
+                        is FunctionDeclarationNode -> {
+                            binder.bindFunctionDeclaration(s, namespace)
+                        }
+                        is VariableDeclarationNode -> {
+                            val statement = binder.bindVariableDeclaration(s)
+                            statementBuilder.add(statement)
+                        }
+                        is UseStatementNode -> {
+                            binder.bindUseStatement(s)
+                        }
+                        is ReplStatementNode -> {
+                            val statement = binder.bindStatement(s.statementNode)
+                            statementBuilder.add(statement)
+                        }
                     }
-                    is VariableDeclarationNode -> {
-                        val statement = binder.bindVariableDeclaration(s)
-                        statementBuilder.add(statement)
-                    }
-                    is ReplStatementNode -> {
-                        val statement = binder.bindStatement(s.statementNode)
-                        statementBuilder.add(statement)
+                }
+                binder.scope = prev
+                if (syntaxTree.projectPath.substringAfterLast('.') == "main") {
+                    symbols.addAll(namespace.symbols)
+
+                    for (use in namespace.used) {
+                        //println("use: ${use.path} (isInclude: ${use.isInclude})")
+                        if (use.isInclude) {
+                            val usedNamespace = BoundNamespace[use.path]
+                            if (usedNamespace == null) {
+                                //println("USEDISNULL ${use.path}")
+                            } else {
+                                symbols.addAll(usedNamespace.symbols)
+                            }
+                        }
                     }
                 }
             }
 
-            val symbols = binder.scope.symbols
             var entryFn = symbols.find {
                 it.kind == Symbol.Kind.Function &&
                 (it as FunctionSymbol).name == "main" &&
@@ -407,6 +442,7 @@ class Binder(
                     "main",
                     arrayOf(),
                     if (isRepl) TypeSymbol.any else TypeSymbol.unit,
+                        "main",
                     null,
                         FunctionSymbol.MetaData()
                 )
@@ -454,8 +490,10 @@ class Binder(
 
         private fun createRootScope(): BoundScope {
             val result = BoundScope(null)
-            for (fn in BuiltinFunctions.getAll()) {
-                result.tryDeclare(fn)
+            if (isRepl) {
+                for (fn in BuiltinFunctions.getAll()) {
+                    result.tryDeclare(fn)
+                }
             }
             return result
         }
@@ -470,6 +508,7 @@ class Binder(
             val diagnostics = DiagnosticList()
 
             for (symbol in globalScope.symbols) {
+                println("symbol: " + symbol.name)
                 if (symbol is FunctionSymbol) {
                     val binder = Binder(parentScope, symbol)
                     when {
@@ -526,7 +565,7 @@ class Binder(
         }
     }
 
-    private fun bindFunctionDeclaration(node: FunctionDeclarationNode) {
+    private fun bindFunctionDeclaration(node: FunctionDeclarationNode, namespace: BoundNamespace) {
         val params = ArrayList<ParameterSymbol>()
 
         val seenParameterNames = HashSet<String>()
@@ -551,7 +590,7 @@ class Binder(
         }
 
         val meta = FunctionSymbol.MetaData()
-        val function = FunctionSymbol(node.identifier.string!!, params.toTypedArray(), type, node, meta)
+        val function = FunctionSymbol(node.identifier.string!!, params.toTypedArray(), type, namespace.path + '.' + node.identifier.string!!, node, meta)
         for (annotation in node.annotations) {
             when (annotation.identifier.string) {
                 "inline" -> meta.isInline = true

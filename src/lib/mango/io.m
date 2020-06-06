@@ -9,9 +9,3 @@ fn println (text String)
 
 [extern]
 fn readln String
-
-[extern]
-fn typeOf (object Any)
-
-[extern]
-fn random (max Int)

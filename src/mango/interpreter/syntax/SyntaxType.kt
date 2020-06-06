@@ -9,7 +9,7 @@ enum class SyntaxType {
     Comma,
 
     // Nodes
-    CompilationUnit,
+    Namespace,
     ElseClause,
     Parameter,
     Annotation,
@@ -38,6 +38,7 @@ enum class SyntaxType {
     ReturnStatement,
     VariableDeclaration,
     FunctionDeclaration,
+    UseStatement,
 
     // Brackets
     OpenRoundedBracket,
@@ -50,7 +51,7 @@ enum class SyntaxType {
     // Operators
     Plus,
     Minus,
-    Mul,
+    Star,
     Div,
     Rem,
     BitAnd,
@@ -105,10 +106,15 @@ enum class SyntaxType {
     Return,
 
     Identifier,
-    TypeClause;
+    TypeClause,
+
+    Use,
+
+    SingleLineComment,
+    MultilineComment;
 
     fun getBinaryOperatorPrecedence() = when (this) {
-        Mul, Div -> 7
+        Star, Div -> 7
         Plus, Minus -> 6
         BitAnd -> 5
         BitOr -> 4

@@ -23,7 +23,7 @@ abstract class Symbol {
     }
 
     private fun printGlobalVariable() {
-        this as GlobalVariableSymbol
+        this as VisibleVariableSymbol
         print(if (isReadOnly) { if (constant == null) "val " else "const " } else "var ")
         print(name)
         print(' ')
