@@ -10,7 +10,7 @@ class SyntaxTree private constructor(
     val sourceText: SourceText
 ) {
 
-    val projectPath = sourceText.fileName.substringBeforeLast('.').replace('/', '.')
+    val projectPath = sourceText.fileName.substring(4).substringBeforeLast('.').replace('/', '.')
 
     val root: NamespaceNode
     val diagnostics: DiagnosticList
@@ -50,7 +50,7 @@ class SyntaxTree private constructor(
             val trees = ArrayList<SyntaxTree>()
             for (file in files) {
                 val text = file.readText()
-                val sourceText = SourceText(text, file.name)
+                val sourceText = SourceText(text, file.path)
                 val syntaxTree = SyntaxTree(sourceText)
                 trees.add(syntaxTree)
             }

@@ -1,5 +1,5 @@
 use secondFile*
-use thirdFile*
+use dir.thirdFile*
 
 val creatorsName = "leo"
 

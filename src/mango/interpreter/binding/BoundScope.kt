@@ -64,7 +64,7 @@ open class BoundScope(
                         }
                         for (use in used) {
                             if (use.isInclude) {
-                                val namespace = BoundNamespace[use.path]!!
+                                val namespace = BoundNamespace[use.path]
                                 val result = namespace.tryLookupVariable(path)
                                 if (result.second) {
                                     return result
@@ -82,7 +82,7 @@ open class BoundScope(
                     return parentLookup
                 }
                 for (use in used) {
-                    val namespace = BoundNamespace[use.path]!!
+                    val namespace = BoundNamespace[use.path]
                     if (use.isInclude) {
                         if (namespace.path == path.first()) {
                             val result = namespace.tryLookupVariable(path)
@@ -119,7 +119,7 @@ open class BoundScope(
                         }
                         for (use in used) {
                             if (use.isInclude) {
-                                val namespace = BoundNamespace[use.path]!!
+                                val namespace = BoundNamespace[use.path]
                                 val result = namespace.tryLookupFunction(path)
                                 if (result.second) {
                                     return result
@@ -137,7 +137,7 @@ open class BoundScope(
                     return parentLookup
                 }
                 for (use in used) {
-                    val namespace = BoundNamespace[use.path]!!
+                    val namespace = BoundNamespace[use.path]
                     if (use.isInclude) {
                         if (namespace.path == path.first()) {
                             val result = namespace.tryLookupFunction(path)

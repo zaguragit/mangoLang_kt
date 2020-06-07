@@ -207,7 +207,12 @@ class Binder(
     }
 
     fun bindUseStatement(node: UseStatementNode) {
-        scope.use(BoundUse(node.path, node.isInclude))
+        val path = node.directories.joinToString(separator = ".") { it.string!! }
+        if (BoundNamespace.namespaces[path] == null) {
+            diagnostics.reportIncorrectUseStatement(node.location)
+        } else {
+            scope.use(BoundUse(path, node.isInclude))
+        }
     }
 
     private fun bindExpression(node: ExpressionNode, canBeUnit: Boolean = false): BoundExpression {
@@ -418,11 +423,7 @@ class Binder(
                         //println("use: ${use.path} (isInclude: ${use.isInclude})")
                         if (use.isInclude) {
                             val usedNamespace = BoundNamespace[use.path]
-                            if (usedNamespace == null) {
-                                //println("USEDISNULL ${use.path}")
-                            } else {
-                                symbols.addAll(usedNamespace.symbols)
-                            }
+                            symbols.addAll(usedNamespace.symbols)
                         }
                     }
                 }

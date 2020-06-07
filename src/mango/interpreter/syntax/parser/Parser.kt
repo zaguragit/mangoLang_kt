@@ -211,7 +211,7 @@ class Parser(
 
         if (!isProject) {
             diagnostics.reportUseOnlyInProjectMode(keyword.location)
-            return UseStatementNode(syntaxTree, keyword, "", false)
+            return UseStatementNode(syntaxTree, keyword, listOf(), false)
         }
 
         val directories = ArrayList<Token>()
@@ -243,9 +243,7 @@ class Parser(
         return UseStatementNode(
             syntaxTree,
             keyword,
-            directories.joinToString(separator = ".") {
-                it.string!!
-            },
+            directories,
             isInclude)
     }
 

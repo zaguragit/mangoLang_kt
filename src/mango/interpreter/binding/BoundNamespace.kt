@@ -11,6 +11,6 @@ class BoundNamespace(
 
     companion object {
         val namespaces = HashMap<String, BoundNamespace>()
-        operator fun get(path: String) = namespaces[path]
+        operator fun get(path: String) = namespaces[path]!!
     }
 }
