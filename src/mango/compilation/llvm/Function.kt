@@ -60,9 +60,9 @@ class BlockBuilder(
 }
 
 class FunctionBuilder(
-        val moduleBuilder: ModuleBuilder,
-        val paramTypes: List<LLVMType>,
-        val symbol: FunctionSymbol
+    val moduleBuilder: ModuleBuilder,
+    val paramTypes: List<LLVMType>,
+    val symbol: FunctionSymbol
 ) {
     val returnType = LLVMType.valueOf(symbol.type)
     private val variables = LinkedList<LocalVariable>()
@@ -85,7 +85,7 @@ class FunctionBuilder(
     }
 
     fun code(): String {
-        return """|define ${returnType.code} @${symbol.name}(${paramTypes.map(LLVMType::code).joinToString(separator = ", ")}) ${attributes.joinToString(" ")} {
+        return """|define ${returnType.code} @${if (symbol.meta.isEntry) "main" else symbol.path}(${paramTypes.map(LLVMType::code).joinToString(separator = ", ")}) ${attributes.joinToString(" ")} {
                   |    ${variables.joinToString("\n    ") { it.allocCode() }}
                   |    ${blocks.joinToString("\n    ") { it.code() }}
                   |}

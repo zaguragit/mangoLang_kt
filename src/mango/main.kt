@@ -33,30 +33,28 @@ fun main(args: Array<String>) {
             var doSuggestions = true
             var i = 2
             while (i < args.size) {
-                if (args[i].startsWith('-')) {
-                    when (args[i]) {
-                        "-out" -> {
-                            if (++i < args.size) {
-                                outName = args[i]
-                            }
+                when (args[i]) {
+                    "-out" -> {
+                        if (++i < args.size) {
+                            outName = args[i]
                         }
-                        "-target" -> {
-                            if (++i < args.size) {
-                                target = args[i].toLowerCase()
-                            }
-                        }
-                        "-type" -> if (++i < args.size) {
-                            when(args[i].toLowerCase()) {
-                                "asm", "assembly" -> emissionType = EmissionType.Assembly
-                                "ir", "llvm" -> emissionType = EmissionType.IR
-                                "obj", "object" -> emissionType = EmissionType.Object
-                                "bin", "binary" -> emissionType = EmissionType.Binary
-                                else -> exitAndPrintCompileHelp()
-                            }
-                        }
-                        "-nosuggest" -> doSuggestions = false
-                        else -> exitAndPrintCompileHelp()
                     }
+                    "-target" -> {
+                        if (++i < args.size) {
+                            target = args[i].toLowerCase()
+                        }
+                    }
+                    "-type" -> if (++i < args.size) {
+                        when(args[i].toLowerCase()) {
+                            "asm", "assembly" -> emissionType = EmissionType.Assembly
+                            "ir", "llvm" -> emissionType = EmissionType.IR
+                            "obj", "object" -> emissionType = EmissionType.Object
+                            "bin", "binary" -> emissionType = EmissionType.Binary
+                            else -> exitAndPrintCompileHelp()
+                        }
+                    }
+                    "-nosuggest" -> doSuggestions = false
+                    else -> exitAndPrintCompileHelp()
                 }
                 i++
             }
@@ -71,24 +69,25 @@ fun main(args: Array<String>) {
             compile(moduleName, outName, target, emissionType, doSuggestions, listOf(syntaxTree))
         }
         "build" -> {
-            if (args.size != 1) {
-                exitAndPrintHelp()
-            }
             val conf = File("project.conf")
             if (!conf.exists() || !conf.isFile) {
-                println("This isn't a project directory (no project.conf file found)")
+                print(Console.RED)
+                print("This isn't a project directory (no project.conf file found)")
+                println(Console.RESET)
                 ExitCodes.ERROR()
             }
             val src = File("src")
             if (!src.exists() || !src.isDirectory) {
-                println("This isn't a project directory (no src directory found)")
+                print(Console.RED)
+                print("This isn't a project directory (no src directory found)")
+                println(Console.RESET)
                 ExitCodes.ERROR()
             }
 
             val (confData, errors) = ConfParser.parse(conf)
 
             val moduleName = confData["name"]
-            if (moduleName == null) {
+            if (moduleName.isNullOrBlank()) {
                 errors.reportConfMissingMandatoryField("name")
             }
 
@@ -100,13 +99,31 @@ fun main(args: Array<String>) {
                 ExitCodes.ERROR()
             }
 
+            var emissionType: EmissionType = EmissionType.Binary
             val outName = "out/" + (confData["outFileName"] ?: "binary")
-
-            isProject = true
             val target = System.getProperty("os.name").substringBefore(' ').toLowerCase()
 
+            var i = 1
+            while (i < args.size) {
+                when (args[i]) {
+                    "-type" -> if (++i < args.size) {
+                        when(args[i].toLowerCase()) {
+                            "asm", "assembly" -> emissionType = EmissionType.Assembly
+                            "ir", "llvm" -> emissionType = EmissionType.IR
+                            "obj", "object" -> emissionType = EmissionType.Object
+                            "bin", "binary" -> emissionType = EmissionType.Binary
+                            else -> exitAndPrintBuildHelp()
+                        }
+                    }
+                    else -> exitAndPrintBuildHelp()
+                }
+                i++
+            }
+
+            isProject = true
+
             val syntaxTrees = SyntaxTree.loadProject()
-            compile(moduleName!!, outName, target, EmissionType.Binary, true, syntaxTrees)
+            compile(moduleName!!, outName, target, emissionType, true, syntaxTrees)
         }
         else -> exitAndPrintHelp()
     }
@@ -183,6 +200,19 @@ private fun exitAndPrintCompileHelp() {
     println("  obj / object")
     println("  bin / binary")
     println("$p-nosuggest     $d│$r Disable warnings and style suggestions")
+    ExitCodes.ERROR()
+}
+
+fun exitAndPrintBuildHelp() {
+    val p = Console.CYAN_BOLD_BRIGHT
+    val d = Console.GRAY
+    val r = Console.RESET
+    println("usage: ${Console.GREEN_BOLD_BRIGHT}build $d<${r}file$d>$r $d[${r}parameters$d]$r")
+    println("$p-type          $d│$r Type of the output")
+    println("  asm / assembly")
+    println("  ir / llvm")
+    println("  obj / object")
+    println("  bin / binary")
     ExitCodes.ERROR()
 }
 

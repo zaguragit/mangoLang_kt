@@ -5,6 +5,7 @@ import mango.interpreter.binding.*
 import mango.interpreter.symbols.BuiltinFunctions
 import mango.interpreter.symbols.Symbol
 import mango.interpreter.symbols.TypeSymbol
+import mango.interpreter.symbols.VisibleVariableSymbol
 
 object LLVMEmitter : Emitter {
 
@@ -16,7 +17,6 @@ object LLVMEmitter : Emitter {
     ): String {
         val builder = ModuleBuilder()
         lateinit var initBlock: BlockBuilder
-        //builder.include("io.m")
         for (f in program.functionBodies) {
             val symbol = f.key
             val body = f.value
@@ -28,7 +28,7 @@ object LLVMEmitter : Emitter {
             if (symbol.meta.isInline) {
                 function.addAttribute("alwaysinline")
             }
-            var currentBlock = if (symbol == program.mainFn) {
+            var currentBlock = if (symbol.meta.isEntry) {
                 initBlock = function.entryBlock()
                 function.createBlock(null)
             } else function.entryBlock()
@@ -41,7 +41,10 @@ object LLVMEmitter : Emitter {
                     }
                     BoundNodeType.VariableDeclaration -> {
                         instruction as BoundVariableDeclaration
-                        currentBlock.addInstruction(TempValue(instruction.variable.name, emitInstruction(currentBlock, instruction.initializer)!!))
+                        currentBlock.addInstruction(TempValue(
+                            instruction.variable.name,
+                            emitInstruction(currentBlock, instruction.initializer)!!
+                        ))
                     }
                     BoundNodeType.LabelStatement -> {
                         instruction as BoundLabelStatement
@@ -130,7 +133,7 @@ object LLVMEmitter : Emitter {
                     }
                 }
             }
-            builder.globalVariable(v.variable.name, LLVMType.valueOf(v.variable.type), value!!.code)
+            builder.globalVariable((v.variable as VisibleVariableSymbol).path, LLVMType.valueOf(v.variable.type), value!!.code)
         }
         return builder.code()
     }
@@ -169,8 +172,9 @@ object LLVMEmitter : Emitter {
                         block.functionBuilder.paramReference(i)
                     }
                     Symbol.Kind.GlobalVariable -> {
+                        val variable = expression.variable as VisibleVariableSymbol
                         val uid = newUID()
-                        val tmp = TempValue(uid, Load(GlobalValueRef(expression.variable.name, LLVMType.valueOf(expression.variable.type))))
+                        val tmp = TempValue(uid, Load(GlobalValueRef(variable.path, LLVMType.valueOf(expression.variable.type))))
                         block.addInstruction(tmp)
                         tmp.reference()
                     }
@@ -202,26 +206,22 @@ object LLVMEmitter : Emitter {
                 expression as BoundCallExpression
                 val type = LLVMType.valueOf(expression.type)
                 val function = expression.function
-                val name = function.meta.cName ?: function.name
                 when {
                     expression.function === BuiltinFunctions.readln -> {
                         block.functionBuilder.moduleBuilder.include("readln.ll")
                     }
                 }
-                return Call(type, name, *Array(expression.arguments.size) {
+                return Call(type, function, *Array(expression.arguments.size) {
                     emitValue(block, expression.arguments.elementAt(it))!!
                 })
             }
-            BoundNodeType.CastExpression -> {
-                expression as BoundCastExpression
-
-            }
             BoundNodeType.UnaryExpression -> {
                 expression as BoundUnaryExpression
-                when (expression.operator.type) {
-                    BoundUnaryOperatorType.Identity -> {}
-                    BoundUnaryOperatorType.Negation -> {}
-                    BoundUnaryOperatorType.Not -> {}
+                val operand = emitValue(block, expression.operand)!!
+                return when (expression.operator.type) {
+                    BoundUnaryOperatorType.Identity -> IntAddition(IntConst(0, operand.type), operand)
+                    BoundUnaryOperatorType.Negation -> IntSubtraction(IntConst(0, operand.type), operand)
+                    BoundUnaryOperatorType.Not -> IntSubtraction(IntConst(1, LLVMType.Bool), operand)
                 }
             }
             BoundNodeType.BinaryExpression -> {
@@ -229,10 +229,26 @@ object LLVMEmitter : Emitter {
                 val left = emitValue(block, expression.left)!!
                 val right = emitValue(block, expression.right)!!
                 when (expression.operator.type) {
-                    BoundBinaryOperatorType.Add -> {}
-                    BoundBinaryOperatorType.Sub -> {}
-                    BoundBinaryOperatorType.Mul -> {}
-                    BoundBinaryOperatorType.Div -> {}
+                    BoundBinaryOperatorType.Add -> {
+                        if (expression.right.type == TypeSymbol.int) {
+                            return IntAddition(left, right)
+                        }
+                    }
+                    BoundBinaryOperatorType.Sub -> {
+                        if (expression.right.type == TypeSymbol.int) {
+                            return IntSubtraction(left, right)
+                        }
+                    }
+                    BoundBinaryOperatorType.Mul -> {
+                        if (expression.right.type == TypeSymbol.int) {
+                            return IntMultiplication(left, right)
+                        }
+                    }
+                    BoundBinaryOperatorType.Div -> {
+                        if (expression.right.type == TypeSymbol.int) {
+                            return SignedIntDivision(left, right)
+                        }
+                    }
                     BoundBinaryOperatorType.Rem -> {}
                     BoundBinaryOperatorType.BitAnd -> {}
                     BoundBinaryOperatorType.BitOr -> {}
@@ -240,12 +256,16 @@ object LLVMEmitter : Emitter {
                     BoundBinaryOperatorType.LogicOr -> {}
                     BoundBinaryOperatorType.LessThan -> return Comparison(ComparisonType.LessThan, left, right)
                     BoundBinaryOperatorType.MoreThan -> return Comparison(ComparisonType.MoreThan, left, right)
-                    BoundBinaryOperatorType.IsEqual -> return Comparison(ComparisonType.IsEqual, left, right)
+                    BoundBinaryOperatorType.IsEqual -> {
+                        return Comparison(ComparisonType.IsEqual, left, right)
+                    }
                     BoundBinaryOperatorType.IsEqualOrMore -> return Comparison(ComparisonType.IsEqualOrMore, left, right)
                     BoundBinaryOperatorType.IsEqualOrLess -> return Comparison(ComparisonType.IsEqualOrLess, left, right)
-                    BoundBinaryOperatorType.IsNotEqual -> return Comparison(ComparisonType.IsNotEqual, left, right)
-                    BoundBinaryOperatorType.IsIdentityEqual -> {}
-                    BoundBinaryOperatorType.IsNotIdentityEqual -> {}
+                    BoundBinaryOperatorType.IsNotEqual -> {
+                        return Comparison(ComparisonType.IsNotEqual, left, right)
+                    }
+                    BoundBinaryOperatorType.IsIdentityEqual -> return Comparison(ComparisonType.IsEqual, left, right)
+                    BoundBinaryOperatorType.IsNotIdentityEqual -> return Comparison(ComparisonType.IsNotEqual, left, right)
                 }
             }
             BoundNodeType.ErrorExpression -> return null

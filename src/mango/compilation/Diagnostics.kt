@@ -252,7 +252,7 @@ class DiagnosticList {
         location: TextLocation
     ) = report(location, "Only assignment and call expressions can be used as statements")
 
-    fun reportNoMainFn() = errors.add(Diagnostic(null, "No main function found", Diagnostic.Type.Error))
+    fun reportNoMainFn() = errors.add(Diagnostic(null, "No entry function found", Diagnostic.Type.Error))
 
     fun reportStatementCantBeGlobal(
         location: TextLocation
@@ -265,6 +265,10 @@ class DiagnosticList {
     fun reportInvalidAnnotation(
         location: TextLocation
     ) = report(location, "Invalid annotation")
+
+    fun reportMultipleEntryFuncs(
+        location: TextLocation
+    ) = report(location, "Can't have multiple entry functions")
 
     fun reportIncorrectUseStatement(
         location: TextLocation
@@ -289,5 +293,4 @@ class DiagnosticList {
     fun reportConfMissingMandatoryField(
         name: String
     ) = errors.add(Diagnostic(null, "Conf file is missing the \"$name\" field", Diagnostic.Type.Error))
-
 }

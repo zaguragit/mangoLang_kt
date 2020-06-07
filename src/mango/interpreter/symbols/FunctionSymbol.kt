@@ -16,6 +16,11 @@ class FunctionSymbol(
     class MetaData {
         var isInline = false
         var isExtern = false
+        var isEntry = false
         var cName: String? = null
+
+        companion object {
+            var entryExists = false
+        }
     }
 }

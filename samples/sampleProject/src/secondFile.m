@@ -1,11 +1,4 @@
-
-[extern]
-[cname: "printf"]
-fn print (text String)
-
-[extern]
-[cname: "puts"]
-fn println (text String)
+use thirdFile*
 
 [inline]
 fn getName String -> ask("What's your name?")

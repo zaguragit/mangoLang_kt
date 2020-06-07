@@ -430,7 +430,7 @@ class Binder(
 
             var entryFn = symbols.find {
                 it.kind == Symbol.Kind.Function &&
-                (it as FunctionSymbol).name == "main" &&
+                (it as FunctionSymbol).meta.isEntry &&
                 it.type == TypeSymbol.unit &&
                 it.parameters.isEmpty()
             } as FunctionSymbol?
@@ -508,7 +508,6 @@ class Binder(
             val diagnostics = DiagnosticList()
 
             for (symbol in globalScope.symbols) {
-                println("symbol: " + symbol.name)
                 if (symbol is FunctionSymbol) {
                     val binder = Binder(parentScope, symbol)
                     when {
@@ -595,6 +594,13 @@ class Binder(
             when (annotation.identifier.string) {
                 "inline" -> meta.isInline = true
                 "extern" -> meta.isExtern = true
+                "entry" -> {
+                    if (FunctionSymbol.MetaData.entryExists) {
+                        diagnostics.reportMultipleEntryFuncs(annotation.location)
+                    }
+                    meta.isEntry = true
+                    FunctionSymbol.MetaData.entryExists = true
+                }
                 "cname" -> {
                     val expression = bindLiteralExpression(annotation.value as LiteralExpressionNode)
                     meta.cName = expression.value as String

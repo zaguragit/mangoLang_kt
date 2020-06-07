@@ -1,5 +1,6 @@
 package mango.compilation.llvm
 
+import mango.interpreter.symbols.FunctionSymbol
 import java.util.*
 
 interface LLVMInstruction {
@@ -67,8 +68,12 @@ class GetElementPtr(val privType: LLVMType, val pointer: LLVMValue, val index: L
     override val type get() = LLVMType.Pointer(privType)
 }
 
-class Call(val returnType: LLVMType, val name: String, vararg val params: LLVMValue) : LLVMInstruction {
-    override val code get() = "call ${returnType.code} @$name(${params.joinToString(separator = ", ") { "${it.type.code} ${it.code}" }})"
+class Call(
+    val returnType: LLVMType,
+    val symbol: FunctionSymbol,
+    vararg val params: LLVMValue
+) : LLVMInstruction {
+    override val code get() = "call ${returnType.code} @${symbol.meta.cName ?: symbol.path}(${params.joinToString(separator = ", ") { "${it.type.code} ${it.code}" }})"
     override val type = returnType
 }
 
@@ -84,24 +89,6 @@ class CallWithBitCast(val declaration: FunctionDeclaration, private vararg val p
         return "call $adaptedSignature bitcast (${declaration.ptrSignature()} @${declaration.name} to $adaptedSignature*)($paramsStr)"
     }
     override val type get() = declaration.returnType
-}
-
-class Print(val stringFormat: LLVMValue, private vararg val params: LLVMValue) : LLVMInstruction {
-    override val code: String get() {
-        var paramsString = ""
-        params.forEach { paramsString += ", ${it.type.code} ${it.code}" }
-        return "call void @printf(i8* ${stringFormat.code}$paramsString)"
-    }
-    override val type = null
-}
-
-class Println(val stringFormat: LLVMValue, private vararg val params: LLVMValue) : LLVMInstruction {
-    override val code: String get() {
-        var paramsString = ""
-        params.forEach { paramsString += ", ${it.type.code} ${it.code}" }
-        return "call void @puts(i8* ${stringFormat.code}$paramsString)"
-    }
-    override val type = null
 }
 
 class SignedIntDivision(val left: LLVMValue, val right: LLVMValue) : LLVMInstruction {
