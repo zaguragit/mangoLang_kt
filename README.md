@@ -1,6 +1,7 @@
 
 <div align="center">
-    <h1>Mango Language</h1>
+    <p><img width=128px src="/art/icon/128.png"/></p>
+    <h1>MangoLang</h1>
 </div>
 
 Right now it doesn't always compile to LLVM, but it will get better support soon.
