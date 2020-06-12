@@ -220,6 +220,7 @@ class Binder(
     fun bindUseStatement(node: UseStatementNode) {
         val path = node.directories.joinToString(separator = ".") { it.string!! }
         if (BoundNamespace.namespaces[path] == null) {
+            //println(path)
             diagnostics.reportIncorrectUseStatement(node.location)
         } else {
             scope.use(BoundUse(path, node.isInclude))
@@ -403,9 +404,12 @@ class Binder(
             val statementBuilder = ArrayList<BoundStatement>()
 
             for (syntaxTree in syntaxTrees) {
+                BoundNamespace(syntaxTree.projectPath, parentScope)
+            }
+            for (syntaxTree in syntaxTrees) {
                 binder.diagnostics.append(syntaxTree.diagnostics)
                 val prev = binder.scope
-                val namespace = BoundNamespace(syntaxTree.projectPath, parentScope)
+                val namespace = BoundNamespace[syntaxTree.projectPath]
                 binder.scope = namespace
                 //println("namespace: " + namespace.path)
                 for (s in syntaxTree.root.members) {
@@ -482,7 +486,10 @@ class Binder(
                 val previous = stack.pop()
                 val scope = BoundScope(parent)
                 for (v in previous.symbols) {
-                    scope.tryDeclare(v)
+                    v as VisibleSymbol
+                    if (v.path.substringBeforeLast('.') == "main") {
+                        scope.tryDeclare(v)
+                    }
                 }
                 parent = scope
             }
@@ -537,7 +544,7 @@ class Binder(
 
             for (symbol in globalScope.symbols) {
                 if (symbol is FunctionSymbol) {
-                    bindFunction(parentScope, functions, symbol, diagnostics)
+                    bindFunction(BoundNamespace[symbol.path.substringBeforeLast('.')], functions, symbol, diagnostics)
                 }
             }
 
@@ -604,7 +611,7 @@ class Binder(
         val path = if (scope is BoundNamespace) {
             (scope as BoundNamespace).path + '.' + node.identifier.string!!
         } else {
-            Symbol.genFnUID()
+            function!!.path.substringBeforeLast('.') + '.' + Symbol.genFnUID()
         }
         val function = FunctionSymbol(node.identifier.string!!, params.toTypedArray(), type, path, node, meta)
         for (annotation in node.annotations) {

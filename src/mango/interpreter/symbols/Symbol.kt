@@ -72,6 +72,6 @@ abstract class Symbol {
 
     companion object {
         private var fnUIDCounter = 0
-        fun genFnUID() = ".fn${fnUIDCounter++}"
+        fun genFnUID() = "0fn${fnUIDCounter++}"
     }
 }

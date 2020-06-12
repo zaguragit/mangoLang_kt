@@ -22,31 +22,6 @@ open class BoundScope(
         return true
     }
 
-    fun tryLookupVariable(name: String): Pair<VariableSymbol?, Boolean> {
-        return when {
-            map.containsKey(name) -> {
-                val symbol = map[name]
-                if (symbol is VariableSymbol) { symbol to true }
-                else null to false
-            }
-            parent == null -> return null to false
-
-            else -> parent.tryLookupVariable(name)
-        }
-    }
-
-    fun tryLookupFunction(name: String): Pair<FunctionSymbol?, Boolean> {
-        return when {
-            map.containsKey(name) -> {
-                val symbol = map[name]
-                if (symbol is FunctionSymbol) { symbol to true }
-                else null to false
-            }
-            parent == null -> null to false
-            else -> parent.tryLookupFunction(name)
-        }
-    }
-
     fun tryLookupVariable(path: Collection<String>): Pair<VariableSymbol?, Boolean> {
         return when {
             path.size == 1 -> {
@@ -54,7 +29,7 @@ open class BoundScope(
                 when {
                     map.containsKey(name) -> {
                         val symbol = map[name]
-                        if (symbol is VariableSymbol) { symbol to true } else null to false
+                        if (symbol is VariableSymbol) { symbol.apply { useCounter++ } to true } else null to false
                     }
                     parent == null -> return null to false
                     else -> {
@@ -114,7 +89,7 @@ open class BoundScope(
                 when {
                     map.containsKey(name) -> {
                         val symbol = map[name]
-                        if (symbol is FunctionSymbol) { symbol to true } else null to false
+                        if (symbol is FunctionSymbol) { symbol.apply { useCounter++ } to true } else null to false
                     }
                     parent == null -> return null to false
                     else -> {
