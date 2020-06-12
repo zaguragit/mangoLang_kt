@@ -19,7 +19,7 @@ class Evaluator(
     init {
         var current: BoundProgram? = program
         while (current != null) {
-            for (f in current.functionBodies) {
+            for (f in current.functions) {
                 functionBodies.putIfAbsent(f.key, f.value)
             }
             current = current.previous

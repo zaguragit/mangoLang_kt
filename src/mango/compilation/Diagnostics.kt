@@ -256,7 +256,7 @@ class DiagnosticList {
 
     fun reportStatementCantBeGlobal(
         location: TextLocation
-    ) = report(location, "Only variables and functions can be global")
+    ) = report(location, "Only variables, functions and use statements can be global")
 
     fun reportDeclarationAndNameOnSameLine(
         location: TextLocation
@@ -277,6 +277,10 @@ class DiagnosticList {
     fun reportUseOnlyInProjectMode(
         location: TextLocation
     ) = report(location, "Use statements are only supported in project mode")
+
+    fun reportUnterminatedMultilineComment(
+        location: TextLocation
+    ) = report(location, "Unterminated multiline comment")
 
 
     /// CONF ///////////////////////////////////////////////////////////////////////////////////////////////////////////

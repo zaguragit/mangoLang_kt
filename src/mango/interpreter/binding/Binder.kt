@@ -17,7 +17,8 @@ import kotlin.collections.HashSet
 
 class Binder(
     var scope: BoundScope,
-    val function: FunctionSymbol?
+    val function: FunctionSymbol?,
+    val functions: HashMap<FunctionSymbol, BoundBlockStatement?>
 ) {
 
     val diagnostics = DiagnosticList()
@@ -145,8 +146,19 @@ class Binder(
         val previous = scope
         scope = BoundScope(scope)
         for (s in node.statements) {
-            val statement = bindStatement(s)
-            statements.add(statement)
+            when (s.kind) {
+                SyntaxType.FunctionDeclaration -> {
+                    val symbol = bindFunctionDeclaration(s as FunctionDeclarationNode)
+                    if (function != null) {
+                        bindFunction(scope, functions, symbol, diagnostics)
+                    }
+                }
+                SyntaxType.UseStatement -> bindUseStatement(s as UseStatementNode)
+                else -> {
+                    val statement = bindStatement(s)
+                    statements.add(statement)
+                }
+            }
         }
         scope = previous
         return BoundBlockStatement(statements)
@@ -168,7 +180,7 @@ class Binder(
         return BoundExpressionStatement(expression)
     }
 
-    private fun bindVariableDeclaration(node: VariableDeclarationNode): BoundStatement {
+    private fun bindVariableDeclaration(node: VariableDeclarationNode): BoundVariableDeclaration {
         val isReadOnly = node.keyword.kind == SyntaxType.Val
         val type = bindTypeClause(node.typeClauseNode)
         val initializer = bindExpression(node.initializer)
@@ -194,11 +206,10 @@ class Binder(
     private fun bindVariable(identifier: Token, type: TypeSymbol, isReadOnly: Boolean, constant: BoundConstant?): VariableSymbol {
         val name = identifier.string ?: "?"
         val variable: VariableSymbol
-        if (function == null) {
-            variable = VisibleVariableSymbol(name, type, isReadOnly, constant, (scope as BoundNamespace).path + '.' + name)
-        }
-        else {
-            variable = LocalVariableSymbol(name, type, isReadOnly, constant)
+        variable = if (function == null && scope is BoundNamespace) {
+            VisibleVariableSymbol(name, type, isReadOnly, constant, (scope as BoundNamespace).path + '.' + name)
+        } else {
+            LocalVariableSymbol(name, type, isReadOnly, constant)
         }
         if (!identifier.isMissing && !scope.tryDeclare(variable)) {
             diagnostics.reportSymbolAlreadyDeclared(identifier.location, name)
@@ -386,7 +397,7 @@ class Binder(
         ): BoundGlobalScope {
 
             val parentScope = createParentScopes(previous)
-            val binder = Binder(parentScope, null)
+            val binder = Binder(parentScope, null, HashMap())
 
             val symbols = ArrayList<Symbol>()
             val statementBuilder = ArrayList<BoundStatement>()
@@ -400,11 +411,12 @@ class Binder(
                 for (s in syntaxTree.root.members) {
                     when (s) {
                         is FunctionDeclarationNode -> {
-                            binder.bindFunctionDeclaration(s, namespace)
+                            symbols.add(binder.bindFunctionDeclaration(s))
                         }
                         is VariableDeclarationNode -> {
                             val statement = binder.bindVariableDeclaration(s)
                             statementBuilder.add(statement)
+                            symbols.add(statement.variable)
                         }
                         is UseStatementNode -> {
                             binder.bindUseStatement(s)
@@ -416,17 +428,6 @@ class Binder(
                     }
                 }
                 binder.scope = prev
-                if (syntaxTree.projectPath.substringAfterLast('.') == "main") {
-                    symbols.addAll(namespace.symbols)
-
-                    for (use in namespace.used) {
-                        //println("use: ${use.path} (isInclude: ${use.isInclude})")
-                        if (use.isInclude) {
-                            val usedNamespace = BoundNamespace[use.path]
-                            symbols.addAll(usedNamespace.symbols)
-                        }
-                    }
-                }
             }
 
             var entryFn = symbols.find {
@@ -456,11 +457,11 @@ class Binder(
                 diagnostics.append(previous.diagnostics)
             }
             return BoundGlobalScope(
-                    previous,
-                    diagnostics,
-                    symbols,
-                    statementBuilder,
-                    entryFn)
+                previous,
+                diagnostics,
+                symbols,
+                statementBuilder,
+                entryFn)
         }
 
         private fun createParentScopes(
@@ -499,37 +500,47 @@ class Binder(
             return result
         }
 
+        fun bindFunction(
+            parentScope: BoundScope,
+            functions: HashMap<FunctionSymbol, BoundBlockStatement?>,
+            symbol: FunctionSymbol,
+            diagnostics: DiagnosticList
+        ) {
+            val binder = Binder(parentScope, symbol, functions)
+            when {
+                symbol.meta.isExtern -> functions[symbol] = null
+                symbol.declarationNode!!.lambdaArrow == null -> {
+                    val body = binder.bindBlockStatement(symbol.declarationNode.body as BlockStatementNode)
+                    val loweredBody = Lowerer.lower(body)
+                    if (symbol.type != TypeSymbol.unit && !ControlFlowGraph.allPathsReturn(loweredBody)) {
+                        diagnostics.reportAllPathsMustReturn(symbol.declarationNode.identifier.location)
+                    }
+                    functions[symbol] = loweredBody
+                }
+                else -> {
+                    val body = binder.bindExpressionStatement(symbol.declarationNode.body as ExpressionStatementNode)
+                    val loweredBody = Lowerer.lower(body.expression)
+                    functions[symbol] = loweredBody
+                }
+            }
+            diagnostics.append(binder.diagnostics)
+        }
+
         fun bindProgram(
             previous: BoundProgram?,
             globalScope: BoundGlobalScope
         ): BoundProgram {
 
             val parentScope = createParentScopes(globalScope)
-            val functionBodies = HashMap<FunctionSymbol, BoundBlockStatement?>()
+            val functions = HashMap<FunctionSymbol, BoundBlockStatement?>()
             val diagnostics = DiagnosticList()
 
             for (symbol in globalScope.symbols) {
                 if (symbol is FunctionSymbol) {
-                    val binder = Binder(parentScope, symbol)
-                    when {
-                        symbol.meta.isExtern -> functionBodies[symbol] = null
-                        symbol.declarationNode!!.lambdaArrow == null -> {
-                            val body = binder.bindBlockStatement(symbol.declarationNode.body as BlockStatementNode)
-                            val loweredBody = Lowerer.lower(body)
-                            if (symbol.type != TypeSymbol.unit && !ControlFlowGraph.allPathsReturn(loweredBody)) {
-                                diagnostics.reportAllPathsMustReturn(symbol.declarationNode.identifier.location)
-                            }
-                            functionBodies[symbol] = loweredBody
-                        }
-                        else -> {
-                            val body = binder.bindExpressionStatement(symbol.declarationNode.body as ExpressionStatementNode)
-                            val loweredBody = Lowerer.lower(body.expression)
-                            functionBodies[symbol] = loweredBody
-                        }
-                    }
-                    diagnostics.append(binder.diagnostics)
+                    bindFunction(parentScope, functions, symbol, diagnostics)
                 }
             }
+
             val statement: BoundBlockStatement
             if (isRepl) {
                 val statements = globalScope.statements
@@ -547,7 +558,7 @@ class Binder(
                 val body = Lowerer.lower(BoundBlockStatement(
                     globalScope.statements
                 ))
-                functionBodies[globalScope.mainFn] = body
+                functions[globalScope.mainFn] = body
                 statement = BoundBlockStatement(listOf())
             }
             else {
@@ -557,15 +568,15 @@ class Binder(
             }
 
             return BoundProgram(
-                    previous,
-                    diagnostics,
-                    globalScope.mainFn,
-                    functionBodies,
-                    statement)
+                previous,
+                diagnostics,
+                globalScope.mainFn,
+                functions,
+                statement)
         }
     }
 
-    private fun bindFunctionDeclaration(node: FunctionDeclarationNode, namespace: BoundNamespace) {
+    private fun bindFunctionDeclaration(node: FunctionDeclarationNode): FunctionSymbol {
         val params = ArrayList<ParameterSymbol>()
 
         val seenParameterNames = HashSet<String>()
@@ -590,7 +601,12 @@ class Binder(
         }
 
         val meta = FunctionSymbol.MetaData()
-        val function = FunctionSymbol(node.identifier.string!!, params.toTypedArray(), type, namespace.path + '.' + node.identifier.string!!, node, meta)
+        val path = if (scope is BoundNamespace) {
+            (scope as BoundNamespace).path + '.' + node.identifier.string!!
+        } else {
+            Symbol.genFnUID()
+        }
+        val function = FunctionSymbol(node.identifier.string!!, params.toTypedArray(), type, path, node, meta)
         for (annotation in node.annotations) {
             when (annotation.identifier.string) {
                 "inline" -> meta.isInline = true
@@ -615,5 +631,7 @@ class Binder(
         if (!scope.tryDeclare(function)) {
             diagnostics.reportSymbolAlreadyDeclared(node.identifier.location, function.name)
         }
+
+        return function
     }
 }

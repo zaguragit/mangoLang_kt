@@ -73,7 +73,7 @@ class Compilation(
         val program = getProgram()
         symbol.printStructure()
         print(' ')
-        val body = program.functionBodies[symbol]
+        val body = program.functions[symbol]
         body?.printStructure()
         println()
     }

@@ -3,6 +3,7 @@ package mango.interpreter.symbols
 abstract class Symbol {
     abstract val name: String
     abstract val kind: Kind
+    var useCounter = 0
 
     enum class Kind {
         GlobalVariable,
@@ -67,5 +68,10 @@ abstract class Symbol {
         print(name)
         print(' ')
         type.printStructure()
+    }
+
+    companion object {
+        private var fnUIDCounter = 0
+        fun genFnUID() = ".fn${fnUIDCounter++}"
     }
 }

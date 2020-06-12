@@ -26,7 +26,7 @@ class MangoRepl : Repl() {
         }
 
         val syntaxTree = SyntaxTree.parse(string)
-        if (syntaxTree.root.members.lastOrNull()?.getLastToken()?.isMissing == true) {
+        if (syntaxTree.root.members.lastOrNull()?.getLastToken()?.isMissing != false) {
             return false
         }
         return true

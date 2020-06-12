@@ -218,18 +218,20 @@ class Lexer(
     private fun readMultilineComment(): Token {
         val start = position
         position += 2
-        var reading = true
         val builder = StringBuilder()
-        while (reading) {
-            when (current) {
-                '\u0000', '\n', '\r' -> reading = false
-                else -> {
-                    builder.append(current)
-                    position++
-                }
+        while (true) {
+            if (current == '*' && lookAhead() == '/') {
+                position += 2
+                break
+            } else if (current == '\u0000') {
+                diagnostics.reportUnterminatedMultilineComment(TextLocation(sourceText, TextSpan.fromBounds(start, position)))
+                break
+            } else {
+                builder.append(current)
+                position++
             }
         }
         val text = builder.toString()
-        return Token(syntaxTree, SyntaxType.SingleLineComment, start, text, "/*$text*/")
+        return Token(syntaxTree, SyntaxType.MultilineComment, start, text, "/*$text*/")
     }
 }

@@ -1,5 +1,6 @@
 package mango.compilation.llvm
 
+import mango.compilation.llvm.LLVMValue.LocalValRef
 import mango.interpreter.symbols.FunctionSymbol
 import java.util.*
 
@@ -12,7 +13,7 @@ interface Variable {
 
 class LocalVariable(val name: String, val type: LLVMType) : Variable {
     override fun allocCode() = "%$name = alloca ${type.code}"
-    override val ref get() = LocalValueRef(name, LLVMType.Pointer(type))
+    override val ref get() = LocalValRef(name, LLVMType.Pointer(type))
 }
 
 class BlockBuilder(
@@ -109,6 +110,6 @@ class FunctionBuilder(
         if (index < 0 || index >= paramTypes.size) {
             throw IllegalArgumentException("Expected an index between 0 and ${paramTypes.size - 1}, found $index")
         }
-        return LocalValueRef("$index", paramTypes[index])
+        return LocalValRef("$index", paramTypes[index])
     }
 }

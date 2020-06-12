@@ -1,18 +1,28 @@
-use secondFile*
-use dir.thirdFile*
 
 val creatorsName = "leo"
 
-[entry]
-fn test {
-    val name = getName()
+[entry] fn test {
 
-    if name == creatorsName {
-        println("Hi, \" + name + \"!!")
-    }
-    else {
-        println("Hi, \" + name + \"!")
-    }
+    use secondFile*
 
-    println(name)
+    {
+        fn doit String {
+            val name = getName()
+
+            if name == creatorsName {
+                println("Hi, \" + name + \"!!")
+            }
+            else {
+                println("Hi, \" + name + \"!")
+            }
+
+            return name
+        }
+        println(doit())
+        {
+            println(doit())
+            println(doit())
+        }
+        println(doit())
+    }
 }

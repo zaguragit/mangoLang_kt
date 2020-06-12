@@ -60,6 +60,7 @@ open class BoundScope(
                     else -> {
                         val parentLookup = parent.tryLookupVariable(path)
                         if (parentLookup.second) {
+                            parentLookup.first!!.useCounter++
                             return parentLookup
                         }
                         for (use in used) {
@@ -67,6 +68,7 @@ open class BoundScope(
                                 val namespace = BoundNamespace[use.path]
                                 val result = namespace.tryLookupVariable(path)
                                 if (result.second) {
+                                    result.first!!.useCounter++
                                     return result
                                 }
                             }
@@ -79,6 +81,7 @@ open class BoundScope(
             else -> {
                 val parentLookup = parent.tryLookupVariable(path)
                 if (parentLookup.second) {
+                    parentLookup.first!!.useCounter++
                     return parentLookup
                 }
                 for (use in used) {
@@ -87,12 +90,14 @@ open class BoundScope(
                         if (namespace.path == path.first()) {
                             val result = namespace.tryLookupVariable(path)
                             if (result.second) {
+                                result.first!!.useCounter++
                                 return result
                             }
                         }
                     } else {
                         val result = namespace.tryLookupVariable(path)
                         if (result.second) {
+                            result.first!!.useCounter++
                             return result
                         }
                     }
@@ -115,6 +120,7 @@ open class BoundScope(
                     else -> {
                         val parentLookup = parent.tryLookupFunction(path)
                         if (parentLookup.second) {
+                            parentLookup.first!!.useCounter++
                             return parentLookup
                         }
                         for (use in used) {
@@ -122,6 +128,7 @@ open class BoundScope(
                                 val namespace = BoundNamespace[use.path]
                                 val result = namespace.tryLookupFunction(path)
                                 if (result.second) {
+                                    result.first!!.useCounter++
                                     return result
                                 }
                             }
@@ -134,6 +141,7 @@ open class BoundScope(
             else -> {
                 val parentLookup = parent.tryLookupFunction(path)
                 if (parentLookup.second) {
+                    parentLookup.first!!.useCounter++
                     return parentLookup
                 }
                 for (use in used) {
@@ -142,12 +150,14 @@ open class BoundScope(
                         if (namespace.path == path.first()) {
                             val result = namespace.tryLookupFunction(path)
                             if (result.second) {
+                                result.first!!.useCounter++
                                 return result
                             }
                         }
                     } else {
                         val result = namespace.tryLookupFunction(path)
                         if (result.second) {
+                            result.first!!.useCounter++
                             return result
                         }
                     }

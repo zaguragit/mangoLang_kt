@@ -1,5 +1,8 @@
 package mango.compilation.llvm
 
+import mango.compilation.llvm.LLVMValue.GlobalValRef
+import mango.compilation.llvm.LLVMValue.Null
+import mango.compilation.llvm.LLVMValue.StringRef
 import mango.interpreter.symbols.FunctionSymbol
 import java.util.*
 import kotlin.collections.HashMap
@@ -17,7 +20,7 @@ open class StringConst(
 ) {
     fun lengthInBytes() = content.length + 1
     open fun IRDeclaration() = "@$id = private unnamed_addr constant [${lengthInBytes()} x i8] ${content.IRCode}"
-    val ref get() = StringReference(this)
+    val ref get() = StringRef(this)
 }
 
 data class GlobalVariable(
@@ -28,7 +31,7 @@ data class GlobalVariable(
     fun IRDeclaration(): String {
         return "@$name = global ${type.code} $value"
     }
-    override val ref get() = GlobalValueRef(name, type)
+    override val ref get() = GlobalValRef(name, type)
     override fun allocCode() = "@$name = alloca ${type.code}"
 }
 

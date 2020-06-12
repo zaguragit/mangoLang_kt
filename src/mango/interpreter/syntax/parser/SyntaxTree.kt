@@ -10,7 +10,7 @@ class SyntaxTree private constructor(
     val sourceText: SourceText
 ) {
 
-    val projectPath = sourceText.fileName.substring(4).substringBeforeLast('.').replace('/', '.')
+    val projectPath = sourceText.fileName.substringAfter("src/").substringBeforeLast('.').replace('/', '.')
 
     val root: NamespaceNode
     val diagnostics: DiagnosticList
@@ -22,7 +22,9 @@ class SyntaxTree private constructor(
     }
 
     companion object {
-        fun parse(text: String) = SyntaxTree(SourceText(text, ""))
+
+        fun parse(text: String) = SyntaxTree(SourceText(text, "repl"))
+
         fun load(fileName: String): SyntaxTree {
             val file = File(fileName)
             if (!file.exists()) {

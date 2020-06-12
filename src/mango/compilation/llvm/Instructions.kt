@@ -1,5 +1,6 @@
 package mango.compilation.llvm
 
+import mango.compilation.llvm.LLVMValue.LocalValRef
 import mango.interpreter.symbols.FunctionSymbol
 import java.util.*
 
@@ -54,7 +55,7 @@ data class Comparison(val comparisonType: ComparisonType, val left: LLVMValue, v
 
 class TempValue(val name: String, val value: LLVMInstruction) : LLVMInstruction {
     override val code get(): String = "%$name = ${value.code}"
-    fun reference() = LocalValueRef(name, value.type!!)
+    fun reference() = LocalValRef(name, value.type!!)
     override val type get() = value.type!!
 }
 

@@ -1,11 +1,9 @@
 package mango.compilation.llvm
 
 import mango.compilation.Emitter
+import mango.compilation.llvm.LLVMValue.*
 import mango.interpreter.binding.*
-import mango.interpreter.symbols.BuiltinFunctions
-import mango.interpreter.symbols.Symbol
-import mango.interpreter.symbols.TypeSymbol
-import mango.interpreter.symbols.VisibleVariableSymbol
+import mango.interpreter.symbols.*
 
 object LLVMEmitter : Emitter {
 
@@ -17,7 +15,7 @@ object LLVMEmitter : Emitter {
     ): String {
         val builder = ModuleBuilder()
         lateinit var initBlock: BlockBuilder
-        for (f in program.functionBodies) {
+        for (f in program.functions) {
             val symbol = f.key
             val body = f.value
             if (symbol.meta.isExtern) {
@@ -108,7 +106,7 @@ object LLVMEmitter : Emitter {
                     expression as BoundLiteralExpression
                     when (expression.type) {
                         TypeSymbol.string -> {
-                            StringReference(initBlock.stringConstForContent(expression.value as String))
+                            StringRef(initBlock.stringConstForContent(expression.value as String))
                         }
                         TypeSymbol.int -> IntConst(expression.value as Int, LLVMType.I32)
                         TypeSymbol.bool -> BoolConst(expression.value as Boolean)
@@ -117,7 +115,7 @@ object LLVMEmitter : Emitter {
                 }
                 BoundNodeType.VariableExpression -> {
                     expression as BoundVariableExpression
-                    LocalValueRef(expression.variable.name, LLVMType.valueOf(expression.variable.type))
+                    LocalValRef(expression.variable.name, LLVMType.valueOf(expression.variable.type))
                 }
                 else -> {
                     val instruction = emitInstruction(initBlock, expression)!!
@@ -125,7 +123,7 @@ object LLVMEmitter : Emitter {
                     if (type != null && type != LLVMType.Void) {
                         val uid = newUID()
                         initBlock.addInstruction(TempValue(uid, instruction))
-                        LocalValueRef(uid, type)
+                        LocalValRef(uid, type)
                     }
                     else {
                         initBlock.addInstruction(instruction)
@@ -155,7 +153,7 @@ object LLVMEmitter : Emitter {
                 expression as BoundLiteralExpression
                 when (expression.type) {
                     TypeSymbol.string -> {
-                        StringReference(block.stringConstForContent(expression.value as String))
+                        StringRef(block.stringConstForContent(expression.value as String))
                     }
                     TypeSymbol.int -> IntConst(expression.value as Int, LLVMType.I32)
                     TypeSymbol.bool -> BoolConst(expression.value as Boolean)
@@ -174,12 +172,12 @@ object LLVMEmitter : Emitter {
                     Symbol.Kind.GlobalVariable -> {
                         val variable = expression.variable as VisibleVariableSymbol
                         val uid = newUID()
-                        val tmp = TempValue(uid, Load(GlobalValueRef(variable.path, LLVMType.valueOf(expression.variable.type))))
+                        val tmp = TempValue(uid, Load(GlobalValRef(variable.path, LLVMType.valueOf(expression.variable.type))))
                         block.addInstruction(tmp)
                         tmp.reference()
                     }
                     else -> {
-                        LocalValueRef(expression.variable.name, LLVMType.valueOf(expression.variable.type))
+                        LocalValRef(expression.variable.name, LLVMType.valueOf(expression.variable.type))
                     }
                 }
             }
@@ -193,7 +191,7 @@ object LLVMEmitter : Emitter {
                 } else {
                     val uid = newUID()
                     block.addInstruction(TempValue(uid, instruction))
-                    LocalValueRef(uid, type)
+                    LocalValRef(uid, type)
                 }
             }
         }

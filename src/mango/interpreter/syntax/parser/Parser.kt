@@ -189,12 +189,6 @@ class Parser(
 
     private fun parseGlobalStatement(): TopLevelNode {
         skipSeparators()
-        val annotations = parseAnnotations()
-        if (current.kind == SyntaxType.Fn) {
-            return parseFunctionDeclaration(annotations)
-        } else if (current.kind == SyntaxType.Use) {
-            return parseUseStatement()
-        }
         val statement = parseStatement()
         if (statement !is TopLevelNode) {
             if (!isRepl) {
@@ -249,6 +243,7 @@ class Parser(
 
     private fun parseStatement(): StatementNode {
         skipSeparators()
+        val annotations = parseAnnotations()
         return when (current.kind) {
             SyntaxType.OpenCurlyBracket -> parseBlockStatement()
             SyntaxType.Val, SyntaxType.Var -> parseVariableDeclaration()
@@ -258,6 +253,8 @@ class Parser(
             SyntaxType.Break -> parseBreakStatement()
             SyntaxType.Continue -> parseContinueStatement()
             SyntaxType.Return -> parseReturnStatement()
+            SyntaxType.Fn -> parseFunctionDeclaration(annotations)
+            SyntaxType.Use -> parseUseStatement()
             else -> parseExpressionStatement()
         }
     }
