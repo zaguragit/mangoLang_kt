@@ -2,10 +2,9 @@ package mango.console
 
 import mango.interpreter.symbols.VariableSymbol
 import mango.compilation.Compilation
-import mango.interpreter.binding.Binder
+import mango.eval.EvaluationResult
 import mango.interpreter.symbols.FunctionSymbol
-import mango.interpreter.symbols.Symbol
-import mango.interpreter.syntax.parser.SyntaxTree
+import mango.interpreter.syntax.SyntaxTree
 
 class MangoRepl : Repl() {
 
@@ -56,7 +55,7 @@ class MangoRepl : Repl() {
             }
             compilation.globalScope.diagnostics.clear()
             previous = compilation
-            if (result.value != null) {
+            if (result is EvaluationResult && result.value != null) {
                 print(Console.YELLOW_BOLD_BRIGHT)
                 println(result.value)
                 print(Console.RESET)
@@ -77,26 +76,30 @@ class MangoRepl : Repl() {
         val args = cmd.split(' ')
         when (args[0]) {
             "#show" -> {
-                when (args[1]) {
-                    "tree" -> if (showParseTree) {
+                if (args.size == 1) {
+                    println("usage: #show (program|tree)")
+                } else {
+                    when (args[1]) {
+                        "tree" -> if (showParseTree) {
                             showParseTree = false
                             println("Parse tree is now invisible")
                         } else {
                             showParseTree = true
                             println("Parse tree is now visible")
                         }
-                    "program" -> if (showBindTree) {
+                        "program" -> if (showBindTree) {
                             showBindTree = false
                             println("Bind tree is now invisible")
                         } else {
                             showBindTree = true
                             println("Bind tree is now visible")
                         }
+                    }
                 }
             }
             "#dump" -> {
                 if (args.size == 1) {
-
+                    println("usage: #dump [functionNames]")
                 } else {
                     for (i in 1 until args.size) {
                         var compilation = previous

@@ -1,5 +1,6 @@
 package mango.compilation.llvm
 
+import mango.interpreter.symbols.Symbol
 import mango.interpreter.symbols.TypeSymbol
 
 interface LLVMType {
@@ -8,40 +9,39 @@ interface LLVMType {
     val isInteger: Boolean get() = false
 
     companion object {
-        fun valueOf(type: TypeSymbol) = when (type) {
-            //TypeSymbol.any ->
-            TypeSymbol.int -> I32
-            TypeSymbol.bool -> Bool
-            TypeSymbol.string -> Pointer(I8)
-            TypeSymbol.unit -> Void
-            else -> throw Exception("internal error: type unknown to LLVM")
+
+        fun valueOf(type: TypeSymbol.StructTypeSymbol) = Struct(type.name)
+        fun valueOf(type: TypeSymbol): LLVMType {
+            return if (type.kind == Symbol.Kind.Struct) {
+                Struct(type.name)
+            } else when (type.name) {
+                TypeSymbol.Any.name -> Ptr(Void)
+                TypeSymbol.I8.name -> I8
+                //TypeSymbol.U8 -> U8
+                TypeSymbol.I16.name -> I16
+                //TypeSymbol.U16 -> U16
+                TypeSymbol.I32.name -> I32
+                //TypeSymbol.U32 -> U32
+                TypeSymbol.I64.name -> I64
+                //TypeSymbol.U64 -> U64
+                TypeSymbol.Bool.name -> Bool
+                TypeSymbol.Ptr.name -> Ptr(valueOf(type.params[0]))
+                TypeSymbol.Unit.name -> Void
+                else -> throw Exception("internal error: type unknown to LLVM (${type.name})")
+            }
         }
     }
 
-    object Bool : LLVMType {
+    open class I(bits: Int) : LLVMType {
         override val isInteger = true
-        override val code = "i1"
+        override val code = "i$bits"
     }
 
-    object I8 : LLVMType {
-        override val isInteger = true
-        override val code = "i8"
-    }
-
-    object I16 : LLVMType {
-        override val isInteger = true
-        override val code = "i16"
-    }
-
-    object I32 : LLVMType {
-        override val isInteger = true
-        override val code = "i32"
-    }
-
-    object I64 : LLVMType {
-        override val isInteger = true
-        override val code = "i64"
-    }
+    object Bool : I(1)
+    object I8   : I(8)
+    object I16  : I(16)
+    object I32  : I(32)
+    object I64  : I(64)
 
     object Float : LLVMType {
         override val isFloatingPoint = true
@@ -53,17 +53,19 @@ interface LLVMType {
         override val code = "double"
     }
 
-    data class Pointer(
+    object Void : LLVMType {
+        override val code = "void"
+    }
+
+    data class Ptr(
         val element: LLVMType
     ) : LLVMType {
         override val code = "${element.code}*"
     }
 
-    object Void : LLVMType {
-        override val code = "void"
+    class Struct(
+        val name: String
+    ) : LLVMType {
+        override val code = "%.struct.$name"
     }
-
-    class CustomType(
-        override val code: String
-    ) : LLVMType
 }

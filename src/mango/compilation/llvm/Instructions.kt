@@ -1,72 +1,94 @@
 package mango.compilation.llvm
 
-import mango.compilation.llvm.LLVMValue.LocalValRef
+import mango.compilation.llvm.LLVMValue.LocalRef
 import mango.interpreter.symbols.FunctionSymbol
 import java.util.*
 
 interface LLVMInstruction {
     val code: String
-    val type: LLVMType?
+    val type: LLVMType
 }
 
-class ReturnInt(val value: Int) : LLVMInstruction {
-    override val type = null
-    override val code get() = "ret i32 $value"
-}
+val LLVMInstruction?.isJump get() =
+    this !is Ret &&
+    this !is RetVoid &&
+    this !is Jmp &&
+    this !is If
 
-class Return(val value: LLVMValue) : LLVMInstruction {
-    override val type get() = null
+class Ret(val value: LLVMValue) : LLVMInstruction {
+    override val type get() = LLVMType.Void
     override val code get() = "ret ${value.type.code} ${value.code}"
 }
 
-class ReturnVoid : LLVMInstruction {
+class RetVoid : LLVMInstruction {
     override val code = "ret void"
     override val type = LLVMType.Void
 }
 
 class Load(val value: LLVMValue) : LLVMInstruction {
     override val code get() = "load ${type.code}, ${value.type.code} ${value.code}"
-    override val type get() = (value.type as LLVMType.Pointer).element
+    override val type get() = (value.type as LLVMType.Ptr).element
 }
 
-class IfInstruction(val condition: LLVMValue, val yesLabel: String, val noLabel: String) : LLVMInstruction {
+class If(
+    val condition: LLVMValue,
+    val yesLabel: String,
+    val noLabel: String
+) : LLVMInstruction {
     override val code get() = "br ${condition.type.code} ${condition.code}, label %${yesLabel}, label %${noLabel}"
-    override val type = null
+    override val type = LLVMType.Void
 }
 
-class JumpInstruction(val label: String) : LLVMInstruction {
+class Jmp(
+    val label: String
+) : LLVMInstruction {
     override val code get() = "br label %${label}"
-    override val type = null
+    override val type = LLVMType.Void
 }
 
-enum class ComparisonType(val code: String) {
-    LessThan("slt"),
-    MoreThan("sgt"),
-    IsEqual("eq"),
-    IsEqualOrMore("sge"),
-    IsEqualOrLess("sle"),
-    IsNotEqual("ne")
-}
+data class Icmp(
+    val comparisonType: Type,
+    val left: LLVMValue,
+    val right: LLVMValue
+) : LLVMInstruction {
 
-data class Comparison(val comparisonType: ComparisonType, val left: LLVMValue, val right: LLVMValue) : LLVMInstruction {
     override val code get() = "icmp ${comparisonType.code} ${left.type.code} ${left.code}, ${right.code}"
     override val type = LLVMType.Bool
+
+    enum class Type(val code: String) {
+        LessThan("slt"),
+        MoreThan("sgt"),
+        IsEqual("eq"),
+        IsEqualOrMore("sge"),
+        IsEqualOrLess("sle"),
+        IsNotEqual("ne")
+    }
 }
 
-class TempValue(val name: String, val value: LLVMInstruction) : LLVMInstruction {
+class TmpVal(
+    val name: String,
+    val value: LLVMInstruction
+) : LLVMInstruction {
     override val code get(): String = "%$name = ${value.code}"
-    fun reference() = LocalValRef(name, value.type!!)
-    override val type get() = value.type!!
+    val ref get() = LocalRef(name, value.type)
+    override val type get() = value.type
 }
 
-class Store(val value: LLVMValue, val destination: LLVMValue) : LLVMInstruction {
+class Store(
+    val value: LLVMValue,
+    val destination: LLVMValue
+) : LLVMInstruction {
     override val code get() = "store ${value.type.code} ${value.code}, ${destination.type.code} ${destination.code}"
-    override val type = null
+    override val type = LLVMType.Void
 }
 
-class GetElementPtr(val privType: LLVMType, val pointer: LLVMValue, val index: LLVMValue) : LLVMInstruction {
-    override val code get() = "getelementptr inbounds ${type.code}, ${pointer.type.code} ${pointer.code}, i64 ${index.code}"
-    override val type get() = LLVMType.Pointer(privType)
+class GetPtr(
+    val privType: LLVMType,
+    val pointer: LLVMValue,
+    val index: LLVMValue
+) : LLVMInstruction {
+    override val code get() = "getelementptr inbounds (${type.code}, ${pointer.type.code} ${pointer.code}, i64 0, i32 ${index.code})"
+    override val type get() = LLVMType.Ptr(privType)
 }
 
 class Call(
@@ -92,67 +114,67 @@ class CallWithBitCast(val declaration: FunctionDeclaration, private vararg val p
     override val type get() = declaration.returnType
 }
 
-class SignedIntDivision(val left: LLVMValue, val right: LLVMValue) : LLVMInstruction {
+class IntDiv(val left: LLVMValue, val right: LLVMValue) : LLVMInstruction {
     override val code get() = "sdiv ${type.code} ${left.code}, ${right.code}"
     override val type = left.type
 }
 
-class UnsignedIntDivision(val left: LLVMValue, val right: LLVMValue) : LLVMInstruction {
+class UIntDiv(val left: LLVMValue, val right: LLVMValue) : LLVMInstruction {
     override val code get() = "udiv ${type.code} ${left.code}, ${right.code}"
     override val type = left.type
 }
 
-class FloatDivision(val left: LLVMValue, val right: LLVMValue) : LLVMInstruction {
+class FloatDiv(val left: LLVMValue, val right: LLVMValue) : LLVMInstruction {
     override val code get() = "fdiv ${type.code} ${left.code}, ${right.code}"
     override val type = left.type
 }
 
-class IntMultiplication(val left: LLVMValue, val right: LLVMValue) : LLVMInstruction {
+class IntMul(val left: LLVMValue, val right: LLVMValue) : LLVMInstruction {
     override val code get() = "mul ${type.code} ${left.code}, ${right.code}"
     override val type = left.type
 }
 
-class FloatMultiplication(val left: LLVMValue, val right: LLVMValue) : LLVMInstruction {
+class FloatMul(val left: LLVMValue, val right: LLVMValue) : LLVMInstruction {
     override val code get() = "fmul ${type.code} ${left.code}, ${right.code}"
     override val type = left.type
 }
 
-class IntAddition(val left: LLVMValue, val right: LLVMValue) : LLVMInstruction {
+class IntAdd(val left: LLVMValue, val right: LLVMValue) : LLVMInstruction {
     override val code get() = "add ${type.code} ${left.code}, ${right.code}"
     override val type = left.type
 }
 
-class FloatAddition(val left: LLVMValue, val right: LLVMValue) : LLVMInstruction {
+class FloatAdd(val left: LLVMValue, val right: LLVMValue) : LLVMInstruction {
     override val code get() = "fadd ${type.code} ${left.code}, ${right.code}"
     override val type = left.type
 }
 
-class IntSubtraction(val left: LLVMValue, val right: LLVMValue) : LLVMInstruction {
+class IntSub(val left: LLVMValue, val right: LLVMValue) : LLVMInstruction {
     override val code get() = "sub ${type.code} ${left.code}, ${right.code}"
     override val type = left.type
 }
 
-class FloatSubtraction(val left: LLVMValue, val right: LLVMValue) : LLVMInstruction {
+class FloatSub(val left: LLVMValue, val right: LLVMValue) : LLVMInstruction {
     override val code get() = "fsub ${type.code} ${left.code}, ${right.code}"
     override val type = left.type
 }
 
-class ConversionFloatToSignedInt(val value: LLVMValue, val targetType: LLVMType) : LLVMInstruction {
+class FloatToInt(val value: LLVMValue, val targetType: LLVMType) : LLVMInstruction {
     override val code get() = "fptosi ${value.type.code} ${value.code} to ${targetType.code}"
     override val type = targetType
 }
 
-class ConversionFloatToUnsignedInt(val value: LLVMValue, val targetType: LLVMType) : LLVMInstruction {
+class FloatToUInt(val value: LLVMValue, val targetType: LLVMType) : LLVMInstruction {
     override val code get() = "fptoui ${value.type.code} ${value.code} to ${targetType.code}"
     override val type = targetType
 }
 
-class ConversionSignedIntToFloat(val value: LLVMValue, val targetType: LLVMType) : LLVMInstruction {
+class IntToFloat(val value: LLVMValue, val targetType: LLVMType) : LLVMInstruction {
     override val code get() = "sitofp ${value.type.code} ${value.code} to ${targetType.code}"
     override val type = targetType
 }
 
-class ConversionUnsignedIntToFloat(val value: LLVMValue, val targetType: LLVMType) : LLVMInstruction {
+class UIntToFloat(val value: LLVMValue, val targetType: LLVMType) : LLVMInstruction {
     override val code get() = "uitofp ${value.type.code} ${value.code} to ${targetType.code}"
     override val type = targetType
 }

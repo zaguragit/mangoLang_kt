@@ -5,7 +5,7 @@ import mango.console.MangoRepl
 import mango.compilation.Compilation
 import mango.compilation.EmissionType
 import mango.console.Console
-import mango.interpreter.syntax.parser.SyntaxTree
+import mango.interpreter.syntax.SyntaxTree
 import java.io.File
 import kotlin.system.exitProcess
 

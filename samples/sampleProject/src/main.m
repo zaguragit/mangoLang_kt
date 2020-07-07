@@ -1,7 +1,8 @@
 
 val creatorsName = "leo"
 
-[entry] fn test {
+[entry]
+fn test {
     use secondFile*
     fn doit String {
         val name = getName()

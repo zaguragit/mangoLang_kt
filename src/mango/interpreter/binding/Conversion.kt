@@ -18,13 +18,13 @@ enum class Conversion(
             if (from == to) {
                 return Identity
             }
-            if (from == TypeSymbol.int || from == TypeSymbol.bool) {
-                if (to == TypeSymbol.string) {
+            if (from == TypeSymbol.Int || from == TypeSymbol.Bool) {
+                if (to == TypeSymbol.String) {
                     return Explicit
                 }
             }
-            if (from == TypeSymbol.string) {
-                if (to == TypeSymbol.int || to == TypeSymbol.bool) {
+            if (from == TypeSymbol.String) {
+                if (to == TypeSymbol.Int || to == TypeSymbol.Bool) {
                     return Explicit
                 }
             }

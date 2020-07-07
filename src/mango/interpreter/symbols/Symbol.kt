@@ -6,42 +6,37 @@ abstract class Symbol {
     var useCounter = 0
 
     enum class Kind {
-        GlobalVariable,
-        LocalVariable,
-        Type,
+        VisibleVariable,
+        Variable,
+        Parameter,
+        Struct,
         Function,
-        Parameter
+        Type
     }
 
     override fun toString() = name
 
     fun printStructure() = when (kind) {
-        Kind.GlobalVariable -> printGlobalVariable()
-        Kind.LocalVariable -> printLocalVariable()
-        Kind.Type -> printType()
-        Kind.Function -> printFunction()
+        Kind.Variable, Kind.VisibleVariable -> printVariable()
         Kind.Parameter -> printParameter()
+        Kind.Function -> printFunction()
+        Kind.Type -> printType()
+        Kind.Struct -> printStruct()
     }
 
-    private fun printGlobalVariable() {
-        this as VisibleVariableSymbol
+    private fun printVariable() {
+        this as VariableSymbol
         print(if (isReadOnly) { if (constant == null) "val " else "const " } else "var ")
         print(name)
         print(' ')
         type.printStructure()
     }
 
-    private fun printLocalVariable() {
-        this as LocalVariableSymbol
-        print(if (isReadOnly) { if (constant == null) "val " else "const " } else "var ")
+    private fun printParameter() {
+        this as VariableSymbol
         print(name)
         print(' ')
         type.printStructure()
-    }
-
-    private fun printType() {
-        this as TypeSymbol
-        print(name)
     }
 
     private fun printFunction() {
@@ -63,15 +58,41 @@ abstract class Symbol {
         type.printStructure()
     }
 
-    private fun printParameter() {
-        this as ParameterSymbol
+    private fun printType() {
+        this as TypeSymbol
         print(name)
-        print(' ')
-        type.printStructure()
+    }
+
+    private fun printStruct() {
+        this as TypeSymbol.StructTypeSymbol
+        print("struct ")
+        print(name)
+        println(" {")
+        for (field in fields) {
+            print('\t')
+            print("val")
+            print(field.name)
+            print(' ')
+            field.type.printStructure()
+            println()
+        }
+        print('}')
     }
 
     companion object {
         private var fnUIDCounter = 0
         fun genFnUID() = "0fn${fnUIDCounter++}"
     }
+
+    /*class MetaData {
+
+        //// FUNCTIONS /////////////////////////////////////////////////////////////////////////////////////////////////
+        var isInline = false
+        var isExtern = false
+        var isEntry = false
+        var cName: String? = null
+
+        //// STRUCT FIELDS /////////////////////////////////////////////////////////////////////////////////////////////
+        var init = false
+    }*/
 }

@@ -8,9 +8,9 @@ fn getName String -> ask("What's your name?")
 // uses functions from the c standard library
 
 [extern]
-[cname: "printf"]
+[cname: "print"]
 fn print (text String)
 
 [extern]
-[cname: "puts"]
+[cname: "println"]
 fn println (text String)

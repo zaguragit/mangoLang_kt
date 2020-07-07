@@ -1,13 +1,19 @@
 package mango.interpreter.binding
 
+import mango.interpreter.binding.nodes.BoundBinaryOperator
+import mango.interpreter.binding.nodes.BoundBinaryOperatorType
+import mango.interpreter.binding.nodes.BoundUnaryOperator
+import mango.interpreter.binding.nodes.BoundUnaryOperatorType
+import mango.interpreter.binding.nodes.expressions.BoundConstant
+import mango.interpreter.binding.nodes.expressions.BoundExpression
 import mango.interpreter.symbols.TypeSymbol
 
 object ConstantFolding {
 
     fun computeConstant(
-        left: BoundExpression,
-        operator: BoundBinaryOperator,
-        right: BoundExpression
+            left: BoundExpression,
+            operator: BoundBinaryOperator,
+            right: BoundExpression
     ): BoundConstant? {
         val leftConst = left.constantValue
         val rightConst = right.constantValue
@@ -31,10 +37,9 @@ object ConstantFolding {
         val rightVal = rightConst.value
         return BoundConstant(when (operator.type) {
             BoundBinaryOperatorType.Add -> {
-                if (left.type == TypeSymbol.string) {
+                if (left.type == TypeSymbol.String) {
                     leftVal as String + rightVal as String
-                }
-                else {
+                } else {
                     leftVal as Int + rightVal as Int
                 }
             }
@@ -43,18 +48,16 @@ object ConstantFolding {
             BoundBinaryOperatorType.Div -> leftVal as Int / rightVal as Int
             BoundBinaryOperatorType.Rem -> leftVal as Int % rightVal as Int
             BoundBinaryOperatorType.BitAnd -> {
-                if (left.type == TypeSymbol.bool) {
+                if (left.type == TypeSymbol.Bool) {
                     leftVal as Boolean and rightVal as Boolean
-                }
-                else {
+                } else {
                     leftVal as Int and rightVal as Int
                 }
             }
             BoundBinaryOperatorType.BitOr -> {
-                if (left.type == TypeSymbol.bool) {
+                if (left.type == TypeSymbol.Bool) {
                     leftVal as Boolean or rightVal as Boolean
-                }
-                else {
+                } else {
                     leftVal as Int or rightVal as Int
                 }
             }
@@ -72,8 +75,8 @@ object ConstantFolding {
     }
 
     fun computeConstant(
-        operator: BoundUnaryOperator,
-        operand: BoundExpression
+            operator: BoundUnaryOperator,
+            operand: BoundExpression
     ): BoundConstant? {
         if (operand.constantValue != null) {
             val value = operand.constantValue!!.value

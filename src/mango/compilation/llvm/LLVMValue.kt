@@ -7,50 +7,67 @@ interface LLVMValue {
     class StringRef(
         val stringConst: StringConst
     ) : LLVMValue {
-        override val type get() = LLVMType.Pointer(LLVMType.I8)
-        override val code get() = "getelementptr inbounds ([${stringConst.lengthInBytes()} x i8], [${stringConst.lengthInBytes()} x i8]* @${stringConst.id}, i32 0, i32 0)"
+        override val type get() = LLVMType.Ptr(LLVMType.I8)
+        override val code get() = "getelementptr inbounds ([${stringConst.lengthInBytes()} x i8], [${stringConst.lengthInBytes()} x i8]* @${stringConst.id}, i64 0, i32 0)"
     }
 
-    data class LocalValRef(
-        val name: String,
-        override val type: LLVMType
-    ) : LLVMValue {
-        override val code get() = "%$name"
+    class GetPtr(
+        val privType: LLVMType,
+        val pointer: LLVMValue,
+        val index: LLVMValue
+    ) : LLVMInstruction {
+        override val code get() = "getelementptr inbounds (${type.code}, ${pointer.type.code} ${pointer.code}, i64 0, i32 ${index.code})"
+        override val type get() = LLVMType.Ptr(privType)
     }
 
-    data class GlobalValRef(
+    class LocalRef(
         val name: String,
         val privType: LLVMType
     ) : LLVMValue {
-        override val type get() = LLVMType.Pointer(privType)
+        override val type get() = privType
+        override val code get() = "%$name"
+    }
+
+    class GlobalRef(
+        val name: String,
+        val privType: LLVMType
+    ) : LLVMValue {
+        override val type get() = LLVMType.Ptr(privType)
         override val code get() = "@$name"
     }
 
-    class BoolConst(
+    class Bool(
         val value: Boolean
     ) : LLVMValue {
         override val type = LLVMType.Bool
         override val code get() = "${if (value) 1 else 0}"
     }
 
-    class IntConst(
-        val value: Int,
+    class Int(
+        val value: kotlin.Int,
         override val type: LLVMType
     ) : LLVMValue {
         override val code get() = "$value"
     }
 
-    class FloatConst(
-        val value: Float,
+    class Float(
+        val value: kotlin.Float,
         override val type: LLVMType
     ) : LLVMValue {
         override val code get() = "$value"
     }
 
-    data class Null(
+    class Null(
         override val type: LLVMType = LLVMType.Void
     ) : LLVMValue {
         override val code get() = "null"
+    }
+
+    class Struct(
+        override val type: LLVMType.Struct,
+        val values: Array<LLVMValue>
+    ) : LLVMValue {
+        override val code get() = "{ " + values.joinToString(", ") { it.type.code + ' ' + it.code } + " }"
     }
 }
 

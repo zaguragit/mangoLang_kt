@@ -1,10 +1,10 @@
 package mango.interpreter.symbols
 
-import mango.interpreter.syntax.parser.FunctionDeclarationNode
+import mango.interpreter.syntax.nodes.FunctionDeclarationNode
 
 class FunctionSymbol(
     override val name: String,
-    val parameters: Array<ParameterSymbol>,
+    val parameters: Array<VariableSymbol>,
     val type: TypeSymbol,
     override val path: String,
     val declarationNode: FunctionDeclarationNode?,

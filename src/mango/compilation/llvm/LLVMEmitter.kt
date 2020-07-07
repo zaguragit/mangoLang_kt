@@ -3,6 +3,11 @@ package mango.compilation.llvm
 import mango.compilation.Emitter
 import mango.compilation.llvm.LLVMValue.*
 import mango.interpreter.binding.*
+import mango.interpreter.binding.nodes.BoundBinaryOperatorType
+import mango.interpreter.binding.nodes.BoundNodeType
+import mango.interpreter.binding.nodes.BoundUnaryOperatorType
+import mango.interpreter.binding.nodes.expressions.*
+import mango.interpreter.binding.nodes.statements.*
 import mango.interpreter.symbols.*
 
 object LLVMEmitter : Emitter {
@@ -15,11 +20,23 @@ object LLVMEmitter : Emitter {
     ): String {
         val builder = ModuleBuilder()
         lateinit var initBlock: BlockBuilder
+        for (struct in TypeSymbol.map.values) {
+            if (struct is TypeSymbol.StructTypeSymbol) {
+                builder.declareStruct(struct.name, struct.fields.map {
+                    LLVMType.valueOf(it.type)
+                }.toTypedArray())
+            }
+        }
         for (f in program.functions) {
             val symbol = f.key
             val body = f.value
             if (symbol.meta.isExtern) {
-                builder.addImportedDeclaration("declare ${LLVMType.valueOf(symbol.type).code} @${symbol.meta.cName ?: symbol.name}(${symbol.parameters.joinToString(", ") { LLVMType.valueOf(it.type).code }})")
+                builder.addImportedDeclaration("declare ${LLVMType.valueOf(symbol.type).code} @${symbol.meta.cName ?: symbol.name}(${symbol.parameters.joinToString(", ") {
+                    val type = LLVMType.valueOf(it.type)
+                    (if (it.type.kind == Symbol.Kind.Struct)
+                        LLVMType.Ptr(type)
+                    else type).code
+                }})")
                 continue
             }
             val function = builder.createFunction(symbol)
@@ -33,97 +50,77 @@ object LLVMEmitter : Emitter {
             for (instruction in body!!.statements) {
                 when (instruction.boundType) {
                     BoundNodeType.ExpressionStatement -> {
-                        instruction as BoundExpressionStatement
-                        val expression = instruction.expression
+                        val expression = (instruction as BoundExpressionStatement).expression
                         emitValue(currentBlock, expression)
                     }
                     BoundNodeType.VariableDeclaration -> {
                         instruction as BoundVariableDeclaration
-                        currentBlock.addInstruction(TempValue(
+
+                        currentBlock.tmpVal(
                             instruction.variable.name,
-                            emitInstruction(currentBlock, instruction.initializer)!!
-                        ))
+                            emitInstruction(currentBlock, instruction.initializer)!!)
+                        /*
+                        if (instruction.initializer.type.kind == Symbol.Kind.Struct) {
+                            val structType = LLVMType.valueOf(instruction.initializer.type)
+                            currentBlock.alloc(instruction.variable.name, structType)
+                        } else {
+                            currentBlock.tmpVal(
+                                instruction.variable.name,
+                                emitInstruction(currentBlock, instruction.initializer)!!)
+                        }*/
                     }
                     BoundNodeType.LabelStatement -> {
                         instruction as BoundLabelStatement
                         val lastInstruction = currentBlock.lastOrNull()
-                        if (lastInstruction !is Return &&
-                            lastInstruction !is ReturnVoid &&
-                            lastInstruction !is ReturnInt &&
-                            lastInstruction !is JumpInstruction &&
-                            lastInstruction !is IfInstruction) {
-                            currentBlock.addInstruction(JumpInstruction(instruction.symbol.name))
+                        if (lastInstruction.isJump) {
+                            currentBlock.addInstruction(Jmp(instruction.symbol.name))
                         }
                         currentBlock = currentBlock.functionBuilder.createBlock(instruction.symbol.name)
                     }
-                    BoundNodeType.GotoStatement -> {
-                        instruction as BoundGotoStatement
-                        currentBlock.addInstruction(JumpInstruction(instruction.label.name))
-                    }
+                    BoundNodeType.GotoStatement -> currentBlock.jump((instruction as BoundGotoStatement).label.name)
                     BoundNodeType.ConditionalGotoStatement -> {
                         instruction as BoundConditionalGotoStatement
                         val condition = emitValue(currentBlock, instruction.condition)!!
                         val antiName = instruction.label.name + "_anti"
                         if (instruction.jumpIfTrue) {
-                            currentBlock.addInstruction(IfInstruction(condition, instruction.label.name, antiName))
+                            currentBlock.conditionalJump(condition, instruction.label.name, antiName)
                         } else {
-                            currentBlock.addInstruction(IfInstruction(condition, antiName, instruction.label.name))
+                            currentBlock.conditionalJump(condition, antiName, instruction.label.name)
                         }
                         currentBlock = currentBlock.functionBuilder.createBlock(antiName)
                     }
                     BoundNodeType.ReturnStatement -> {
                         instruction as BoundReturnStatement
                         if (instruction.expression == null) {
-                            currentBlock.addInstruction(ReturnVoid())
+                            currentBlock.ret()
                         } else {
-                            currentBlock.addInstruction(Return(emitValue(currentBlock, instruction.expression)!!))
+                            currentBlock.ret(emitValue(currentBlock, instruction.expression)!!)
                         }
                     }
                     BoundNodeType.NopStatement -> {}
                     else -> throw Exception("internal error: Unknown statement to LLVM")
                 }
             }
-            if (symbol.type == TypeSymbol.unit && body.statements.lastOrNull()?.boundType != BoundNodeType.ReturnStatement) {
-                currentBlock.addInstruction(ReturnVoid())
+            if (symbol.type == TypeSymbol.Unit && body.statements.lastOrNull()?.boundType != BoundNodeType.ReturnStatement) {
+                currentBlock.ret()
             }
         }
         for (v in program.statement.statements) {
             v as BoundVariableDeclaration
             val expression = v.initializer
             val value: LLVMValue? = when (expression.boundType) {
-                BoundNodeType.AssignmentExpression -> {
-                    expression as BoundAssignmentExpression
-                    val value = emitValue(initBlock, expression.expression)!!
-                    val name = emitValue(initBlock, BoundVariableExpression(expression.variable))!!
-                    initBlock.addInstruction(Store(value, name))
-                    value
-                }
+                BoundNodeType.AssignmentExpression -> emitAssignment(initBlock, expression as BoundAssignmentExpression)
                 BoundNodeType.CastExpression -> {
                     expression as BoundCastExpression
                     null
                 }
-                BoundNodeType.LiteralExpression -> {
-                    expression as BoundLiteralExpression
-                    when (expression.type) {
-                        TypeSymbol.string -> {
-                            StringRef(initBlock.stringConstForContent(expression.value as String))
-                        }
-                        TypeSymbol.int -> IntConst(expression.value as Int, LLVMType.I32)
-                        TypeSymbol.bool -> BoolConst(expression.value as Boolean)
-                        else -> null
-                    }
-                }
-                BoundNodeType.VariableExpression -> {
-                    expression as BoundVariableExpression
-                    LocalValRef(expression.variable.name, LLVMType.valueOf(expression.variable.type))
-                }
+                BoundNodeType.LiteralExpression -> emitLiteral(initBlock, expression as BoundLiteralExpression, false)
+                BoundNodeType.VariableExpression -> emitVariableExpression(initBlock, expression as BoundVariableExpression)
                 else -> {
                     val instruction = emitInstruction(initBlock, expression)!!
                     val type = instruction.type
-                    if (type != null && type != LLVMType.Void) {
-                        val uid = newUID()
-                        initBlock.addInstruction(TempValue(uid, instruction))
-                        LocalValRef(uid, type)
+                    if (type != LLVMType.Void) {
+                        initBlock.tmpVal(instruction).ref
                     }
                     else {
                         initBlock.addInstruction(instruction)
@@ -131,144 +128,162 @@ object LLVMEmitter : Emitter {
                     }
                 }
             }
-            builder.globalVariable((v.variable as VisibleVariableSymbol).path, LLVMType.valueOf(v.variable.type), value!!.code)
+            builder.globalVariable((v.variable as VisibleSymbol).path, LLVMType.valueOf(v.variable.type), value!!.code)
         }
         return builder.code()
     }
 
-    private fun emitValue(block: BlockBuilder, expression: BoundExpression): LLVMValue? {
+    private fun emitValue(
+        block: BlockBuilder,
+        expression: BoundExpression
+    ): LLVMValue? {
         return when (expression.boundType) {
-            BoundNodeType.AssignmentExpression -> {
-                expression as BoundAssignmentExpression
-                val value = emitValue(block, expression.expression)!!
-                val name = emitValue(block, BoundVariableExpression(expression.variable))!!
-                block.addInstruction(Store(value, name))
-                value
-            }
+            BoundNodeType.AssignmentExpression -> emitAssignment(block, expression as BoundAssignmentExpression)
             BoundNodeType.CastExpression -> {
                 expression as BoundCastExpression
                 null
             }
-            BoundNodeType.LiteralExpression -> {
-                expression as BoundLiteralExpression
-                when (expression.type) {
-                    TypeSymbol.string -> {
-                        StringRef(block.stringConstForContent(expression.value as String))
-                    }
-                    TypeSymbol.int -> IntConst(expression.value as Int, LLVMType.I32)
-                    TypeSymbol.bool -> BoolConst(expression.value as Boolean)
-                    else -> null
-                }
-            }
-            BoundNodeType.VariableExpression -> {
-                expression as BoundVariableExpression
-                when (expression.variable.kind) {
-                    Symbol.Kind.Parameter -> {
-                        val i = block.functionBuilder.symbol.parameters.indexOfFirst {
-                            it.name == expression.variable.name
-                        }
-                        block.functionBuilder.paramReference(i)
-                    }
-                    Symbol.Kind.GlobalVariable -> {
-                        val variable = expression.variable as VisibleVariableSymbol
-                        val uid = newUID()
-                        val tmp = TempValue(uid, Load(GlobalValRef(variable.path, LLVMType.valueOf(expression.variable.type))))
-                        block.addInstruction(tmp)
-                        tmp.reference()
-                    }
-                    else -> {
-                        LocalValRef(expression.variable.name, LLVMType.valueOf(expression.variable.type))
-                    }
-                }
-            }
-            BoundNodeType.ErrorExpression -> return null
+            BoundNodeType.LiteralExpression -> emitLiteral(block, expression as BoundLiteralExpression, true)
+            BoundNodeType.VariableExpression -> emitVariableExpression(block, expression as BoundVariableExpression)
+            BoundNodeType.ErrorExpression -> null
             else -> {
                 val instruction = emitInstruction(block, expression)!!
                 val type = instruction.type
-                if (type == null || type == LLVMType.Void) {
+                if (type == LLVMType.Void) {
                     block.addInstruction(instruction)
                     null
                 } else {
-                    val uid = newUID()
-                    block.addInstruction(TempValue(uid, instruction))
-                    LocalValRef(uid, type)
+                    block.tmpVal(instruction).ref
                 }
             }
         }
     }
 
+    private fun emitAssignment(
+        block: BlockBuilder,
+        expression: BoundAssignmentExpression
+    ): LLVMValue {
+        val value = emitValue(block, expression.expression)!!
+        val name = emitValue(block, BoundVariableExpression(expression.variable))!!
+        block.addInstruction(Store(value, name))
+        return value
+    }
 
-    private fun emitInstruction(block: BlockBuilder, expression: BoundExpression): LLVMInstruction? {
-        when (expression.boundType) {
-            BoundNodeType.CallExpression -> {
-                expression as BoundCallExpression
-                val type = LLVMType.valueOf(expression.type)
-                val function = expression.function
-                when {
-                    expression.function === BuiltinFunctions.readln -> {
-                        block.functionBuilder.moduleBuilder.include("readln.ll")
-                    }
-                }
-                return Call(type, function, *Array(expression.arguments.size) {
-                    emitValue(block, expression.arguments.elementAt(it))!!
-                })
+    private fun emitLiteral(
+        block: BlockBuilder,
+        expression: BoundLiteralExpression,
+        isLocal: Boolean
+    ): LLVMValue? = when (expression.type) {
+        TypeSymbol.String -> {
+            if (isLocal) {
+                block.stringConstForContent(expression.value as String).ref
+            } else {
+                val content = expression.value as String
+                val chars = block.cStringConstForContent(content)
+                val length = Int(content.length, LLVMType.I32)
+                val type = LLVMType.valueOf(TypeSymbol.String)
+                Struct(type, arrayOf(length, chars.ref))
             }
-            BoundNodeType.UnaryExpression -> {
-                expression as BoundUnaryExpression
-                val operand = emitValue(block, expression.operand)!!
-                return when (expression.operator.type) {
-                    BoundUnaryOperatorType.Identity -> IntAddition(IntConst(0, operand.type), operand)
-                    BoundUnaryOperatorType.Negation -> IntSubtraction(IntConst(0, operand.type), operand)
-                    BoundUnaryOperatorType.Not -> IntSubtraction(IntConst(1, LLVMType.Bool), operand)
-                }
-            }
-            BoundNodeType.BinaryExpression -> {
-                expression as BoundBinaryExpression
-                val left = emitValue(block, expression.left)!!
-                val right = emitValue(block, expression.right)!!
-                when (expression.operator.type) {
-                    BoundBinaryOperatorType.Add -> {
-                        if (expression.right.type == TypeSymbol.int) {
-                            return IntAddition(left, right)
-                        }
-                    }
-                    BoundBinaryOperatorType.Sub -> {
-                        if (expression.right.type == TypeSymbol.int) {
-                            return IntSubtraction(left, right)
-                        }
-                    }
-                    BoundBinaryOperatorType.Mul -> {
-                        if (expression.right.type == TypeSymbol.int) {
-                            return IntMultiplication(left, right)
-                        }
-                    }
-                    BoundBinaryOperatorType.Div -> {
-                        if (expression.right.type == TypeSymbol.int) {
-                            return SignedIntDivision(left, right)
-                        }
-                    }
-                    BoundBinaryOperatorType.Rem -> {}
-                    BoundBinaryOperatorType.BitAnd -> {}
-                    BoundBinaryOperatorType.BitOr -> {}
-                    BoundBinaryOperatorType.LogicAnd -> {}
-                    BoundBinaryOperatorType.LogicOr -> {}
-                    BoundBinaryOperatorType.LessThan -> return Comparison(ComparisonType.LessThan, left, right)
-                    BoundBinaryOperatorType.MoreThan -> return Comparison(ComparisonType.MoreThan, left, right)
-                    BoundBinaryOperatorType.IsEqual -> {
-                        return Comparison(ComparisonType.IsEqual, left, right)
-                    }
-                    BoundBinaryOperatorType.IsEqualOrMore -> return Comparison(ComparisonType.IsEqualOrMore, left, right)
-                    BoundBinaryOperatorType.IsEqualOrLess -> return Comparison(ComparisonType.IsEqualOrLess, left, right)
-                    BoundBinaryOperatorType.IsNotEqual -> {
-                        return Comparison(ComparisonType.IsNotEqual, left, right)
-                    }
-                    BoundBinaryOperatorType.IsIdentityEqual -> return Comparison(ComparisonType.IsEqual, left, right)
-                    BoundBinaryOperatorType.IsNotIdentityEqual -> return Comparison(ComparisonType.IsNotEqual, left, right)
-                }
-            }
-            BoundNodeType.ErrorExpression -> return null
-            else -> throw Exception("internal error: Unknown expression to LLVM (${expression.boundType})")
         }
-        return null
+        TypeSymbol.AnyI -> Int(expression.value as Int, LLVMType.valueOf(expression.type))
+        TypeSymbol.AnyU -> Int(expression.value as Int, LLVMType.valueOf(expression.type))
+        TypeSymbol.Bool -> Bool(expression.value as Boolean)
+        else -> null
+    }
+
+    private fun emitVariableExpression(
+        block: BlockBuilder,
+        expression: BoundVariableExpression
+    ): LLVMValue = when (expression.variable.kind) {
+        Symbol.Kind.Parameter -> {
+            val i = block.functionBuilder.symbol.parameters.indexOfFirst {
+                it.name == expression.variable.name
+            }
+            block.functionBuilder.paramReference(i)
+        }
+        Symbol.Kind.VisibleVariable -> {
+            val variable = expression.variable; variable as VisibleSymbol
+            if (expression.type.kind == Symbol.Kind.Struct) {
+                GlobalRef(variable.path, LLVMType.valueOf(variable.type))
+            } else {
+                block.load(GlobalRef(variable.path, LLVMType.valueOf(variable.type)))
+            }
+        }
+        else -> {
+            val variable = expression.variable
+            LocalRef(variable.name, if (variable.type.kind == Symbol.Kind.Struct) LLVMType.Ptr(LLVMType.valueOf(variable.type)) else LLVMType.valueOf(variable.type))
+        }
+    }
+
+    private fun emitInstruction(
+        block: BlockBuilder,
+        expression: BoundExpression
+    ): LLVMInstruction? = when (expression.boundType) {
+        BoundNodeType.CallExpression -> {
+            expression as BoundCallExpression
+            val type = if (expression.type.kind == Symbol.Kind.Struct) LLVMType.Ptr(LLVMType.valueOf(expression.type)) else LLVMType.valueOf(expression.type)
+            val function = expression.function
+            when {
+                expression.function === BuiltinFunctions.readln -> {
+                    block.functionBuilder.moduleBuilder.include("readln.ll")
+                }
+            }
+            Call(type, function, *Array(expression.arguments.size) {
+                emitValue(block, expression.arguments.elementAt(it))!!
+            })
+        }
+        BoundNodeType.UnaryExpression -> emitUnaryExpression(block, expression as BoundUnaryExpression)
+        BoundNodeType.BinaryExpression -> emitBinaryExpression(block, expression as BoundBinaryExpression)
+        BoundNodeType.ErrorExpression -> null
+        else -> throw Exception("internal error: Unknown expression to LLVM (${expression.boundType})")
+    }
+
+    private fun emitUnaryExpression(
+        block: BlockBuilder,
+        expression: BoundUnaryExpression
+    ): LLVMInstruction {
+        val operand = emitValue(block, expression.operand)!!
+        return when (expression.operator.type) {
+            BoundUnaryOperatorType.Identity -> IntAdd(Int(0, operand.type), operand)
+            BoundUnaryOperatorType.Negation -> IntSub(Int(0, operand.type), operand)
+            BoundUnaryOperatorType.Not -> IntSub(Int(1, LLVMType.Bool), operand)
+        }
+    }
+
+    private fun emitBinaryExpression(
+        block: BlockBuilder,
+        expression: BoundBinaryExpression
+    ): LLVMInstruction? {
+        val left = emitValue(block, expression.left)!!
+        val right = emitValue(block, expression.right)!!
+        return when (expression.operator.type) {
+            BoundBinaryOperatorType.Add -> if (expression.right.type == TypeSymbol.AnyI) {
+                IntAdd(left, right)
+            } else null
+            BoundBinaryOperatorType.Sub -> if (expression.right.type == TypeSymbol.AnyI) {
+                IntSub(left, right)
+            } else null
+            BoundBinaryOperatorType.Mul -> if (expression.right.type == TypeSymbol.AnyI) {
+                IntMul(left, right)
+            } else null
+            BoundBinaryOperatorType.Div -> when (expression.right.type) {
+                TypeSymbol.AnyI -> IntDiv(left, right)
+                TypeSymbol.AnyU -> UIntDiv(left, right)
+                else -> null
+            }
+            BoundBinaryOperatorType.Rem -> null
+            BoundBinaryOperatorType.BitAnd -> null
+            BoundBinaryOperatorType.BitOr -> null
+            BoundBinaryOperatorType.LogicAnd -> null
+            BoundBinaryOperatorType.LogicOr -> null
+            BoundBinaryOperatorType.LessThan -> Icmp(Icmp.Type.LessThan, left, right)
+            BoundBinaryOperatorType.MoreThan -> Icmp(Icmp.Type.MoreThan, left, right)
+            BoundBinaryOperatorType.IsEqual -> Icmp(Icmp.Type.IsEqual, left, right)
+            BoundBinaryOperatorType.IsEqualOrMore -> Icmp(Icmp.Type.IsEqualOrMore, left, right)
+            BoundBinaryOperatorType.IsEqualOrLess -> Icmp(Icmp.Type.IsEqualOrLess, left, right)
+            BoundBinaryOperatorType.IsNotEqual -> Icmp(Icmp.Type.IsNotEqual, left, right)
+            BoundBinaryOperatorType.IsIdentityEqual -> Icmp(Icmp.Type.IsEqual, left, right)
+            BoundBinaryOperatorType.IsNotIdentityEqual -> Icmp(Icmp.Type.IsNotEqual, left, right)
+        }
     }
 }

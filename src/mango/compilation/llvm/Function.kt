@@ -1,24 +1,29 @@
 package mango.compilation.llvm
 
-import mango.compilation.llvm.LLVMValue.LocalValRef
+import mango.compilation.llvm.LLVMValue.LocalRef
 import mango.interpreter.symbols.FunctionSymbol
+import mango.interpreter.symbols.Symbol
+import mango.interpreter.symbols.TypeSymbol
 import java.util.*
 
 data class Label(val name: String)
 
-interface Variable {
+interface Var {
     fun allocCode(): String
     val ref: LLVMValue
 }
 
-class LocalVariable(val name: String, val type: LLVMType) : Variable {
+class Alloc(
+    val name: String,
+    val type: LLVMType
+) : Var {
     override fun allocCode() = "%$name = alloca ${type.code}"
-    override val ref get() = LocalValRef(name, LLVMType.Pointer(type))
+    override val ref get() = LocalRef(name, LLVMType.Ptr(type))
 }
 
 class BlockBuilder(
-        val functionBuilder: FunctionBuilder,
-        val name: String? = null
+    val functionBuilder: FunctionBuilder,
+    val name: String? = null
 ) {
     private val instructions = LinkedList<LLVMInstruction>()
 
@@ -28,25 +33,48 @@ class BlockBuilder(
         instructions.add(instruction)
     }
 
-    fun tempValue(value: LLVMInstruction): TempValue {
-        val tempValue = TempValue("tmpValue${functionBuilder.tmpIndex()}", value)
+    inline fun tmpVal(value: LLVMInstruction): TmpVal {
+        val tempValue = TmpVal("tmpValue${functionBuilder.tmpIndex()}", value)
         addInstruction(tempValue)
         return tempValue
     }
 
+    inline fun tmpVal(name: String, value: LLVMInstruction): TmpVal {
+        val tempValue = TmpVal(name, value)
+        addInstruction(tempValue)
+        return tempValue
+    }
+
+    inline fun ret() = addInstruction(RetVoid())
+    inline fun ret(value: LLVMValue) = addInstruction(Ret(value))
+
+    inline fun conditionalJump(
+        condition: LLVMValue,
+        name: String,
+        antiName: String
+    ) = addInstruction(If(condition, name, antiName))
+
+    inline fun jump(name: String) = addInstruction(Jmp(name))
+
+    inline fun alloc(name: String, type: LLVMType) = functionBuilder.alloc(type, name)
+
     fun code() = (if (name != null) "$name:\n    " else "") + instructions.joinToString(separator = "\n    ") { it.code }
 
-    fun stringConstForContent(content: String): StringConst {
-        return this.functionBuilder.stringConstForContent(content)
+    fun cStringConstForContent(content: String) = functionBuilder.cStringConstForContent(content)
+
+    fun stringConstForContent(content: String): GlobalVar {
+        val chars = functionBuilder.cStringConstForContent(content)
+        val length = LLVMValue.Int(content.length, LLVMType.I32)
+        val type = LLVMType.valueOf(TypeSymbol.String)
+        return functionBuilder.moduleBuilder.globalVariable(
+            chars.id + ".struct",
+            type,
+            LLVMValue.Struct(type, arrayOf(length, chars.ref)).code
+        )
     }
 
-    fun addVariable(type: LLVMType, name: String): Variable {
-        return this.functionBuilder.addLocalVariable(type, name)
-    }
 
-    fun assignVariable(variable: Variable, value: LLVMValue) {
-        this.addInstruction(Store(value, variable.ref))
-    }
+    fun assignVar(variable: Var, value: LLVMValue) = addInstruction(Store(value, variable.ref))
 
     fun label(): Label {
         if (name == null) throw UnsupportedOperationException()
@@ -54,10 +82,9 @@ class BlockBuilder(
     }
 
     fun load(value: LLVMValue): LLVMValue {
-        val tempValue = tempValue(Load(value))
-        return tempValue.reference()
+        val tempValue = tmpVal(Load(value))
+        return tempValue.ref
     }
-
 }
 
 class FunctionBuilder(
@@ -65,9 +92,14 @@ class FunctionBuilder(
     val paramTypes: List<LLVMType>,
     val symbol: FunctionSymbol
 ) {
-    val returnType = LLVMType.valueOf(symbol.type)
-    private val variables = LinkedList<LocalVariable>()
-    private var nextTmpIndex = 0
+    val returnType: LLVMType
+    init {
+        val type = LLVMType.valueOf(symbol.type)
+        returnType = (if (symbol.type.kind == Symbol.Kind.Struct)
+            LLVMType.Ptr(type)
+        else type)
+    }
+    private val variables = LinkedList<Alloc>()
     private val blocks = LinkedList<BlockBuilder>()
     private val attributes = LinkedList<String>()
 
@@ -75,28 +107,26 @@ class FunctionBuilder(
         blocks.add(BlockBuilder(this))
     }
 
+    private var nextTmpIndex = 0
     fun tmpIndex() = nextTmpIndex++
 
     fun addAttribute(string: String) = attributes.add(string)
 
-    fun addLocalVariable(type: LLVMType, name: String): LocalVariable {
-        val variable = LocalVariable(name, type)
+    fun alloc(type: LLVMType, name: String): Alloc {
+        val variable = Alloc(name, type)
         variables.add(variable)
         return variable
     }
 
-    fun code(): String {
-        return """|define ${returnType.code} @${if (symbol.meta.isEntry) "main" else symbol.path}(${paramTypes.map(LLVMType::code).joinToString(separator = ", ")}) ${attributes.joinToString(" ")} {
-                  |    ${variables.joinToString("\n    ") { it.allocCode() }}
-                  |    ${blocks.joinToString("\n    ") { it.code() }}
-                  |}
-                  |""".trimMargin("|")
-    }
+    fun code() =
+        "define ${returnType.code} @${if (symbol.meta.isEntry) "main" else symbol.path}(${paramTypes.map(LLVMType::code).joinToString(separator = ", ")}) ${attributes.joinToString(" ")} {\n" +
+        "    ${variables.joinToString("\n    ") { it.allocCode() }}\n" +
+        "    ${blocks.joinToString("\n    ") { it.code() }}\n}\n"
 
 
     fun entryBlock(): BlockBuilder = blocks.first
     fun addInstruction(instruction: LLVMInstruction) = entryBlock().addInstruction(instruction)
-    fun tempValue(value: LLVMInstruction) = entryBlock().tempValue(value)
+    fun tempValue(value: LLVMInstruction) = entryBlock().tmpVal(value)
 
     fun createBlock(name: String?): BlockBuilder {
         val block = BlockBuilder(this, name)
@@ -104,12 +134,13 @@ class FunctionBuilder(
         return block
     }
 
-    fun stringConstForContent(content: String): StringConst = moduleBuilder.stringConstForContent(content)
+    fun cStringConstForContent(content: String): StringConst = moduleBuilder.cStringConstForContent(content)
 
     fun paramReference(index: Int): LLVMValue {
         if (index < 0 || index >= paramTypes.size) {
             throw IllegalArgumentException("Expected an index between 0 and ${paramTypes.size - 1}, found $index")
         }
-        return LocalValRef("$index", paramTypes[index])
+        val type = paramTypes[index]
+        return LocalRef("$index", type)
     }
 }

@@ -1,45 +1,43 @@
 package mango.compilation.llvm
 
-import mango.compilation.llvm.LLVMValue.GlobalValRef
-import mango.compilation.llvm.LLVMValue.Null
+import mango.compilation.llvm.LLVMValue.GlobalRef
 import mango.compilation.llvm.LLVMValue.StringRef
 import mango.interpreter.symbols.FunctionSymbol
+import mango.interpreter.symbols.Symbol
 import java.util.*
 import kotlin.collections.HashMap
 
 private val String.IRCode get() = "c\"" + this
-        .replace("\\", "\\5C")
-        .replace("\"", "\\22")
-        .replace("\n", "\\0A")
-        .replace("\t", "\\09")
-        .replace("\r", "\\0D") + "\\00\""
+    .replace("\\", "\\5C")
+    .replace("\"", "\\22")
+    .replace("\n", "\\0A")
+    .replace("\t", "\\09")
+    .replace("\r", "\\0D") + "\\00\""
 
 open class StringConst(
     val id: String,
     val content: String
 ) {
     fun lengthInBytes() = content.length + 1
-    open fun IRDeclaration() = "@$id = private unnamed_addr constant [${lengthInBytes()} x i8] ${content.IRCode}"
+    open fun code() = "@$id = private unnamed_addr constant [${lengthInBytes()} x i8] ${content.IRCode}"
     val ref get() = StringRef(this)
 }
 
-data class GlobalVariable(
-        val name: String,
-        val type: LLVMType,
-        val value: Any
-) : Variable {
-    fun IRDeclaration(): String {
-        return "@$name = global ${type.code} $value"
-    }
-    override val ref get() = GlobalValRef(name, type)
+data class GlobalVar(
+    val name: String,
+    val type: LLVMType,
+    val value: Any
+) : Var {
+    fun code() = "@$name = global ${type.code} $value"
+    override val ref get() = GlobalRef(name, type)
     override fun allocCode() = "@$name = alloca ${type.code}"
 }
 
 data class FunctionDeclaration(
-        val name: String,
-        val returnType: LLVMType,
-        val paramTypes: List<LLVMType>,
-        val varargs: Boolean = false
+    val name: String,
+    val returnType: LLVMType,
+    val paramTypes: List<LLVMType>,
+    val varargs: Boolean = false
 ) {
     fun signature(): String {
         val paramsAsString = LinkedList<String>()
@@ -59,7 +57,14 @@ data class FunctionDeclaration(
         return "${returnType.code} (${paramsAsString.joinToString(", ")})*"
     }
 
-    fun IRDeclaration() = "declare ${signature()}"
+    fun code() = "declare ${signature()}"
+}
+
+class LLVMStruct(
+    val name: String,
+    val types: Array<LLVMType>
+) {
+    fun code() = "%.struct.$name = type { ${types.joinToString(", ") { it.code }} }"
 }
 
 private var UIDCount = 0
@@ -71,7 +76,8 @@ class ModuleBuilder {
     private val importedDefinitions = LinkedList<String>()
     private val declarations = LinkedList<FunctionDeclaration>()
     private val functions = LinkedList<FunctionBuilder>()
-    private val globalVariables = LinkedList<GlobalVariable>()
+    private val structs = LinkedList<LLVMStruct>()
+    private val globalVariables = LinkedList<GlobalVar>()
 
     private val included = LinkedList<String>()
 
@@ -81,39 +87,37 @@ class ModuleBuilder {
         }
     }
 
-    fun intGlobalVariable (name: String, type: LLVMType = LLVMType.I32, value: Int = 0): GlobalVariable {
-        val gvar = GlobalVariable(name, type, value)
+    fun intGlobalVariable (name: String, type: LLVMType = LLVMType.I32, value: Int = 0): GlobalVar {
+        val gvar = GlobalVar(name, type, value)
         globalVariables.add(gvar)
         return gvar
     }
 
-    fun floatGlobalVariable (name: String, type: LLVMType = LLVMType.Float, value: Float = 0.0f): GlobalVariable {
-        val gvar = GlobalVariable(name, type, value)
+    fun floatGlobalVariable (name: String, type: LLVMType = LLVMType.Float, value: Float = 0.0f): GlobalVar {
+        val gvar = GlobalVar(name, type, value)
         globalVariables.add(gvar)
         return gvar
     }
 
-    fun stringGlobalVariable (name: String, type: LLVMType = LLVMType.Pointer(LLVMType.I8), value: Any = Null(LLVMType.Pointer(LLVMType.I8))): GlobalVariable {
-        val gvar = GlobalVariable(name, type, value)
+    fun globalVariable (name: String, type: LLVMType, value: Any): GlobalVar {
+        val gvar = GlobalVar(name, type, value)
         globalVariables.add(gvar)
         return gvar
     }
 
-    fun globalVariable (name: String, type: LLVMType, value: Any): GlobalVariable {
-        val gvar = GlobalVariable(name, type, value)
-        globalVariables.add(gvar)
-        return gvar
-    }
-
-    fun stringConstForContent (content: String): StringConst {
+    fun cStringConstForContent (content: String): StringConst {
         if (!stringConsts.containsKey(content)) {
-            stringConsts[content] = StringConst(".str${stringConsts.size}", content)
+            stringConsts[content] = StringConst(".str.${stringConsts.size}", content)
         }
         return stringConsts[content]!!
     }
 
     fun addDeclaration (declaration: FunctionDeclaration) {
         declarations.add(declaration)
+    }
+
+    fun declareStruct (name: String, types: Array<LLVMType>) {
+        structs.add(LLVMStruct(name, types))
     }
 
     fun addImportedDeclaration (code: String) {
@@ -126,19 +130,22 @@ class ModuleBuilder {
 
     fun createFunction (symbol: FunctionSymbol): FunctionBuilder {
         val function = FunctionBuilder(this, List(symbol.parameters.size) {
-            LLVMType.valueOf(symbol.parameters[it].type)
+            val type = LLVMType.valueOf(symbol.parameters[it].type)
+            (if (symbol.parameters[it].type.kind == Symbol.Kind.Struct)
+                LLVMType.Ptr(type)
+            else type)
         }, symbol)
         functions.add(function)
         return function
     }
 
-    fun code(): String {
-        return "${included.joinToString("\n") { javaClass.getResourceAsStream("/lib/$it").reader().readText() }}\n" +
-                "${stringConsts.values.joinToString("\n") { it.IRDeclaration() }}\n" +
-                "${globalVariables.joinToString("\n") { it.IRDeclaration() }}\n" +
-                "${importedDefinitions.joinToString("\n")}\n" +
-                "${declarations.joinToString("\n") { it.IRDeclaration() }}\n" +
-                "${functions.joinToString("\n") { it.code() }}\n" +
-                "${importedDeclarations.joinToString("\n")}\n"
-    }
+    fun code() =
+        "${included.joinToString("\n") { javaClass.getResourceAsStream("/lib/$it").reader().readText() }}\n" +
+        "${structs.joinToString("\n") { it.code() }}\n" +
+        "${stringConsts.values.joinToString("\n") { it.code() }}\n" +
+        "${globalVariables.joinToString("\n") { it.code() }}\n" +
+        "${importedDefinitions.joinToString("\n")}\n" +
+        "${declarations.joinToString("\n") { it.code() }}\n" +
+        "${functions.joinToString("\n") { it.code() }}\n" +
+        "${importedDeclarations.joinToString("\n")}\n"
 }

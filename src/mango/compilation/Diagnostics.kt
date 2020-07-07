@@ -1,8 +1,8 @@
 package mango.compilation
 
 import mango.console.Console
-import mango.interpreter.binding.BoundBinaryOperator
-import mango.interpreter.binding.BoundUnaryOperator
+import mango.interpreter.binding.nodes.BoundBinaryOperator
+import mango.interpreter.binding.nodes.BoundUnaryOperator
 import mango.interpreter.symbols.TypeSymbol
 import mango.interpreter.syntax.SyntaxType
 import mango.interpreter.text.TextLocation

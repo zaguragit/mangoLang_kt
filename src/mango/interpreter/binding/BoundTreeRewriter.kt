@@ -1,5 +1,9 @@
 package mango.interpreter.binding
 
+import mango.interpreter.binding.nodes.BoundNodeType
+import mango.interpreter.binding.nodes.expressions.*
+import mango.interpreter.binding.nodes.statements.*
+
 open class BoundTreeRewriter {
 
     fun rewriteStatement(node: BoundStatement): BoundStatement {

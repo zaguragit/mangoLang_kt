@@ -4,19 +4,24 @@
     <h1>MangoLang</h1>
 </div>
 
-Right now it doesn't always compile to LLVM, but it will get better support soon.
-
-### Syntax
-- Fields are initialized with either "val" (for immutable) or "var" (for mutable). Just like in kotlin!
-- The if/else are statements and require curly brackets, but don't require parentheses
-- Function declaration syntax is: "fn", the function name, its parameters separated by commas inside parentheses, followed by the return type (if the function returns anything), and either a "->" with an expression, or a block statement
-- Use statement syntax is: "use", dot-separated namespaces (files), and an optional '*' to include the content of the namespace (the equivalent of "using namespace" in c++)
-- Functions can be declared inside other functions
+### Technical details
+- Strings are structs of: { length I32, chars I8* }
 - All types are children of the "Any" type
 - "Unit" is the type for functions that don't return anything
+- All integer types are children of AnyI
+- All unsigned integer types are children of AnyU (although they don't work yet)
 - Decimal numbers aren't supported yet
 
-The language is in a very early stage, so the syntax is subject to change.
+### Syntax
+- Field initialization: ``` "val" (for immutable) | "var" (for mutable) <name> (optional <type>) = <value> ```
+- if/else statements: ``` "if" <condition> { } (optional "else" {} | "else if" {}) ```
+- Function declaration: ``` "fn" <name> '('<params separated by commas>')' (optional <type>), ("->" <expression> | <block statement>) ```
+- Use statement: ``` "use" <dot-separated namespaces> ```, and an optional '*' to include the content of the namespace (the equivalent of "using namespace" in c++)
+
+### Syntactic sugar
+- Functions can be declared inside other functions
+
+
 ```rust
 val valueName = expression
 var variableName = expression

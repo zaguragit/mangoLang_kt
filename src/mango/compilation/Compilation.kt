@@ -4,11 +4,11 @@ import mango.compilation.llvm.LLVMEmitter
 import mango.interpreter.binding.Binder
 import mango.interpreter.binding.BoundGlobalScope
 import mango.interpreter.binding.BoundProgram
-import mango.interpreter.eval.EvaluationResult
-import mango.interpreter.eval.Evaluator
+import mango.eval.EvaluationResult
+import mango.eval.Evaluator
 import mango.interpreter.symbols.FunctionSymbol
 import mango.interpreter.symbols.VariableSymbol
-import mango.interpreter.syntax.parser.SyntaxTree
+import mango.interpreter.syntax.SyntaxTree
 import mango.isRepl
 import java.io.File
 
@@ -22,21 +22,19 @@ class Compilation(
         Binder.bindGlobalScope(previous?.globalScope, syntaxTrees)
     }
 
-    inline val mainFn get() = globalScope.mainFn
-
     private fun getProgram(): BoundProgram = Binder.bindProgram(previous?.getProgram(), globalScope)
 
-    fun evaluate(variables: HashMap<VariableSymbol, Any?>): EvaluationResult {
+    fun evaluate(variables: HashMap<VariableSymbol, Any?>): CompilationResult {
 
         val diagnostics = globalScope.diagnostics
         if (diagnostics.hasErrors()) {
             diagnostics.sortBySpan()
-            return EvaluationResult(null, diagnostics.errorList, diagnostics.nonErrorList)
+            return CompilationResult(diagnostics.errorList, diagnostics.nonErrorList)
         }
         diagnostics.append(globalScope.diagnostics)
         if (globalScope.diagnostics.hasErrors()) {
             diagnostics.sortBySpan()
-            return EvaluationResult(null, diagnostics.errorList, diagnostics.nonErrorList)
+            return CompilationResult(diagnostics.errorList, diagnostics.nonErrorList)
         }
 
         val program = getProgram()
@@ -50,10 +48,11 @@ class Compilation(
             //val cfg = ControlFlowGraph.create(cfgStatement)
             //cfg.print()
         }*/
+
         diagnostics.append(program.diagnostics)
         if (program.diagnostics.hasErrors()) {
             val d = program.diagnostics.apply { sortBySpan() }
-            return EvaluationResult(null, d.errorList, d.nonErrorList)
+            return CompilationResult(d.errorList, d.nonErrorList)
         }
 
         val evaluator = Evaluator(program, variables)
@@ -62,12 +61,10 @@ class Compilation(
             val value = evaluator.evaluate()
             return EvaluationResult(value, diagnostics.errorList, diagnostics.nonErrorList)
         }
-        return EvaluationResult(null, diagnostics.errorList, diagnostics.nonErrorList)
+        return CompilationResult(diagnostics.errorList, diagnostics.nonErrorList)
     }
 
-    fun printTree() {
-        printTree(globalScope.mainFn)
-    }
+    fun printTree() = printTree(globalScope.mainFn)
 
     fun printTree(symbol: FunctionSymbol) {
         val program = getProgram()
@@ -82,40 +79,41 @@ class Compilation(
         val program = getProgram()
         val code = LLVMEmitter.emit(program, moduleName, references, outputPath)
         if (emissionType == EmissionType.IR) {
-            File(outputPath).writeText(code)
-            return
+            return File(outputPath).writeText(code)
         }
         val llFile = File.createTempFile("mangoLang", ".ll").apply {
             deleteOnExit()
             writeText(code)
         }
-        if (emissionType == EmissionType.Assembly) {
-            File(outputPath).parentFile.mkdirs()
-            ProcessBuilder("llc", llFile.absolutePath, "-o=$outputPath", "-filetype=asm", "-relocation-model=pic").run {
-                inheritIO()
-                start().waitFor()
+        when (emissionType) {
+            EmissionType.Assembly -> {
+                File(outputPath).parentFile.mkdirs()
+                ProcessBuilder("llc", llFile.absolutePath, "-o=$outputPath", "-filetype=asm", "-relocation-model=pic").run {
+                    inheritIO()
+                    start().waitFor()
+                }
             }
-            return
-        }
-        if (emissionType == EmissionType.Object) {
-            File(outputPath).parentFile.mkdirs()
-            ProcessBuilder("llc", llFile.absolutePath, "-o=$outputPath", "-filetype=obj", "-relocation-model=pic").run {
-                inheritIO()
-                start().waitFor()
+            EmissionType.Object -> {
+                File(outputPath).parentFile.mkdirs()
+                ProcessBuilder("llc", llFile.absolutePath, "-o=$outputPath", "-filetype=obj", "-relocation-model=pic").run {
+                    inheritIO()
+                    start().waitFor()
+                }
             }
-            return
-        }
-        val objFile = File.createTempFile("mangoLang", ".o").apply {
-            deleteOnExit()
-            ProcessBuilder("llc", llFile.absolutePath, "-o=$absolutePath", "-filetype=obj", "-relocation-model=pic").run {
-                inheritIO()
-                start().waitFor()
+            else -> {
+                val objFile = File.createTempFile("mangoLang", ".o").apply {
+                    deleteOnExit()
+                    ProcessBuilder("llc", llFile.absolutePath, "-o=$absolutePath", "-filetype=obj", "-relocation-model=pic").run {
+                        inheritIO()
+                        start().waitFor()
+                    }
+                }
+                File(outputPath).parentFile.mkdirs()
+                ProcessBuilder("gcc", objFile.absolutePath, "/usr/local/lib/mangoLang/std.so", "-o", outputPath).run {
+                    inheritIO()
+                    start().waitFor()
+                }
             }
-        }
-        File(outputPath).parentFile.mkdirs()
-        ProcessBuilder("gcc", objFile.absolutePath, "-o", outputPath).run {
-            inheritIO()
-            start().waitFor()
         }
     }
 }
