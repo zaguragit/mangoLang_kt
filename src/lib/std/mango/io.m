@@ -1,12 +1,12 @@
 
 [extern]
-[cName: "print"]
+[cname: "print"]
 fn print (text String)
 
 [extern]
-[cName: "println"]
+[cname: "println"]
 fn println (text String)
 
 [extern]
-[cName: "readln"]
+[cname: "readln"]
 fn readln String

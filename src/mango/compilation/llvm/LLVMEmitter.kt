@@ -31,12 +31,7 @@ object LLVMEmitter : Emitter {
             val symbol = f.key
             val body = f.value
             if (symbol.meta.isExtern) {
-                builder.addImportedDeclaration("declare ${LLVMType.valueOf(symbol.type).code} @${symbol.meta.cName ?: symbol.name}(${symbol.parameters.joinToString(", ") {
-                    val type = LLVMType.valueOf(it.type)
-                    (if (it.type.kind == Symbol.Kind.Struct)
-                        LLVMType.Ptr(type)
-                    else type).code
-                }})")
+                builder.addImportedDeclaration(symbol)
                 continue
             }
             val function = builder.createFunction(symbol)
@@ -223,11 +218,6 @@ object LLVMEmitter : Emitter {
             expression as BoundCallExpression
             val type = if (expression.type.kind == Symbol.Kind.Struct) LLVMType.Ptr(LLVMType.valueOf(expression.type)) else LLVMType.valueOf(expression.type)
             val function = expression.function
-            when {
-                expression.function === BuiltinFunctions.readln -> {
-                    block.functionBuilder.moduleBuilder.include("readln.ll")
-                }
-            }
             Call(type, function, *Array(expression.arguments.size) {
                 emitValue(block, expression.arguments.elementAt(it))!!
             })

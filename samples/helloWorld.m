@@ -1,6 +1,4 @@
+use std.io*
 
-[extern]
-[cname: "println"]
-fn println (text String)
-
-[entry] fn main -> println("Hello world!")
+[entry]
+fn main -> println("Hello world!")

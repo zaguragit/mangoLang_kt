@@ -5,9 +5,14 @@ case $1 in
     ;;
     'install')
         sudo rm -r /usr/local/lib/mangoLang/
-        sudo mkdir -p /usr/local/lib/mangoLang/
+        sudo rm -r /usr/local/include/mangoLang/
+        sudo mkdir /usr/local/lib/mangoLang/
+        sudo mkdir /usr/local/include/mangoLang/
+
         sudo cp out/* /usr/local/lib/mangoLang/
-        sudo ldconfig -n -v /usr/local/lib/mangoLang
+
+        sudo mkdir /usr/local/include/mangoLang/std
+        sudo cp std/mango/* /usr/local/include/mangoLang/std/
     ;;
     *)
         echo $1

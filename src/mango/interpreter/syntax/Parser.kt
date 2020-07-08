@@ -5,7 +5,6 @@ import mango.interpreter.syntax.nodes.*
 import mango.interpreter.text.SourceText
 import mango.interpreter.text.TextLocation
 import mango.interpreter.text.TextSpan
-import mango.isProject
 import mango.isRepl
 
 class Parser(
@@ -84,6 +83,8 @@ class Parser(
             if (startToken == current) {
                 next()
             }
+
+            skipSeparators()
         }
 
         return members
@@ -141,7 +142,6 @@ class Parser(
         if (current.kind == SyntaxType.Identifier) {
             type = parseTypeClause()
         }
-
         return if (annotations.find { it.identifier.string == "extern" } == null) {
             skipSeparators()
             var lambdaArrow: Token? = null
@@ -190,7 +190,7 @@ class Parser(
         val statement = parseStatement()
         if (statement !is TopLevelNode) {
             if (!isRepl) {
-                diagnostics.reportStatementCantBeGlobal(statement.location)
+                diagnostics.reportStatementCantBeGlobal(statement.location, statement.kind)
             }
             return ReplStatementNode(statement)
         }
@@ -200,11 +200,6 @@ class Parser(
     private fun parseUseStatement(): TopLevelNode {
 
         val keyword = match(SyntaxType.Use)
-
-        if (!isProject) {
-            diagnostics.reportUseOnlyInProjectMode(keyword.location)
-            return UseStatementNode(syntaxTree, keyword, listOf(), false)
-        }
 
         val directories = ArrayList<Token>()
         var isInclude = false

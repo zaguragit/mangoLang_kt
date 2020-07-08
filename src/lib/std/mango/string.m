@@ -1,7 +1,7 @@
-
+/*
 struct String {
 	val length Int
-	val chars U8*
+	val chars I8*
 }
 
 [extern]
@@ -15,3 +15,4 @@ fn Int.toString String
 [extern]
 [cName: "String$equals"]
 fn String.equals Bool
+*/

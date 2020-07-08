@@ -1,7 +1,7 @@
-use secondFile*
+use std.io*
 
 [inline]
 fn ask (question String) String {
     println(question)
-    return "nonotext"
+    return readln()
 }

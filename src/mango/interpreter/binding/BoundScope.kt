@@ -82,7 +82,7 @@ open class BoundScope(
         }
     }
 
-    fun tryLookupFunction(path: Collection<String>): Pair<FunctionSymbol?, Boolean> {
+    fun tryLookupFunction(path: Collection<String>, isFromUse: Boolean): Pair<FunctionSymbol?, Boolean> {
         return when {
             path.size == 1 -> {
                 val name = path.elementAt(0)
@@ -93,18 +93,20 @@ open class BoundScope(
                     }
                     parent == null -> return null to false
                     else -> {
-                        val parentLookup = parent.tryLookupFunction(path)
-                        if (parentLookup.second) {
-                            parentLookup.first!!.useCounter++
-                            return parentLookup
-                        }
-                        for (use in used) {
-                            if (use.isInclude) {
-                                val namespace = BoundNamespace[use.path]
-                                val result = namespace.tryLookupFunction(path)
-                                if (result.second) {
-                                    result.first!!.useCounter++
-                                    return result
+                        if (!isFromUse) {
+                            val parentLookup = parent.tryLookupFunction(path, isFromUse)
+                            if (parentLookup.second) {
+                                parentLookup.first!!.useCounter++
+                                return parentLookup
+                            }
+                            for (use in used) {
+                                if (use.isInclude) {
+                                    val namespace = BoundNamespace[use.path]
+                                    val result = namespace.tryLookupFunction(path, true)
+                                    if (result.second) {
+                                        result.first!!.useCounter++
+                                        return result
+                                    }
                                 }
                             }
                         }
@@ -114,26 +116,28 @@ open class BoundScope(
             }
             parent == null -> return null to false
             else -> {
-                val parentLookup = parent.tryLookupFunction(path)
-                if (parentLookup.second) {
-                    parentLookup.first!!.useCounter++
-                    return parentLookup
-                }
-                for (use in used) {
-                    val namespace = BoundNamespace[use.path]
-                    if (use.isInclude) {
-                        if (namespace.path == path.first()) {
-                            val result = namespace.tryLookupFunction(path)
+                if (!isFromUse) {
+                    val parentLookup = parent.tryLookupFunction(path, isFromUse)
+                    if (parentLookup.second) {
+                        parentLookup.first!!.useCounter++
+                        return parentLookup
+                    }
+                    for (use in used) {
+                        val namespace = BoundNamespace[use.path]
+                        if (use.isInclude) {
+                            if (namespace.path == path.first()) {
+                                val result = namespace.tryLookupFunction(path, true)
+                                if (result.second) {
+                                    result.first!!.useCounter++
+                                    return result
+                                }
+                            }
+                        } else {
+                            val result = namespace.tryLookupFunction(path, true)
                             if (result.second) {
                                 result.first!!.useCounter++
                                 return result
                             }
-                        }
-                    } else {
-                        val result = namespace.tryLookupFunction(path)
-                        if (result.second) {
-                            result.first!!.useCounter++
-                            return result
                         }
                     }
                 }

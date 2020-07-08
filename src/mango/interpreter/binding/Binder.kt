@@ -204,6 +204,7 @@ class Binder(
         val type = TypeSymbol[node.identifier.string!!]
         if (type == null) {
             diagnostics.reportUndefinedType(node.identifier.location, node.identifier.string)
+            return TypeSymbol.err
         }
         return type
     }
@@ -225,7 +226,6 @@ class Binder(
     fun bindUseStatement(node: UseStatementNode) {
         val path = node.directories.joinToString(separator = ".") { it.string!! }
         if (BoundNamespace.namespaces[path] == null) {
-            //println(path)
             diagnostics.reportIncorrectUseStatement(node.location)
         } else {
             scope.use(BoundUse(path, node.isInclude))
@@ -278,7 +278,7 @@ class Binder(
             arguments.add(arg)
         }
 
-        val (function, result) = scope.tryLookupFunction(listOf(node.identifier.string))
+        val (function, result) = scope.tryLookupFunction(listOf(node.identifier.string), false)
 
         if (!result) {
             diagnostics.reportUndefinedName(node.identifier.location, node.identifier.string)
@@ -416,7 +416,6 @@ class Binder(
                 val prev = binder.scope
                 val namespace = BoundNamespace[syntaxTree.projectPath]
                 binder.scope = namespace
-                //println("namespace: " + namespace.path)
                 for (s in syntaxTree.root.members) {
                     when (s) {
                         is FunctionDeclarationNode -> {

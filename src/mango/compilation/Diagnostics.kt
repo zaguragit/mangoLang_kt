@@ -255,8 +255,9 @@ class DiagnosticList {
     fun reportNoMainFn() = errors.add(Diagnostic(null, "No entry function found", Diagnostic.Type.Error))
 
     fun reportStatementCantBeGlobal(
-        location: TextLocation
-    ) = report(location, "Only variables, functions and use statements can be global")
+        location: TextLocation,
+        syntaxType: SyntaxType
+    ) = report(location, "Only variables, functions and use statements can be global (this was <$syntaxType>)")
 
     fun reportDeclarationAndNameOnSameLine(
         location: TextLocation
@@ -273,10 +274,6 @@ class DiagnosticList {
     fun reportIncorrectUseStatement(
         location: TextLocation
     ) = report(location, "Incorrect use statement")
-
-    fun reportUseOnlyInProjectMode(
-        location: TextLocation
-    ) = report(location, "Use statements are only supported in project mode")
 
     fun reportUnterminatedMultilineComment(
         location: TextLocation

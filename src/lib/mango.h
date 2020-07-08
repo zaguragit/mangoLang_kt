@@ -9,7 +9,9 @@ typedef unsigned short U16;
 typedef unsigned int U32;
 typedef unsigned long U64;
 
-typedef char Bool;
+#define Bool _Bool
+#define true 1
+#define false 0
 
 typedef void Unit;
 

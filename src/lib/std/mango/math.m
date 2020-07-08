@@ -1,4 +1,4 @@
-
+/*
 /*
  * returns a random unsigned 64 bit integer (except 0)
  */
@@ -22,4 +22,5 @@ fn smaller (a Int, b Int) Int -> (a < b) ? a : b
 
 [inline]
 fn bigger  (a Int, b Int) Int -> (a > b) ? a : b
+*/
 */

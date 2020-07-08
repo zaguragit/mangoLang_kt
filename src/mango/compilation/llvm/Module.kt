@@ -79,14 +79,6 @@ class ModuleBuilder {
     private val structs = LinkedList<LLVMStruct>()
     private val globalVariables = LinkedList<GlobalVar>()
 
-    private val included = LinkedList<String>()
-
-    fun include (path: String) {
-        if (!included.contains(path)) {
-            included.add(path)
-        }
-    }
-
     fun intGlobalVariable (name: String, type: LLVMType = LLVMType.I32, value: Int = 0): GlobalVar {
         val gvar = GlobalVar(name, type, value)
         globalVariables.add(gvar)
@@ -120,8 +112,14 @@ class ModuleBuilder {
         structs.add(LLVMStruct(name, types))
     }
 
-    fun addImportedDeclaration (code: String) {
-        importedDeclarations.add(code)
+    fun addImportedDeclaration (symbol: FunctionSymbol) {
+        val returnType = if (symbol.type.kind == Symbol.Kind.Struct) LLVMType.Ptr(LLVMType.valueOf(symbol.type)) else LLVMType.valueOf(symbol.type)
+        importedDeclarations.add("declare ${returnType.code} @${symbol.meta.cName ?: symbol.path}(${symbol.parameters.joinToString(", ") {
+            val type = LLVMType.valueOf(it.type)
+            (if (it.type.kind == Symbol.Kind.Struct)
+                LLVMType.Ptr(type)
+            else type).code
+        }})")
     }
 
     fun addImportedDefinition (code: String) {
@@ -140,7 +138,6 @@ class ModuleBuilder {
     }
 
     fun code() =
-        "${included.joinToString("\n") { javaClass.getResourceAsStream("/lib/$it").reader().readText() }}\n" +
         "${structs.joinToString("\n") { it.code() }}\n" +
         "${stringConsts.values.joinToString("\n") { it.code() }}\n" +
         "${globalVariables.joinToString("\n") { it.code() }}\n" +

@@ -8,10 +8,10 @@ import mango.interpreter.text.SourceText
 import java.io.File
 
 class SyntaxTree private constructor(
-    val sourceText: SourceText
+    val sourceText: SourceText,
+    val projectPath: String = sourceText.fileName.substringAfter("src/").substringBeforeLast('.').replace('/', '.')
 ) {
 
-    val projectPath = sourceText.fileName.substringAfter("src/").substringBeforeLast('.').replace('/', '.')
 
     val root: NamespaceNode
     val diagnostics: DiagnosticList
@@ -81,6 +81,24 @@ class SyntaxTree private constructor(
                 }
             }
             return list
+        }
+
+        fun loadLib(path: String, name: String): Collection<SyntaxTree> {
+            val files = loadDirectory(File(path))
+            if (files == null) {
+                print(Console.RED)
+                println("$path isn't a valid library path")
+                ExitCodes.ERROR()
+            }
+            val trees = ArrayList<SyntaxTree>()
+            for (file in files) {
+                val text = file.readText()
+                val sourceText = SourceText(text, file.path)
+                val namespacePath = name + '.' + file.path.substringAfter(path).substringBeforeLast('.').replace('/', '.')
+                val syntaxTree = SyntaxTree(sourceText, namespacePath)
+                trees.add(syntaxTree)
+            }
+            return trees
         }
     }
 }

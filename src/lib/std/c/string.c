@@ -1,22 +1,22 @@
-String Int$toString(Int n) {
-	String string;
-	string.chars = malloc(50);
-	string.length = 0;
+String* Int$toString(Int n) {
+	String* string = malloc(sizeof(String));
+	string->chars = malloc(50);
+	string->length = 0;
 	
 	Bool sign = n < 0;
 	if (sign) n = -n;
 	
-	do string.chars[string.length++] = n % 10 + '0';
+	do string->chars[string->length++] = n % 10 + '0';
 	while ((n /= 10) > 0);
 
-	if (sign) string.chars[string.length++] = '-';
-	string.chars[string.length] = '\0';
+	if (sign) string->chars[string->length++] = '-';
+	string->chars[string->length] = '\0';
 	Int i = 0;
-	Int j = string.length - 1;
-	while (i < (string.length / 2 + string.length % 2)) {
-		char tmp = string.chars[i];
-		string.chars[i] = string.chars[j];
-		string.chars[j] = tmp;
+	Int j = string->length - 1;
+	while (i < (string->length / 2 + string->length % 2)) {
+		char tmp = string->chars[i];
+		string->chars[i] = string->chars[j];
+		string->chars[j] = tmp;
 		i++;
 		j--;
 	}
@@ -36,15 +36,15 @@ Int String$toInt(String* string) {
 
 Bool String$equals(String* str0, String* str1) {
 	U32 size = str0->length;
-	if (size != str1->length) return 0;
+	if (size != str1->length) return false;
 	else {
 		U32 i = 0;
 		while (i <= size) {
 			if (str0->chars[i] != str1->chars[i]) {
-				return 0;
+				return false;
 			}
 			i++;
 		}
 	}
-	return 1;
+	return true;
 }

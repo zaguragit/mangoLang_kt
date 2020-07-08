@@ -135,8 +135,11 @@ private fun compile(
     target: String,
     emissionType: EmissionType,
     doSuggestions: Boolean,
-    syntaxTrees: Collection<SyntaxTree>
+    localTrees: Collection<SyntaxTree>
 ) {
+    val syntaxTrees = ArrayList(localTrees).apply {
+        addAll(SyntaxTree.loadLib("/usr/local/include/mangoLang/std/", "std"))
+    }
     val compilation = Compilation(null, syntaxTrees)
     val result = compilation.evaluate(HashMap())
     val errors = result.errors
