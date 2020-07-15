@@ -1,4 +1,4 @@
-use std.io*
+use std*
 
 val creatorsName = "leo"
 
@@ -9,18 +9,19 @@ fn test {
         val name = getName()
 
         if name == creatorsName {
-            println("Hi, \" + name + \"!!")
+            io.println("Hi, \" + name + \"!!")
         }
         else {
-            println("Hi, \" + name + \"!")
+            io.println("Hi, \" + name + \"!")
         }
 
         return name
     }
-    println(doit())
+    val a = doit()
+    std.io.println(a)
     {
-        println(doit())
-        println(doit())
+        io.println(std.string.intToString(a.length))
+        io.println(string.intToString(a.length))
     }
-    println(doit())
+    io.println(secondFile.astring)
 }

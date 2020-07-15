@@ -408,7 +408,7 @@ class Parser(
         SyntaxType.Int -> parseNumberLiteral()
         SyntaxType.String -> parseStringLiteral()
         SyntaxType.In -> parseNumberLiteral()
-        else -> parseNameOrCallExpression()
+        else -> parseNameExpression()
     }
 
     private fun parseParenthesizedExpression(): ParenthesizedExpressionNode {
@@ -428,15 +428,17 @@ class Parser(
 
     private fun parseStringLiteral() = LiteralExpressionNode(syntaxTree, match(SyntaxType.String))
 
-    private fun parseNameOrCallExpression(): ExpressionNode {
+    private fun parseNameExpression(): ExpressionNode {
         val identifier = match(SyntaxType.Identifier)
-        if (peek(0).kind == SyntaxType.OpenRoundedBracket) {
-            val leftBracket = match(SyntaxType.OpenRoundedBracket)
-            val arguments = parseArguments()
-            val rightBracket = match(SyntaxType.ClosedRoundedBracket)
-            return CallExpressionNode(syntaxTree, identifier, leftBracket, arguments, rightBracket)
+        return when (peek(0).kind) {
+            SyntaxType.OpenRoundedBracket -> {
+                val leftBracket = match(SyntaxType.OpenRoundedBracket)
+                val arguments = parseArguments()
+                val rightBracket = match(SyntaxType.ClosedRoundedBracket)
+                CallExpressionNode(syntaxTree, identifier, leftBracket, arguments, rightBracket)
+            }
+            else -> NameExpressionNode(syntaxTree, identifier)
         }
-        return NameExpressionNode(syntaxTree, identifier)
     }
 
     private fun parseArguments(): SeparatedNodeList<ExpressionNode> {

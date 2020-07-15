@@ -111,7 +111,7 @@ open class BoundTreeRewriter {
         return node
     }
 
-    protected fun rewriteExpression(node: BoundExpression): BoundExpression {
+    private fun rewriteExpression(node: BoundExpression): BoundExpression {
         return when (node.boundType) {
             BoundNodeType.UnaryExpression -> rewriteUnaryExpression(node as BoundUnaryExpression)
             BoundNodeType.BinaryExpression -> rewriteBinaryExpression(node as BoundBinaryExpression)
@@ -121,6 +121,7 @@ open class BoundTreeRewriter {
             BoundNodeType.CallExpression -> rewriteCallExpression(node as BoundCallExpression)
             BoundNodeType.CastExpression -> rewriteCastExpression(node as BoundCastExpression)
             BoundNodeType.ErrorExpression -> node
+            BoundNodeType.StructFieldAccess -> rewriteStructFieldAccess(node as BoundStructFieldAccess)
             else -> throw Exception("Unexpected node: ${node.boundType}")
         }
     }
@@ -172,7 +173,7 @@ open class BoundTreeRewriter {
         if (args == null) {
             return node
         }
-        return BoundCallExpression(node.function, args)
+        return BoundCallExpression(node.symbol, args)
     }
 
     protected fun rewriteCastExpression(node: BoundCastExpression): BoundExpression {
@@ -181,5 +182,13 @@ open class BoundTreeRewriter {
             return node
         }
         return BoundCastExpression(node.type, expression)
+    }
+
+    protected fun rewriteStructFieldAccess(node: BoundStructFieldAccess): BoundExpression {
+        val struct = rewriteExpression(node.struct)
+        if (struct == node.struct) {
+            return node
+        }
+        return BoundStructFieldAccess(struct, node.i)
     }
 }

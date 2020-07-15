@@ -111,11 +111,11 @@ class Evaluator(
     }
 
     private fun evaluateVariableExpression(node: BoundVariableExpression) =
-        if (node.variable is VisibleSymbol) {
-            globals[node.variable]
+        if (node.symbol is VisibleSymbol) {
+            //globals[node.symbol]
         } else {
             val locals = stack.peek()
-            locals[node.variable]
+            locals[node.symbol]
         }
 
     private fun evaluateUnaryExpression(node: BoundUnaryExpression): Any? {
@@ -173,7 +173,7 @@ class Evaluator(
         }
     }
 
-    private fun evaluateCallExpression(node: BoundCallExpression): Any? = when (node.function) {
+    private fun evaluateCallExpression(node: BoundCallExpression): Any? = when (node.symbol) {
         BuiltinFunctions.print -> {
             print(evaluateExpression(node.arguments.elementAt(0)))
             null
@@ -190,12 +190,12 @@ class Evaluator(
         else -> {
             val locals = HashMap<VariableSymbol, Any?>()
             for (i in node.arguments.indices) {
-                val parameter = node.function.parameters[i]
+                val parameter = node.symbol.parameters[i]
                 val value = evaluateExpression(node.arguments.elementAt(i))
                 locals[parameter] = value
             }
             stack.push(locals)
-            val statement = functionBodies[node.function]!!
+            val statement = functionBodies[node.symbol]!!
             val result = evaluateStatement(statement)
             stack.pop()
             result

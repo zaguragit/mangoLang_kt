@@ -1,9 +1,13 @@
 package mango.interpreter.symbols
 
 abstract class Symbol {
+
     abstract val name: String
     abstract val kind: Kind
+    abstract val type: TypeSymbol
+
     var useCounter = 0
+    open val meta = MetaData()
 
     enum class Kind {
         VisibleVariable,
@@ -84,15 +88,19 @@ abstract class Symbol {
         fun genFnUID() = "0fn${fnUIDCounter++}"
     }
 
-    /*class MetaData {
+    class MetaData {
 
         //// FUNCTIONS /////////////////////////////////////////////////////////////////////////////////////////////////
         var isInline = false
         var isExtern = false
         var isEntry = false
-        var cName: String? = null
+        var cname: String? = null
 
         //// STRUCT FIELDS /////////////////////////////////////////////////////////////////////////////////////////////
-        var init = false
-    }*/
+        //var init = false
+
+        companion object {
+            var entryExists = false
+        }
+    }
 }

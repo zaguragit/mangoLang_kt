@@ -139,7 +139,7 @@ class Binder(
             if (expression == null) {
                 diagnostics.reportCantReturnWithoutValue(node.keyword.location)
             }
-            else if (!expression.type.isOfType(function.type)) {
+            else if (expression.type != TypeSymbol.err && !expression.type.isOfType(function.type)) {
                 diagnostics.reportWrongType(node.expression.location, expression.type, function.type)
             }
         }
@@ -246,7 +246,14 @@ class Binder(
             SyntaxType.ParenthesizedExpression -> bindParenthesizedExpression(node as ParenthesizedExpressionNode)
             SyntaxType.LiteralExpression -> bindLiteralExpression(node as LiteralExpressionNode)
             SyntaxType.UnaryExpression -> bindUnaryExpression(node as UnaryExpressionNode)
-            SyntaxType.BinaryExpression -> bindBinaryExpression(node as BinaryExpressionNode)
+            SyntaxType.BinaryExpression -> {
+                node as BinaryExpressionNode
+                if (node.operator.kind == SyntaxType.Dot) {
+                    bindDotAccessExpression(node)
+                } else {
+                    bindBinaryExpression(node)
+                }
+            }
             SyntaxType.NameExpression -> bindNameExpression(node as NameExpressionNode)
             SyntaxType.AssignmentExpression -> bindAssignmentExpression(node as AssignmentExpressionNode)
             SyntaxType.CallExpression -> bindCallExpression(node as CallExpressionNode)
@@ -351,10 +358,10 @@ class Binder(
     }
 
     private fun bindNameExpression(node: NameExpressionNode): BoundExpression {
-        val name = node.identifierToken.string ?: return BoundErrorExpression()
+        val name = node.identifier.string ?: return BoundErrorExpression()
         val (variable, result) = scope.tryLookupVariable(listOf(name))
         if (!result) {
-            diagnostics.reportUndefinedName(node.identifierToken.location, name)
+            diagnostics.reportUndefinedName(node.identifier.location, name)
             return BoundErrorExpression()
         }
         return BoundVariableExpression(variable!!)
@@ -395,6 +402,98 @@ class Binder(
         return BoundBinaryExpression(left, operator, right)
     }
 
+    private fun bindDotAccessExpression(node: BinaryExpressionNode): BoundExpression {
+
+        fun bindNamespaceAccess(leftName: String, rightName: String): BoundExpression {
+            /*
+            val namespace = BoundNamespace[leftName] ?: scope.namespace?.let { BoundNamespace[it.path + '.' + leftName] }
+            if (namespace == null) {
+                diagnostics.reportUndefinedName(location, leftName)
+                return BoundErrorExpression()
+            }
+            val (symbol, r) = namespace.tryLookup(listOf(rightName))
+            if (!r) {
+                val namespace2 = BoundNamespace["${namespace.path}.$rightName"]
+                if (namespace2 == null) {
+                    diagnostics.reportUndefinedName(location, rightName)
+                    return BoundErrorExpression()
+                }
+                return BoundNamespaceFieldAccess(namespace2)
+            }
+            return if (symbol is VariableSymbol) {
+                BoundVariableExpression(symbol)
+            } else if (symbol is CallableSymbol) {
+                if (params == null) {
+                    diagnostics.reportUndefinedName(location, rightName)
+                    return BoundErrorExpression()
+                } else {
+                    BoundCallExpression(symbol, params)
+                }
+            } else {
+                null!!
+            }
+            */
+            val (symbol, result) = scope.tryLookup(leftName.split('.').toMutableList().apply { add(rightName) })
+            if (result) {
+                symbol!!
+                if (node.right.kind == SyntaxType.CallExpression) {
+                    node.right as CallExpressionNode
+                    if (symbol !is CallableSymbol) {
+                        diagnostics.reportNotCallable(node.right.location, symbol)
+                        return BoundErrorExpression()
+                    }
+                    return BoundCallExpression(symbol as FunctionSymbol, node.right.arguments.map { bindExpression(it) })
+                } else {
+                    return BoundVariableExpression(symbol)
+                }
+            }
+            val namespace = BoundNamespace["$leftName.$rightName"]
+            if (namespace == null) {
+                diagnostics.reportUndefinedName(node.right.location, rightName)
+                return BoundErrorExpression()
+            }
+            return BoundNamespaceFieldAccess(namespace)
+        }
+
+        if (node.right.kind != SyntaxType.NameExpression && node.right.kind != SyntaxType.CallExpression) {
+            diagnostics.reportCantBeAfterDot(node.right.location)
+            return BoundErrorExpression()
+        }
+
+        node.right as NameExpressionNode
+
+        if (node.left.kind == SyntaxType.NameExpression) {
+            node.left as NameExpressionNode
+            val leftName = node.left.identifier.string ?: return BoundErrorExpression()
+            val rightName = node.right.identifier.string ?: return BoundErrorExpression()
+            val (_, result) = scope.tryLookup(listOf(leftName))
+            if (!result) {
+                return bindNamespaceAccess(leftName, rightName)
+            }
+        }
+
+        val left = bindExpression(node.left)
+        if (left.boundType == BoundNodeType.NamespaceFieldAccess) {
+            left as BoundNamespaceFieldAccess
+            val leftName = left.namespace.path
+            val rightName = node.right.identifier.string ?: return BoundErrorExpression()
+            return bindNamespaceAccess(leftName, rightName)
+        }
+
+        val name = node.right.identifier.string ?: return BoundErrorExpression()
+        if (left.type.kind == Symbol.Kind.Struct) {
+            val i = (left.type as TypeSymbol.StructTypeSymbol).fields.indexOfFirst { it.name == name }
+            if (i == -1) {
+                diagnostics.reportUndefinedName(node.right.location, name)
+                return BoundErrorExpression()
+            }
+            return BoundStructFieldAccess(left, i)
+        } else {
+            diagnostics.reportUndefinedName(node.right.location, name)
+            return BoundErrorExpression()
+        }
+    }
+
     companion object {
 
         fun bindGlobalScope(
@@ -409,12 +508,18 @@ class Binder(
             val statementBuilder = ArrayList<BoundStatement>()
 
             for (syntaxTree in syntaxTrees) {
-                BoundNamespace(syntaxTree.projectPath, parentScope)
+                val strBuilder = StringBuilder()
+                var parent = parentScope
+                syntaxTree.projectPath.split('.').forEachIndexed { i, s ->
+                    val path = if (i == 0) { strBuilder.append(s).toString() }
+                        else { strBuilder.append('.').append(s).toString() }
+                    parent = BoundNamespace.getOr(path) { BoundNamespace(path, parent) }
+                }
             }
             for (syntaxTree in syntaxTrees) {
                 binder.diagnostics.append(syntaxTree.diagnostics)
                 val prev = binder.scope
-                val namespace = BoundNamespace[syntaxTree.projectPath]
+                val namespace = BoundNamespace[syntaxTree.projectPath]!!
                 binder.scope = namespace
                 for (s in syntaxTree.root.members) {
                     when (s) {
@@ -454,7 +559,7 @@ class Binder(
                     if (isRepl) TypeSymbol.Any else TypeSymbol.Unit,
                         "main",
                     null,
-                        FunctionSymbol.MetaData()
+                        Symbol.MetaData()
                 )
                 if (!isRepl) {
                     diagnostics.reportNoMainFn()
@@ -548,7 +653,7 @@ class Binder(
 
             for (symbol in globalScope.symbols) {
                 if (symbol is FunctionSymbol) {
-                    bindFunction(BoundNamespace[symbol.path.substringBeforeLast('.')], functions, symbol, diagnostics)
+                    bindFunction(BoundNamespace[symbol.path.substringBeforeLast('.')]!!, functions, symbol, diagnostics)
                 }
             }
 
@@ -611,7 +716,7 @@ class Binder(
             bindTypeClause(node.typeClause)!!
         }
 
-        val meta = FunctionSymbol.MetaData()
+        val meta = Symbol.MetaData()
         val path = if (scope is BoundNamespace) {
             (scope as BoundNamespace).path + '.' + node.identifier.string!!
         } else {
@@ -623,15 +728,15 @@ class Binder(
                 "inline" -> meta.isInline = true
                 "extern" -> meta.isExtern = true
                 "entry" -> {
-                    if (FunctionSymbol.MetaData.entryExists) {
+                    if (Symbol.MetaData.entryExists) {
                         diagnostics.reportMultipleEntryFuncs(annotation.location)
                     }
                     meta.isEntry = true
-                    FunctionSymbol.MetaData.entryExists = true
+                    Symbol.MetaData.entryExists = true
                 }
                 "cname" -> {
                     val expression = bindLiteralExpression(annotation.value as LiteralExpressionNode)
-                    meta.cName = expression.value as String
+                    meta.cname = expression.value as String
                 }
                 else -> {
                     diagnostics.reportInvalidAnnotation(annotation.location)

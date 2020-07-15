@@ -6,18 +6,18 @@ import mango.interpreter.syntax.SeparatedNodeList
 import mango.interpreter.syntax.SyntaxTree
 
 class CallExpressionNode(
-        syntaxTree: SyntaxTree,
-        val identifier: Token,
-        val leftBracket: Token,
-        val arguments: SeparatedNodeList<ExpressionNode>,
-        val rightBracket: Token
-) : ExpressionNode(syntaxTree) {
+    syntaxTree: SyntaxTree,
+    identifier: Token,
+    val leftBracket: Token,
+    val arguments: SeparatedNodeList<ExpressionNode>,
+    val rightBracket: Token
+) : NameExpressionNode(syntaxTree, identifier) {
 
     override val kind = SyntaxType.CallExpression
     override val children: Collection<Node> get() = arrayListOf<Node>(
-        identifier,
-        leftBracket).apply {
-        addAll(arguments.nodesAndSeparators)
-        add(rightBracket)
-    }
+            identifier, leftBracket
+        ).apply {
+            addAll(arguments.nodesAndSeparators)
+            add(rightBracket)
+        }
 }

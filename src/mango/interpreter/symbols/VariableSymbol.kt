@@ -4,7 +4,7 @@ import mango.interpreter.binding.nodes.expressions.BoundConstant
 
 open class VariableSymbol private constructor(
     override val name: String,
-    val type: TypeSymbol,
+    override val type: TypeSymbol,
     val isReadOnly: Boolean,
     constant: BoundConstant?,
     override val kind: Kind

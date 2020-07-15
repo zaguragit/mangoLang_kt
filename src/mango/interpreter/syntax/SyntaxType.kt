@@ -5,7 +5,6 @@ enum class SyntaxType {
     EOF,
     Bad,
     LineSeparator,
-    Dot,
     Comma,
 
     // Nodes
@@ -49,6 +48,7 @@ enum class SyntaxType {
     ClosedSquareBracket,
 
     // Operators
+    Dot,
     Plus,
     Minus,
     Star,
@@ -112,25 +112,19 @@ enum class SyntaxType {
     MultilineComment;
 
     fun getBinaryOperatorPrecedence() = when (this) {
-        Star, Div -> 7
-        Plus, Minus -> 6
-        BitAnd -> 5
-        BitOr -> 4
-        LessThan,
-        MoreThan,
-        IsEqual,
-        IsEqualOrMore,
-        IsEqualOrLess,
-        IsNotEqual,
-        IsIdentityEqual,
-        IsNotIdentityEqual -> 3
+        Dot -> 8
+        BitAnd -> 7
+        BitOr -> 6
+        LessThan, MoreThan, IsEqual, IsEqualOrMore, IsEqualOrLess, IsNotEqual, IsIdentityEqual, IsNotIdentityEqual -> 5
+        Star, Div -> 4
+        Plus, Minus -> 3
         LogicAnd -> 2
         LogicOr -> 1
         else -> 0
     }
 
     fun getUnaryOperatorPrecedence() = when (this) {
-        Plus, Minus, Not -> 8
+        Plus, Minus, Not -> 9
         else -> 0
     }
 }

@@ -114,7 +114,7 @@ class ModuleBuilder {
 
     fun addImportedDeclaration (symbol: FunctionSymbol) {
         val returnType = if (symbol.type.kind == Symbol.Kind.Struct) LLVMType.Ptr(LLVMType.valueOf(symbol.type)) else LLVMType.valueOf(symbol.type)
-        importedDeclarations.add("declare ${returnType.code} @${symbol.meta.cName ?: symbol.path}(${symbol.parameters.joinToString(", ") {
+        importedDeclarations.add("declare ${returnType.code} @${symbol.meta.cname ?: symbol.path}(${symbol.parameters.joinToString(", ") {
             val type = LLVMType.valueOf(it.type)
             (if (it.type.kind == Symbol.Kind.Struct)
                 LLVMType.Ptr(type)

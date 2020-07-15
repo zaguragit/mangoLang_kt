@@ -81,7 +81,7 @@ abstract class BoundNode {
             }
             BoundNodeType.VariableExpression -> {
                 this as BoundVariableExpression
-                print(variable.name)
+                print(symbol.name)
             }
             BoundNodeType.AssignmentExpression -> {
                 this as BoundAssignmentExpression
@@ -91,7 +91,7 @@ abstract class BoundNode {
             }
             BoundNodeType.CallExpression -> {
                 this as BoundCallExpression
-                print(function.name)
+                print(symbol.name)
                 printPunctuation('(')
                 var isFirst = true
                 for (arg in arguments) {
@@ -198,6 +198,8 @@ enum class BoundNodeType {
     CallExpression,
     ErrorExpression,
     CastExpression,
+    NamespaceFieldAccess,
+    StructFieldAccess,
 
     BlockStatement,
     ExpressionStatement,

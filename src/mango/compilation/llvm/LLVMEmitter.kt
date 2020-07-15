@@ -111,6 +111,7 @@ object LLVMEmitter : Emitter {
                 }
                 BoundNodeType.LiteralExpression -> emitLiteral(initBlock, expression as BoundLiteralExpression, false)
                 BoundNodeType.VariableExpression -> emitVariableExpression(initBlock, expression as BoundVariableExpression)
+                BoundNodeType.StructFieldAccess -> emitStructFieldAccess(initBlock, expression as BoundStructFieldAccess)
                 else -> {
                     val instruction = emitInstruction(initBlock, expression)!!
                     val type = instruction.type
@@ -140,7 +141,8 @@ object LLVMEmitter : Emitter {
             }
             BoundNodeType.LiteralExpression -> emitLiteral(block, expression as BoundLiteralExpression, true)
             BoundNodeType.VariableExpression -> emitVariableExpression(block, expression as BoundVariableExpression)
-            BoundNodeType.ErrorExpression -> null
+            BoundNodeType.StructFieldAccess -> emitStructFieldAccess(block, expression as BoundStructFieldAccess)
+            BoundNodeType.ErrorExpression -> throw Exception("Error expression got to the emission stage")
             else -> {
                 val instruction = emitInstruction(block, expression)!!
                 val type = instruction.type
@@ -189,15 +191,15 @@ object LLVMEmitter : Emitter {
     private fun emitVariableExpression(
         block: BlockBuilder,
         expression: BoundVariableExpression
-    ): LLVMValue = when (expression.variable.kind) {
+    ): LLVMValue = when (expression.symbol.kind) {
         Symbol.Kind.Parameter -> {
             val i = block.functionBuilder.symbol.parameters.indexOfFirst {
-                it.name == expression.variable.name
+                it.name == expression.symbol.name
             }
             block.functionBuilder.paramReference(i)
         }
         Symbol.Kind.VisibleVariable -> {
-            val variable = expression.variable; variable as VisibleSymbol
+            val variable = expression.symbol; variable as VisibleSymbol
             if (expression.type.kind == Symbol.Kind.Struct) {
                 GlobalRef(variable.path, LLVMType.valueOf(variable.type))
             } else {
@@ -205,7 +207,7 @@ object LLVMEmitter : Emitter {
             }
         }
         else -> {
-            val variable = expression.variable
+            val variable = expression.symbol
             LocalRef(variable.name, if (variable.type.kind == Symbol.Kind.Struct) LLVMType.Ptr(LLVMType.valueOf(variable.type)) else LLVMType.valueOf(variable.type))
         }
     }
@@ -217,14 +219,14 @@ object LLVMEmitter : Emitter {
         BoundNodeType.CallExpression -> {
             expression as BoundCallExpression
             val type = if (expression.type.kind == Symbol.Kind.Struct) LLVMType.Ptr(LLVMType.valueOf(expression.type)) else LLVMType.valueOf(expression.type)
-            val function = expression.function
+            val function = expression.symbol
             Call(type, function, *Array(expression.arguments.size) {
                 emitValue(block, expression.arguments.elementAt(it))!!
             })
         }
         BoundNodeType.UnaryExpression -> emitUnaryExpression(block, expression as BoundUnaryExpression)
         BoundNodeType.BinaryExpression -> emitBinaryExpression(block, expression as BoundBinaryExpression)
-        BoundNodeType.ErrorExpression -> null
+        BoundNodeType.ErrorExpression -> throw Exception("Error expression got to the emission stage")
         else -> throw Exception("internal error: Unknown expression to LLVM (${expression.boundType})")
     }
 
@@ -276,4 +278,9 @@ object LLVMEmitter : Emitter {
             BoundBinaryOperatorType.IsNotIdentityEqual -> Icmp(Icmp.Type.IsNotEqual, left, right)
         }
     }
+
+    private fun emitStructFieldAccess(
+        block: BlockBuilder,
+        expression: BoundStructFieldAccess
+    ): LLVMValue = block.getStructField(emitValue(block, expression.struct)!!, expression.i, expression.field)
 }

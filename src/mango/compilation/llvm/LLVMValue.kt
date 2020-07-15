@@ -1,6 +1,7 @@
 package mango.compilation.llvm
 
 interface LLVMValue {
+
     val code: String
     val type: LLVMType
 
@@ -9,15 +10,6 @@ interface LLVMValue {
     ) : LLVMValue {
         override val type get() = LLVMType.Ptr(LLVMType.I8)
         override val code get() = "getelementptr inbounds ([${stringConst.lengthInBytes()} x i8], [${stringConst.lengthInBytes()} x i8]* @${stringConst.id}, i64 0, i32 0)"
-    }
-
-    class GetPtr(
-        val privType: LLVMType,
-        val pointer: LLVMValue,
-        val index: LLVMValue
-    ) : LLVMInstruction {
-        override val code get() = "getelementptr inbounds (${type.code}, ${pointer.type.code} ${pointer.code}, i64 0, i32 ${index.code})"
-        override val type get() = LLVMType.Ptr(privType)
     }
 
     class LocalRef(

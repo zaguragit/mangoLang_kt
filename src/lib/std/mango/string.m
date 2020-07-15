@@ -3,16 +3,18 @@ struct String {
 	val length Int
 	val chars I8*
 }
+*/
 
 [extern]
-[cName: "String$toInt"]
-fn String.toInt Int
+[cname: "String$toInt"]
+fn stringToInt (text String) Int
 
 [extern]
-[cName: "Int$toString"]
-fn Int.toString String
+[cname: "Int$toString"]
+fn intToString (int Int) String
 
+/*
 [extern]
-[cName: "String$equals"]
+[cname: "String$equals"]
 fn String.equals Bool
 */

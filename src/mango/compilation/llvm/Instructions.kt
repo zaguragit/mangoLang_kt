@@ -1,7 +1,8 @@
 package mango.compilation.llvm
 
 import mango.compilation.llvm.LLVMValue.LocalRef
-import mango.interpreter.symbols.FunctionSymbol
+import mango.interpreter.symbols.CallableSymbol
+import mango.interpreter.symbols.VisibleSymbol
 import java.util.*
 
 interface LLVMInstruction {
@@ -25,9 +26,8 @@ class RetVoid : LLVMInstruction {
     override val type = LLVMType.Void
 }
 
-class Load(val value: LLVMValue) : LLVMInstruction {
-    override val code get() = "load ${type.code}, ${value.type.code} ${value.code}"
-    override val type get() = (value.type as LLVMType.Ptr).element
+class Load(val value: LLVMValue, override val type: LLVMType) : LLVMInstruction {
+    override val code get() = "load ${type.code}, ${LLVMType.Ptr(type).code} ${value.code}"
 }
 
 class If(
@@ -83,20 +83,19 @@ class Store(
 }
 
 class GetPtr(
-    val privType: LLVMType,
+    override val type: LLVMType,
     val pointer: LLVMValue,
     val index: LLVMValue
 ) : LLVMInstruction {
-    override val code get() = "getelementptr inbounds (${type.code}, ${pointer.type.code} ${pointer.code}, i64 0, i32 ${index.code})"
-    override val type get() = LLVMType.Ptr(privType)
+    override val code get() = "getelementptr inbounds ${type.code}, ${pointer.type.code} ${pointer.code}, i64 0, ${index.type.code} ${index.code}"
 }
 
 class Call(
     val returnType: LLVMType,
-    val symbol: FunctionSymbol,
+    val symbol: CallableSymbol,
     vararg val params: LLVMValue
 ) : LLVMInstruction {
-    override val code get() = "call ${returnType.code} @${symbol.meta.cName ?: symbol.path}(${params.joinToString(separator = ", ") { "${it.type.code} ${it.code}" }})"
+    override val code get() = "call ${returnType.code} @${symbol.meta.cname ?: if (symbol is VisibleSymbol) symbol.path else symbol.name}(${params.joinToString(separator = ", ") { "${it.type.code} ${it.code}" }})"
     override val type = returnType
 }
 

@@ -34,7 +34,7 @@ class BlockBuilder(
     }
 
     inline fun tmpVal(value: LLVMInstruction): TmpVal {
-        val tempValue = TmpVal("tmpValue${functionBuilder.tmpIndex()}", value)
+        val tempValue = TmpVal("tmp${functionBuilder.tmpIndex()}", value)
         addInstruction(tempValue)
         return tempValue
     }
@@ -43,6 +43,12 @@ class BlockBuilder(
         val tempValue = TmpVal(name, value)
         addInstruction(tempValue)
         return tempValue
+    }
+
+    fun getStructField(struct: LLVMValue, i: Int, field: TypeSymbol.StructTypeSymbol.Field): LLVMValue {
+        val loadedStruct = tmpVal(GetPtr((struct.type as LLVMType.Ptr).element, struct, LLVMValue.Int(i, LLVMType.I32))).ref
+        val type = LLVMType.valueOf(field.type)
+        return tmpVal(Load(loadedStruct, if (field.type.kind == Symbol.Kind.Struct) LLVMType.Ptr(type) else type)).ref
     }
 
     inline fun ret() = addInstruction(RetVoid())
@@ -82,7 +88,7 @@ class BlockBuilder(
     }
 
     fun load(value: LLVMValue): LLVMValue {
-        val tempValue = tmpVal(Load(value))
+        val tempValue = tmpVal(Load(value, (value.type as LLVMType.Ptr).element))
         return tempValue.ref
     }
 }

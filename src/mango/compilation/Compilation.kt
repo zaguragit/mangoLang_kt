@@ -5,7 +5,6 @@ import mango.interpreter.binding.Binder
 import mango.interpreter.binding.BoundGlobalScope
 import mango.interpreter.binding.BoundProgram
 import mango.eval.EvaluationResult
-import mango.eval.Evaluator
 import mango.interpreter.symbols.FunctionSymbol
 import mango.interpreter.symbols.VariableSymbol
 import mango.interpreter.syntax.SyntaxTree
@@ -55,11 +54,11 @@ class Compilation(
             return CompilationResult(d.errorList, d.nonErrorList)
         }
 
-        val evaluator = Evaluator(program, variables)
+        //val evaluator = Evaluator(program, variables)
         diagnostics.sortBySpan()
         if (isRepl) {
-            val value = evaluator.evaluate()
-            return EvaluationResult(value, diagnostics.errorList, diagnostics.nonErrorList)
+            //val value = evaluator.evaluate()
+            return EvaluationResult(0, diagnostics.errorList, diagnostics.nonErrorList)
         }
         return CompilationResult(diagnostics.errorList, diagnostics.nonErrorList)
     }

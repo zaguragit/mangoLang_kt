@@ -8,6 +8,8 @@ open class TypeSymbol private constructor(
     val params: Array<TypeSymbol> = arrayOf()
 ) : Symbol() {
 
+    override val type = Type
+
     override val kind = Kind.Type
 
     init {
@@ -64,6 +66,8 @@ open class TypeSymbol private constructor(
         val Unit = TypeSymbol("Unit", Any)
 
         val err = TypeSymbol("!Err", null)
+
+        val Type = TypeSymbol("Type", Any)
 
         operator fun get(name: String) = map[name]
     }

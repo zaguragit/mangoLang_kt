@@ -3,6 +3,7 @@ package mango.compilation
 import mango.console.Console
 import mango.interpreter.binding.nodes.BoundBinaryOperator
 import mango.interpreter.binding.nodes.BoundUnaryOperator
+import mango.interpreter.symbols.Symbol
 import mango.interpreter.symbols.TypeSymbol
 import mango.interpreter.syntax.SyntaxType
 import mango.interpreter.text.TextLocation
@@ -278,6 +279,15 @@ class DiagnosticList {
     fun reportUnterminatedMultilineComment(
         location: TextLocation
     ) = report(location, "Unterminated multiline comment")
+
+    fun reportCantBeAfterDot(
+        location: TextLocation
+    ) = report(location, "Only name expressions and function calls can follow a dot")
+
+    fun reportNotCallable(
+        location: TextLocation,
+        symbol: Symbol
+    ) = report(location, "${symbol.name} can't be called")
 
 
     /// CONF ///////////////////////////////////////////////////////////////////////////////////////////////////////////
