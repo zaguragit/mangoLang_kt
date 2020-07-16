@@ -25,3 +25,18 @@ fn test {
     }
     io.println(secondFile.astring)
 }
+
+fn test02 {
+    val name = secondFile.getName()
+
+    if name == creatorsName {
+        io.println("Hi, \" + name + \"!!")
+    }
+    else {
+        io.println("Hi, \" + name + \"!")
+    }
+
+    io.print(name)
+    io.print(" ")
+    io.println(string.intToString(name.length))
+}

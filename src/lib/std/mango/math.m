@@ -4,9 +4,9 @@
  */
 fn randomU64 (seed U64) U64 {
     var n = seed
-    n = n xor (n << 21)
-    n = n xor (n >>> 35)
-    n = n xor (n << 4)
+    n = n.xor(n << 21)
+    n = n.xor(n >>> 35)
+    n = n.xor(n << 4)
     return n
 }
 

@@ -66,28 +66,16 @@ class BlockBuilder(
 
     fun code() = (if (name != null) "$name:\n    " else "") + instructions.joinToString(separator = "\n    ") { it.code }
 
-    fun cStringConstForContent(content: String) = functionBuilder.cStringConstForContent(content)
-
-    fun stringConstForContent(content: String): GlobalVar {
-        val chars = functionBuilder.cStringConstForContent(content)
-        val length = LLVMValue.Int(content.length, LLVMType.I32)
-        val type = LLVMType.valueOf(TypeSymbol.String)
-        return functionBuilder.moduleBuilder.globalVariable(
-            chars.id + ".struct",
-            type,
-            LLVMValue.Struct(type, arrayOf(length, chars.ref)).code
-        )
-    }
-
-
-    fun assignVar(variable: Var, value: LLVMValue) = addInstruction(Store(value, variable.ref))
+    inline fun cStringConstForContent(content: String) = functionBuilder.cStringConstForContent(content)
+    inline fun stringConstForContent(content: String): GlobalVar = functionBuilder.stringConstForContent(content)
+    inline fun assignVar(variable: Var, value: LLVMValue) = addInstruction(Store(value, variable.ref))
 
     fun label(): Label {
         if (name == null) throw UnsupportedOperationException()
         return Label(name)
     }
 
-    fun load(value: LLVMValue): LLVMValue {
+    inline fun load(value: LLVMValue): LLVMValue {
         val tempValue = tmpVal(Load(value, (value.type as LLVMType.Ptr).element))
         return tempValue.ref
     }
@@ -114,11 +102,11 @@ class FunctionBuilder(
     }
 
     private var nextTmpIndex = 0
-    fun tmpIndex() = nextTmpIndex++
+    fun tmpIndex () = nextTmpIndex++
 
-    fun addAttribute(string: String) = attributes.add(string)
+    fun addAttribute (string: String) = attributes.add(string)
 
-    fun alloc(type: LLVMType, name: String): Alloc {
+    fun alloc (type: LLVMType, name: String): Alloc {
         val variable = Alloc(name, type)
         variables.add(variable)
         return variable
@@ -130,19 +118,20 @@ class FunctionBuilder(
         "    ${blocks.joinToString("\n    ") { it.code() }}\n}\n"
 
 
-    fun entryBlock(): BlockBuilder = blocks.first
-    fun addInstruction(instruction: LLVMInstruction) = entryBlock().addInstruction(instruction)
-    fun tempValue(value: LLVMInstruction) = entryBlock().tmpVal(value)
+    fun entryBlock (): BlockBuilder = blocks.first
+    fun addInstruction (instruction: LLVMInstruction) = entryBlock().addInstruction(instruction)
+    fun tempValue (value: LLVMInstruction) = entryBlock().tmpVal(value)
 
-    fun createBlock(name: String?): BlockBuilder {
+    fun createBlock (name: String?): BlockBuilder {
         val block = BlockBuilder(this, name)
         blocks.add(block)
         return block
     }
 
-    fun cStringConstForContent(content: String): StringConst = moduleBuilder.cStringConstForContent(content)
+    fun cStringConstForContent (content: String) = moduleBuilder.cStringConstForContent(content)
+    fun stringConstForContent (content: String) = moduleBuilder.stringConstForContent(content)
 
-    fun paramReference(index: Int): LLVMValue {
+    fun paramReference (index: Int): LLVMValue {
         if (index < 0 || index >= paramTypes.size) {
             throw IllegalArgumentException("Expected an index between 0 and ${paramTypes.size - 1}, found $index")
         }

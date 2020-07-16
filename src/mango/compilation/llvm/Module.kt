@@ -4,6 +4,7 @@ import mango.compilation.llvm.LLVMValue.GlobalRef
 import mango.compilation.llvm.LLVMValue.StringRef
 import mango.interpreter.symbols.FunctionSymbol
 import mango.interpreter.symbols.Symbol
+import mango.interpreter.symbols.TypeSymbol
 import java.util.*
 import kotlin.collections.HashMap
 
@@ -19,18 +20,26 @@ open class StringConst(
     val content: String
 ) {
     fun lengthInBytes() = content.length + 1
-    open fun code() = "@$id = private unnamed_addr constant [${lengthInBytes()} x i8] ${content.IRCode}"
+    open fun code() = "@$id = unnamed_addr constant [${lengthInBytes()} x i8] ${content.IRCode}"
     val ref get() = StringRef(this)
 }
 
-data class GlobalVar(
+open class GlobalVar(
     val name: String,
     val type: LLVMType,
     val value: Any
 ) : Var {
-    fun code() = "@$name = global ${type.code} $value"
+    open fun code() = "@$name = global ${type.code} $value"
     override val ref get() = GlobalRef(name, type)
     override fun allocCode() = "@$name = alloca ${type.code}"
+}
+
+class ConstVal(
+    name: String,
+    type: LLVMType,
+    value: Any
+) : GlobalVar(name, type, value) {
+    override fun code() = "@$name = constant ${type.code} $value"
 }
 
 data class FunctionDeclaration(
@@ -92,9 +101,15 @@ class ModuleBuilder {
     }
 
     fun globalVariable (name: String, type: LLVMType, value: Any): GlobalVar {
-        val gvar = GlobalVar(name, type, value)
-        globalVariables.add(gvar)
-        return gvar
+        val g = GlobalVar(name, type, value)
+        globalVariables.add(g)
+        return g
+    }
+
+    fun constantValue (name: String, type: LLVMType, value: Any): GlobalVar {
+        val g = ConstVal(name, type, value)
+        globalVariables.add(g)
+        return g
     }
 
     fun cStringConstForContent (content: String): StringConst {
@@ -102,6 +117,18 @@ class ModuleBuilder {
             stringConsts[content] = StringConst(".str.${stringConsts.size}", content)
         }
         return stringConsts[content]!!
+    }
+
+    fun stringConstForContent (content: String): GlobalVar {
+        val wasAlreadyDeclared = stringConsts.containsKey(content)
+        val chars = cStringConstForContent(content)
+        val length = LLVMValue.Int(content.length, LLVMType.I32)
+        val type = LLVMType.valueOf(TypeSymbol.String)
+        val const = ConstVal(chars.id + ".struct", type, LLVMValue.Struct(type, arrayOf(length, chars.ref)).code)
+        if (!wasAlreadyDeclared) {
+            globalVariables.add(const)
+        }
+        return const
     }
 
     fun addDeclaration (declaration: FunctionDeclaration) {
