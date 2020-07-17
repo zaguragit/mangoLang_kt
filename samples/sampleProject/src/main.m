@@ -22,6 +22,7 @@ fn test {
     {
         io.println(std.string.intToString(a.length))
         io.println(string.intToString(a.length))
+        io.println(a.length)
     }
     io.println(secondFile.astring)
 }

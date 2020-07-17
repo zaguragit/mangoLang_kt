@@ -285,14 +285,21 @@ class Binder(
             arguments.add(arg)
         }
 
-        val (function, result) = scope.tryLookupFunction(listOf(node.identifier.string), false)
+        val (function, result) = scope.tryLookup(
+            listOf(node.identifier.string),
+            CallableSymbol.generate(arguments.map { it.type }, null))
 
         if (!result) {
             diagnostics.reportUndefinedName(node.identifier.location, node.identifier.string)
             return BoundErrorExpression()
         }
 
-        if (node.arguments.nodeCount > function!!.parameters.size) {
+        if (function !is CallableSymbol) {
+            diagnostics.reportNotCallable(node.identifier.location, function!!)
+            return BoundErrorExpression()
+        }
+
+        if (node.arguments.nodeCount > function.parameters.size) {
             val firstExceedingNode = if (function.parameters.isNotEmpty()) {
                 node.arguments.getSeparator(function.parameters.size - 1)
             } else {
@@ -341,12 +348,16 @@ class Binder(
     private fun bindAssignmentExpression(node: AssignmentExpressionNode): BoundExpression {
         val name = node.identifierToken.string ?: return BoundLiteralExpression(0)
         val boundExpression = bindExpression(node.expression)
-        val (variable, result) = scope.tryLookupVariable(listOf(name))
+        val (variable, result) = scope.tryLookup(listOf(name))
         if (!result) {
             diagnostics.reportUndefinedName(node.identifierToken.location, name)
             return boundExpression
         }
-        if (variable!!.isReadOnly) {
+        if (variable !is VariableSymbol) {
+            diagnostics.reportVarIsConstant(node.equalsToken.location, name)
+            return boundExpression
+        }
+        if (variable.isReadOnly) {
             diagnostics.reportVarIsImmutable(node.equalsToken.location, name)
             return boundExpression
         }
@@ -359,7 +370,7 @@ class Binder(
 
     private fun bindNameExpression(node: NameExpressionNode): BoundExpression {
         val name = node.identifier.string ?: return BoundErrorExpression()
-        val (variable, result) = scope.tryLookupVariable(listOf(name))
+        val (variable, result) = scope.tryLookup(listOf(name))
         if (!result) {
             diagnostics.reportUndefinedName(node.identifier.location, name)
             return BoundErrorExpression()
@@ -405,35 +416,14 @@ class Binder(
     private fun bindDotAccessExpression(node: BinaryExpressionNode): BoundExpression {
 
         fun bindNamespaceAccess(leftName: String, rightName: String): BoundExpression {
-            /*
-            val namespace = BoundNamespace[leftName] ?: scope.namespace?.let { BoundNamespace[it.path + '.' + leftName] }
-            if (namespace == null) {
-                diagnostics.reportUndefinedName(location, leftName)
-                return BoundErrorExpression()
-            }
-            val (symbol, r) = namespace.tryLookup(listOf(rightName))
-            if (!r) {
-                val namespace2 = BoundNamespace["${namespace.path}.$rightName"]
-                if (namespace2 == null) {
-                    diagnostics.reportUndefinedName(location, rightName)
-                    return BoundErrorExpression()
-                }
-                return BoundNamespaceFieldAccess(namespace2)
-            }
-            return if (symbol is VariableSymbol) {
-                BoundVariableExpression(symbol)
-            } else if (symbol is CallableSymbol) {
-                if (params == null) {
-                    diagnostics.reportUndefinedName(location, rightName)
-                    return BoundErrorExpression()
-                } else {
-                    BoundCallExpression(symbol, params)
-                }
+
+            val (symbol, result) = if (node.right.kind == SyntaxType.CallExpression) {
+                node.right as CallExpressionNode
+                scope.tryLookup(leftName.split('.').toMutableList().apply { add(rightName) }, CallableSymbol.generate(node.right.arguments.map { bindExpression(it).type }, null))
             } else {
-                null!!
+                scope.tryLookup(leftName.split('.').toMutableList().apply { add(rightName) })
             }
-            */
-            val (symbol, result) = scope.tryLookup(leftName.split('.').toMutableList().apply { add(rightName) })
+
             if (result) {
                 symbol!!
                 if (node.right.kind == SyntaxType.CallExpression) {
@@ -596,7 +586,7 @@ class Binder(
                 val scope = BoundScope(parent)
                 for (v in previous.symbols) {
                     v as VisibleSymbol
-                    if (v.path.substringBeforeLast('.') == "main") {
+                    if (v.meta.isEntry) { //path.substringBeforeLast('.') == "main"
                         scope.tryDeclare(v)
                     }
                 }
@@ -617,10 +607,10 @@ class Binder(
         }
 
         fun bindFunction(
-                parentScope: BoundScope,
-                functions: HashMap<FunctionSymbol, BoundBlockStatement?>,
-                symbol: FunctionSymbol,
-                diagnostics: DiagnosticList
+            parentScope: BoundScope,
+            functions: HashMap<FunctionSymbol, BoundBlockStatement?>,
+            symbol: FunctionSymbol,
+            diagnostics: DiagnosticList
         ) {
             val binder = Binder(parentScope, symbol, functions)
             when {
@@ -653,7 +643,7 @@ class Binder(
 
             for (symbol in globalScope.symbols) {
                 if (symbol is FunctionSymbol) {
-                    bindFunction(BoundNamespace[symbol.path.substringBeforeLast('.')]!!, functions, symbol, diagnostics)
+                    bindFunction(symbol.namespace!!, functions, symbol, diagnostics)
                 }
             }
 
@@ -720,7 +710,7 @@ class Binder(
         val path = if (scope is BoundNamespace) {
             (scope as BoundNamespace).path + '.' + node.identifier.string!!
         } else {
-            function!!.path.substringBeforeLast('.') + '.' + Symbol.genFnUID()
+            function!!.mangledName().substringBeforeLast('.') + '.' + Symbol.genFnUID()
         }
         val function = FunctionSymbol(node.identifier.string!!, params.toTypedArray(), type, path, node, meta)
         for (annotation in node.annotations) {

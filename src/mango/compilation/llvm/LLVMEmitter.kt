@@ -124,7 +124,7 @@ object LLVMEmitter : Emitter {
                     }
                 }
             }
-            builder.globalVariable((v.variable as VisibleSymbol).path, LLVMType.valueOf(v.variable.type), value!!.code)
+            builder.globalVariable((v.variable as VisibleSymbol).mangledName(), LLVMType.valueOf(v.variable.type), value!!.code)
         }
         return builder.code()
     }
@@ -201,9 +201,9 @@ object LLVMEmitter : Emitter {
         Symbol.Kind.VisibleVariable -> {
             val variable = expression.symbol; variable as VisibleSymbol
             if (expression.type.kind == Symbol.Kind.Struct) {
-                GlobalRef(variable.path, LLVMType.valueOf(variable.type))
+                GlobalRef(variable.mangledName(), LLVMType.valueOf(variable.type))
             } else {
-                block.load(GlobalRef(variable.path, LLVMType.valueOf(variable.type)))
+                block.load(GlobalRef(variable.mangledName(), LLVMType.valueOf(variable.type)))
             }
         }
         else -> {

@@ -15,6 +15,14 @@ fn intToString (int Int) String
 
 /*
 [extern]
+[cname: "String$toInt"]
+fn String.toInt (text String) Int
+
+[extern]
+[cname: "Int$toString"]
+fn Int.toString (int Int) String
+
+[extern]
 [cname: "String$equals"]
 fn String.equals Bool
 */

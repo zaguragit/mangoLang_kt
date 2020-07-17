@@ -113,7 +113,7 @@ class FunctionBuilder(
     }
 
     fun code() =
-        "define ${returnType.code} @${if (symbol.meta.isEntry) "main" else symbol.path}(${paramTypes.map(LLVMType::code).joinToString(separator = ", ")}) ${attributes.joinToString(" ")} {\n" +
+        "define ${returnType.code} @\"${symbol.mangledName()}\"(${paramTypes.map(LLVMType::code).joinToString(separator = ", ")}) ${attributes.joinToString(" ")} {\n" +
         "    ${variables.joinToString("\n    ") { it.allocCode() }}\n" +
         "    ${blocks.joinToString("\n    ") { it.code() }}\n}\n"
 

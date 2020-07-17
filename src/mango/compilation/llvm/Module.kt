@@ -54,7 +54,7 @@ data class FunctionDeclaration(
         if (varargs) {
             paramsAsString.add("...")
         }
-        return "${returnType.code} @$name(${paramsAsString.joinToString(", ")})"
+        return "${returnType.code} @\"$name\"(${paramsAsString.joinToString(", ")})"
     }
 
     fun ptrSignature(): String {
@@ -141,7 +141,7 @@ class ModuleBuilder {
 
     fun addImportedDeclaration (symbol: FunctionSymbol) {
         val returnType = if (symbol.type.kind == Symbol.Kind.Struct) LLVMType.Ptr(LLVMType.valueOf(symbol.type)) else LLVMType.valueOf(symbol.type)
-        importedDeclarations.add("declare ${returnType.code} @${symbol.meta.cname ?: symbol.path}(${symbol.parameters.joinToString(", ") {
+        importedDeclarations.add("declare ${returnType.code} @\"${symbol.mangledName()}\"(${symbol.parameters.joinToString(", ") {
             val type = LLVMType.valueOf(it.type)
             (if (it.type.kind == Symbol.Kind.Struct)
                 LLVMType.Ptr(type)

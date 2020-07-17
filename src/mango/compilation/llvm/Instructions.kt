@@ -95,7 +95,7 @@ class Call(
     val symbol: CallableSymbol,
     vararg val params: LLVMValue
 ) : LLVMInstruction {
-    override val code get() = "call ${returnType.code} @${symbol.meta.cname ?: if (symbol is VisibleSymbol) symbol.path else symbol.name}(${params.joinToString(separator = ", ") { "${it.type.code} ${it.code}" }})"
+    override val code get() = "call ${returnType.code} @\"${if (symbol is VisibleSymbol) symbol.mangledName() else symbol.name}\"(${params.joinToString(separator = ", ") { "${it.type.code} ${it.code}" }})"
     override val type = returnType
 }
 

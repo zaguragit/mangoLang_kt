@@ -183,7 +183,12 @@ class DiagnosticList {
     fun reportVarIsImmutable(
         location: TextLocation,
         name: String
-    ) = report(location, "Variable \"$name\" immutable and can't be assigned to")
+    ) = report(location, "\"$name\" is immutable")
+
+    fun reportVarIsConstant(
+        location: TextLocation,
+        name: String
+    ) = report(location, "\"$name\" is constant")
 
     fun reportInvalidCharacterEscape(
         location: TextLocation,
