@@ -1,6 +1,6 @@
 use std*
 
-val creatorsName = "leo"
+val badName = "semicolon"
 
 [entry]
 fn test {
@@ -8,36 +8,25 @@ fn test {
     fn doit String {
         val name = getName()
 
-        if name == creatorsName {
-            io.println("Hi, \" + name + \"!!")
+        if name == badName { // string comparisons don't work yet, so this is always false
+            io.print("Go away, ")
+            io.print(name)
+            io.print("!")
+            io.println(" Ur not welcome here!")
         }
         else {
-            io.println("Hi, \" + name + \"!")
+            io.print("Hi, ")
+            io.print(name)
+            io.println("!")
         }
 
         return name
     }
     val a = doit()
-    std.io.println(a)
-    {
-        io.println(std.string.intToString(a.length))
-        io.println(string.intToString(a.length))
-        io.println(a.length)
-    }
+    io.print("name: ")
+    io.println(a)
+    io.print("length: ")
+    io.println(a.length)
+    io.print("a string: ")
     io.println(secondFile.astring)
-}
-
-fn test02 {
-    val name = secondFile.getName()
-
-    if name == creatorsName {
-        io.println("Hi, \" + name + \"!!")
-    }
-    else {
-        io.println("Hi, \" + name + \"!")
-    }
-
-    io.print(name)
-    io.print(" ")
-    io.println(string.intToString(name.length))
 }
