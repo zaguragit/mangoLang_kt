@@ -26,7 +26,10 @@ fn test {
     io.print("name: ")
     io.println(a)
     io.print("length: ")
-    io.println(a.length)
+    use std.string*
+    io.println(a.length.toString())
+    io.print("length, but in hex: ")
+    io.println(a.length.toString(16))
     io.print("a string: ")
     io.println(secondFile.astring)
 }

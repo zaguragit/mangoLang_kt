@@ -3,20 +3,18 @@ package mango.interpreter.symbols
 abstract class CallableSymbol : Symbol() {
     abstract val parameters: Array<VariableSymbol>
 
-    val extra by lazy {
-        generate(parameters.map { it.type }, meta.extensionType)
+    val suffix by lazy {
+        generateSuffix(parameters.map { it.type }, meta.isExtension)
     }
 
     companion object {
-        fun generate(parameters: List<TypeSymbol>, extensionType: TypeSymbol?) = buildString {
-            append('[')
+        fun generateSuffix(parameters: List<TypeSymbol>, isExtension: Boolean) = buildString {
             for (p in parameters) {
-                if (p !== parameters[0]) append(',')
+                append('[')
                 append(p.name)
             }
-            if (extensionType != null) {
-                append(']')
-                append(extensionType.name)
+            if (isExtension) {
+                append('[')
             }
         }
     }

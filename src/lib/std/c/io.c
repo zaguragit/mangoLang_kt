@@ -1,17 +1,18 @@
 
-Unit print(String* string) {
+Unit print (String* string) {
 	Int i = 0;
 	while (i < string->length) {
 		putchar(string->chars[i++]);
 	}
+	fflush(stdout);
 }
 
-Unit println(String* string) {
+Unit println (String* string) {
 	print(string);
 	putchar('\n');
 }
 
-String* readln() {
+String* readln () {
 	String* string = malloc(sizeof(String));
     string->length = 0;
     Int ch;

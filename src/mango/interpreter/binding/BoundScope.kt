@@ -1,9 +1,7 @@
 package mango.interpreter.binding
 
 import mango.interpreter.symbols.CallableSymbol
-import mango.interpreter.symbols.FunctionSymbol
 import mango.interpreter.symbols.Symbol
-import mango.interpreter.symbols.VariableSymbol
 
 open class BoundScope(
     val parent: BoundScope?
@@ -20,14 +18,13 @@ open class BoundScope(
 
     fun tryDeclare(symbol: Symbol) = tryDeclare(symbol, symbol.name)
     fun tryDeclare(symbol: Symbol, name: String): Boolean {
-        val extra = if (symbol is CallableSymbol) symbol.extra else null
+        val extra = if (symbol is CallableSymbol) symbol.suffix else null
         if (map.containsKey(name to extra)) {
             return false
         }
         map[name to extra] = symbol
         return true
     }
-//CallableSymbol.generate(arguments.map { it.type }, null)
     fun tryLookup (path: Collection<String>, extra: String? = null): Pair<Symbol?, Boolean> = tryLookup(path, extra, true)
     protected fun tryLookup (path: Collection<String>, extra: String? = null, isReal: Boolean): Pair<Symbol?, Boolean> {
         val parentNamespace = namespace

@@ -9,10 +9,10 @@ interface VisibleSymbol {
 
     fun mangledName(): String {
         this as Symbol
-        if (meta.isEntry) return "main"
         if (meta.cname != null) return meta.cname!!
+        if (meta.isEntry) return "main"
         if (this is CallableSymbol && parameters.isNotEmpty()) {
-            return path + extra
+            return path + suffix
         }
         return path
     }

@@ -124,11 +124,16 @@ class Parser(
 
     private fun parseFunctionDeclaration(annotations: Collection<AnnotationNode>): FunctionDeclarationNode {
         val keyword = match(SyntaxType.Fn)
-        val isError = current.kind == SyntaxType.LineSeparator
-        val identifier = match(SyntaxType.Identifier)
-        if (isError) {
+        if (current.kind == SyntaxType.LineSeparator) {
             diagnostics.reportDeclarationAndNameOnSameLine(keyword.location)
         }
+        val extensionType: TypeClauseNode?
+        if (peek(1).kind == SyntaxType.Dot) {
+            extensionType = parseTypeClause()
+            next()
+        } else { extensionType = null }
+        val identifier = match(SyntaxType.Identifier)
+
         var params: SeparatedNodeList<ParameterNode>? = null
         skipSeparators()
         if (current.kind == SyntaxType.OpenRoundedBracket) {
@@ -152,9 +157,9 @@ class Parser(
             } else {
                 body = parseBlockStatement()
             }
-            FunctionDeclarationNode(syntaxTree, keyword, identifier, type, params, lambdaArrow, body, annotations)
+            FunctionDeclarationNode(syntaxTree, keyword, identifier, type, params, lambdaArrow, body, annotations, extensionType)
         } else {
-            FunctionDeclarationNode(syntaxTree, keyword, identifier, type, params, null, null, annotations)
+            FunctionDeclarationNode(syntaxTree, keyword, identifier, type, params, null, null, annotations, extensionType)
         }
     }
 

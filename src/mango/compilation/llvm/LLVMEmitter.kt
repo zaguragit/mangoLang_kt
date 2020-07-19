@@ -132,26 +132,24 @@ object LLVMEmitter : Emitter {
     private fun emitValue(
         block: BlockBuilder,
         expression: BoundExpression
-    ): LLVMValue? {
-        return when (expression.boundType) {
-            BoundNodeType.AssignmentExpression -> emitAssignment(block, expression as BoundAssignmentExpression)
-            BoundNodeType.CastExpression -> {
-                expression as BoundCastExpression
+    ): LLVMValue? = when (expression.boundType) {
+        BoundNodeType.AssignmentExpression -> emitAssignment(block, expression as BoundAssignmentExpression)
+        BoundNodeType.CastExpression -> {
+            expression as BoundCastExpression
+            null
+        }
+        BoundNodeType.LiteralExpression -> emitLiteral(block, expression as BoundLiteralExpression, true)
+        BoundNodeType.VariableExpression -> emitVariableExpression(block, expression as BoundVariableExpression)
+        BoundNodeType.StructFieldAccess -> emitStructFieldAccess(block, expression as BoundStructFieldAccess)
+        BoundNodeType.ErrorExpression -> throw Exception("Error expression got to the emission stage")
+        else -> {
+            val instruction = emitInstruction(block, expression)!!
+            val type = instruction.type
+            if (type == LLVMType.Void) {
+                block.addInstruction(instruction)
                 null
-            }
-            BoundNodeType.LiteralExpression -> emitLiteral(block, expression as BoundLiteralExpression, true)
-            BoundNodeType.VariableExpression -> emitVariableExpression(block, expression as BoundVariableExpression)
-            BoundNodeType.StructFieldAccess -> emitStructFieldAccess(block, expression as BoundStructFieldAccess)
-            BoundNodeType.ErrorExpression -> throw Exception("Error expression got to the emission stage")
-            else -> {
-                val instruction = emitInstruction(block, expression)!!
-                val type = instruction.type
-                if (type == LLVMType.Void) {
-                    block.addInstruction(instruction)
-                    null
-                } else {
-                    block.tmpVal(instruction).ref
-                }
+            } else {
+                block.tmpVal(instruction).ref
             }
         }
     }
@@ -170,8 +168,8 @@ object LLVMEmitter : Emitter {
         block: BlockBuilder,
         expression: BoundLiteralExpression,
         isLocal: Boolean
-    ): LLVMValue? = when (expression.type) {
-        TypeSymbol.String -> {
+    ): LLVMValue? = when {
+        expression.type.isOfType(TypeSymbol.String) -> {
             if (isLocal) {
                 block.stringConstForContent(expression.value as String).ref
             } else {
@@ -182,10 +180,10 @@ object LLVMEmitter : Emitter {
                 Struct(type, arrayOf(length, chars.ref))
             }
         }
-        TypeSymbol.AnyI -> Int(expression.value as Int, LLVMType.valueOf(expression.type))
-        TypeSymbol.AnyU -> Int(expression.value as Int, LLVMType.valueOf(expression.type))
-        TypeSymbol.Bool -> Bool(expression.value as Boolean)
-        else -> null
+        expression.type.isOfType(TypeSymbol.AnyI) -> Int(expression.value as Int, LLVMType.valueOf(expression.type))
+        expression.type.isOfType(TypeSymbol.AnyU) -> Int(expression.value as Int, LLVMType.valueOf(expression.type))
+        expression.type.isOfType(TypeSymbol.Bool) -> Bool(expression.value as Boolean)
+        else -> throw Exception("Unknown literal type")
     }
 
     private fun emitVariableExpression(

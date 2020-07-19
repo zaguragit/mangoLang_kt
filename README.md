@@ -1,6 +1,6 @@
 
 <div align="center">
-    <p><img width=128px src="/art/icon/128.png"/></p>
+    <p><img width=100% src="/art/banner.svg"/></p>
     <h1>MangoLang</h1>
 </div>
 
@@ -23,21 +23,18 @@
 
 
 ```rust
+use std.io*
+
 val valueName = expression
 var variableName = expression
 val something = "some text and stuff, here are some character escapes \n\t\r\\\""
-if 3 > someNumber {
-
-} else if aBoolean || anotherBoolean {
-
-}
 
 fn count (num Int) {
     var x = num
     if x == 0 { println("Done!") }
     else {
         count(x - 1)
-        println(String(x))
+        println(x)
     }
 }
 ```

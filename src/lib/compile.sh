@@ -1,7 +1,7 @@
 
 case $1 in
     'build')
-        clang std/c/main.c -o out/std.so -shared
+        clang std/c/main.c -o out/std.so -shared -fPIC -O3
     ;;
     'install')
         sudo rm -r /usr/local/lib/mangoLang/

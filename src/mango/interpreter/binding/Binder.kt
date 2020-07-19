@@ -266,7 +266,7 @@ class Binder(
         if (type != TypeSymbol.err &&
             result.type != TypeSymbol.err &&
             result.type != type) {
-            diagnostics.reportWrongType(node.location, result, type)
+            diagnostics.reportWrongType(node.location, result.type, type)
         }
         return result
     }
@@ -287,7 +287,7 @@ class Binder(
 
         val (function, result) = scope.tryLookup(
             listOf(node.identifier.string),
-            CallableSymbol.generate(arguments.map { it.type }, null))
+            CallableSymbol.generateSuffix(arguments.map { it.type }, false))
 
         if (!result) {
             diagnostics.reportUndefinedName(node.identifier.location, node.identifier.string)
@@ -419,7 +419,7 @@ class Binder(
 
             val (symbol, result) = if (node.right.kind == SyntaxType.CallExpression) {
                 node.right as CallExpressionNode
-                scope.tryLookup(leftName.split('.').toMutableList().apply { add(rightName) }, CallableSymbol.generate(node.right.arguments.map { bindExpression(it).type }, null))
+                scope.tryLookup(leftName.split('.').toMutableList().apply { add(rightName) }, CallableSymbol.generateSuffix(node.right.arguments.map { bindExpression(it).type }, false))
             } else {
                 scope.tryLookup(leftName.split('.').toMutableList().apply { add(rightName) })
             }
@@ -463,25 +463,35 @@ class Binder(
         }
 
         val left = bindExpression(node.left)
+        val name = node.right.identifier.string ?: return BoundErrorExpression()
+
         if (left.boundType == BoundNodeType.NamespaceFieldAccess) {
             left as BoundNamespaceFieldAccess
             val leftName = left.namespace.path
-            val rightName = node.right.identifier.string ?: return BoundErrorExpression()
-            return bindNamespaceAccess(leftName, rightName)
+            return bindNamespaceAccess(leftName, name)
         }
 
-        val name = node.right.identifier.string ?: return BoundErrorExpression()
         if (left.type.kind == Symbol.Kind.Struct) {
             val i = (left.type as TypeSymbol.StructTypeSymbol).fields.indexOfFirst { it.name == name }
-            if (i == -1) {
-                diagnostics.reportUndefinedName(node.right.location, name)
-                return BoundErrorExpression()
+            if (node.right.kind == SyntaxType.NameExpression) {
+                if (i == -1) {
+                    diagnostics.reportUndefinedName(node.right.location, name)
+                    return BoundErrorExpression()
+                }
+                return BoundStructFieldAccess(left, i)
             }
-            return BoundStructFieldAccess(left, i)
-        } else {
-            diagnostics.reportUndefinedName(node.right.location, name)
-            return BoundErrorExpression()
         }
+        if (node.right.kind == SyntaxType.CallExpression) {
+            node.right as CallExpressionNode
+            val arguments = arrayListOf(left).apply { for (a in node.right.arguments) add(bindExpression(a)) }
+            val (function, result) = scope.tryLookup(listOf(name), CallableSymbol.generateSuffix(arguments.map { it.type }, true))
+            if (result) {
+                function!!
+                return BoundCallExpression(function as CallableSymbol, arguments)
+            }
+        }
+        diagnostics.reportUndefinedName(node.right.location, name)
+        return BoundErrorExpression()
     }
 
     companion object {
@@ -643,7 +653,7 @@ class Binder(
 
             for (symbol in globalScope.symbols) {
                 if (symbol is FunctionSymbol) {
-                    bindFunction(symbol.namespace!!, functions, symbol, diagnostics)
+                    bindFunction(BoundScope(symbol.namespace!!), functions, symbol, diagnostics)
                 }
             }
 
@@ -669,7 +679,7 @@ class Binder(
             }
             else {
                 statement = Lowerer.lower(BoundBlockStatement(
-                        globalScope.statements
+                    globalScope.statements
                 ))
             }
 
@@ -683,9 +693,16 @@ class Binder(
     }
 
     private fun bindFunctionDeclaration(node: FunctionDeclarationNode): FunctionSymbol {
-        val params = ArrayList<VariableSymbol>()
 
+        val meta = Symbol.MetaData()
+        val params = ArrayList<VariableSymbol>()
         val seenParameterNames = HashSet<String>()
+
+        if (node.extensionType != null) {
+            seenParameterNames.add("this")
+            params.add(VariableSymbol.param("this", bindTypeClause(node.extensionType)!!))
+            meta.isExtension = true
+        }
 
         if (node.params != null) {
             for (paramNode in node.params.iterator()) {
@@ -706,7 +723,6 @@ class Binder(
             bindTypeClause(node.typeClause)!!
         }
 
-        val meta = Symbol.MetaData()
         val path = if (scope is BoundNamespace) {
             (scope as BoundNamespace).path + '.' + node.identifier.string!!
         } else {
