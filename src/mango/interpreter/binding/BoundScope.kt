@@ -25,8 +25,8 @@ open class BoundScope(
         map[name to extra] = symbol
         return true
     }
-    fun tryLookup (path: Collection<String>, extra: String? = null): Pair<Symbol?, Boolean> = tryLookup(path, extra, true)
-    protected fun tryLookup (path: Collection<String>, extra: String? = null, isReal: Boolean): Pair<Symbol?, Boolean> {
+    fun tryLookup (path: List<String>, extra: String? = null): Pair<Symbol?, Boolean> = tryLookup(path, extra, true)
+    protected fun tryLookup (path: List<String>, extra: String? = null, isReal: Boolean): Pair<Symbol?, Boolean> {
         val parentNamespace = namespace
         return when {
             path.size == 1 -> {
@@ -63,6 +63,13 @@ open class BoundScope(
                     if (parentLookup.second) {
                         parentLookup.first!!.useCounter++
                         return parentLookup
+                    }
+                    val namespace = BoundNamespace[parentNamespace.path + '.' + path.first()]
+                    if (namespace != null) {
+                        val (symbol, result) = namespace.tryLookup(path.subList(1, path.size), extra, false)
+                        if (result) {
+                            return symbol to result
+                        }
                     }
                 }
                 if (isReal) for (use in used) {

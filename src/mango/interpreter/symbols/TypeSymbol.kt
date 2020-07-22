@@ -5,7 +5,8 @@ open class TypeSymbol private constructor(
     override val name: String,
     val parentType: TypeSymbol?,
     val paramCount: Int = 0,
-    val params: Array<TypeSymbol> = arrayOf()
+    val params: Array<TypeSymbol> = arrayOf(),
+    val isBuiltin: Boolean = false
 ) : Symbol() {
 
     override val type = Type
@@ -18,8 +19,9 @@ open class TypeSymbol private constructor(
 
     class StructTypeSymbol(
         name: String,
-        val fields: Array<Field>
-    ) : TypeSymbol(name, Any) {
+        val fields: Array<Field>,
+        parentType: TypeSymbol
+    ) : TypeSymbol(name, parentType) {
 
         override val kind = Kind.Struct
 
@@ -33,20 +35,20 @@ open class TypeSymbol private constructor(
 
         val map = HashMap<String, TypeSymbol>()
 
-        val Any = TypeSymbol("Any", null)
+        val Any = TypeSymbol("Any", null, isBuiltin = true)
 
-        val AnyI = TypeSymbol("!I", Any)
-        val AnyU = TypeSymbol("!U", Any)
+        val AnyI = TypeSymbol("!I", Any, isBuiltin = true)
+        val AnyU = TypeSymbol("!U", Any, isBuiltin = true)
 
-        val Ptr = TypeSymbol("Ptr", Any, 1, arrayOf(Any))
+        val Ptr = TypeSymbol("Ptr", Any, 1, arrayOf(Any), isBuiltin = true)
 
-        val I8 = TypeSymbol("I8", AnyI)
+        val I8 = TypeSymbol("I8", AnyI, isBuiltin = true)
         //val U8 = TypeSymbol("U8", AnyU)
-        val I16 = TypeSymbol("I16", AnyI)
+        val I16 = TypeSymbol("I16", AnyI, isBuiltin = true)
         //val U16 = TypeSymbol("U16", AnyU)
-        val I32 = TypeSymbol("I32", AnyI)
+        val I32 = TypeSymbol("I32", AnyI, isBuiltin = true)
         //val U32 = TypeSymbol("U32", AnyU)
-        val I64 = TypeSymbol("I64", AnyI)
+        val I64 = TypeSymbol("I64", AnyI, isBuiltin = true)
         //val U64 = TypeSymbol("U64", AnyU)
 
         val Int = I32
@@ -57,17 +59,17 @@ open class TypeSymbol private constructor(
         //val Double = TypeSymbol("Double", any)
         //val Float = TypeSymbol("Float", any)
 
-        val Bool = TypeSymbol("Bool", Any)
+        val Bool = TypeSymbol("Bool", Any, isBuiltin = true)
 
-        val String = StructTypeSymbol("String", arrayOf(StructTypeSymbol.Field("length", Int), StructTypeSymbol.Field("chars", Ptr(arrayOf(I8)))))//TypeSymbol("String", Any)
+        val String = StructTypeSymbol("String", arrayOf(StructTypeSymbol.Field("length", Int), StructTypeSymbol.Field("chars", Ptr(arrayOf(I8)))), Any)
 
         //val Fn = TypeSymbol("Fn", Any)
 
-        val Unit = TypeSymbol("Unit", Any)
+        val Unit = TypeSymbol("Unit", Any, isBuiltin = true)
 
-        val err = TypeSymbol("!Err", null)
+        val err = TypeSymbol("!Err", null, isBuiltin = true)
 
-        val Type = TypeSymbol("Type", Any)
+        val Type = TypeSymbol("Type", Any, isBuiltin = true) // StructTypeSymbol("Type", arrayOf(StructTypeSymbol.Field("name", String), StructTypeSymbol.Field("parentType", Ptr(arrayOf(Type)))), Any)
 
         operator fun get(name: String) = map[name]
     }

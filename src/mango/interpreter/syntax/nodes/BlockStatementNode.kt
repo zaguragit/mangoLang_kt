@@ -5,10 +5,10 @@ import mango.interpreter.syntax.Token
 import mango.interpreter.syntax.SyntaxTree
 
 class BlockStatementNode(
-        syntaxTree: SyntaxTree,
-        val openBrace: Token,
-        val statements: Collection<StatementNode>,
-        val closedBrace: Token
+    syntaxTree: SyntaxTree,
+    val openBrace: Token,
+    val statements: Collection<StatementNode>,
+    val closedBrace: Token
 ) : StatementNode(syntaxTree) {
 
     override val kind = SyntaxType.BlockStatement

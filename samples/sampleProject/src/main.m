@@ -32,4 +32,14 @@ fn test {
     io.println(a.length.toString(16))
     io.print("a string: ")
     io.println(secondFile.astring)
+    thing.something()
+}
+
+
+namespace thing {
+    val someRandomString = "this is a random string"
+
+    fn something {
+        io.println(someRandomString)
+    }
 }

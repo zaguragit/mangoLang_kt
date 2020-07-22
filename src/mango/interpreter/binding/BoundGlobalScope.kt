@@ -6,8 +6,8 @@ import mango.interpreter.symbols.FunctionSymbol
 import mango.interpreter.symbols.Symbol
 
 class BoundGlobalScope(
-        val previous: BoundGlobalScope?,
-        val diagnostics: DiagnosticList,
-        val symbols: Collection<Symbol>,
-        val statements: MutableList<BoundStatement>,
-        val mainFn: FunctionSymbol)
+    val previous: BoundGlobalScope?,
+    val diagnostics: DiagnosticList,
+    val symbols: Collection<Symbol>,
+    val statements: MutableList<BoundStatement>,
+    val mainFn: FunctionSymbol)

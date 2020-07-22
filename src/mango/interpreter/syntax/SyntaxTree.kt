@@ -12,7 +12,6 @@ class SyntaxTree private constructor(
     val projectPath: String = sourceText.fileName.substringAfter("src/").substringBeforeLast('.').replace('/', '.')
 ) {
 
-
     val root: NamespaceNode
     val diagnostics: DiagnosticList
 

@@ -14,6 +14,7 @@ import mango.interpreter.syntax.Token
 import mango.interpreter.syntax.nodes.*
 import mango.interpreter.text.TextLocation
 import mango.isRepl
+import mango.isSharedLib
 import java.util.*
 import kotlin.Exception
 import kotlin.collections.ArrayList
@@ -494,6 +495,46 @@ class Binder(
         return BoundErrorExpression()
     }
 
+    fun bindGlobalStatement(
+        statement: StatementNode,
+        syntaxTree: SyntaxTree,
+        statementBuilder: ArrayList<BoundStatement>,
+        symbols: ArrayList<Symbol>
+    ) {
+        when (statement.kind) {
+            SyntaxType.FunctionDeclaration -> {
+                statement as FunctionDeclarationNode
+                symbols.add(bindFunctionDeclaration(statement))
+            }
+            SyntaxType.VariableDeclaration -> {
+                statement as VariableDeclarationNode
+                val statement = bindVariableDeclaration(statement)
+                statementBuilder.add(statement)
+                symbols.add(statement.variable)
+            }
+            SyntaxType.UseStatement -> {
+                statement as UseStatementNode
+                bindUseStatement(statement)
+            }
+            SyntaxType.ReplStatement -> {
+                statement as ReplStatementNode
+                val statement = bindStatement(statement.statementNode)
+                statementBuilder.add(statement)
+            }
+            SyntaxType.NamespaceStatement -> {
+                statement as NamespaceStatementNode
+                val prev = scope
+                val namespace = BoundNamespace(syntaxTree.projectPath + '.' + statement.identifier.string, scope)
+                scope = namespace
+                for (s in statement.members) {
+                    bindGlobalStatement(s, syntaxTree, statementBuilder, symbols)
+                }
+                scope = prev
+            }
+            else -> throw Exception("Incorrect statement got to be global (${statement.kind})")
+        }
+    }
+
     companion object {
 
         fun bindGlobalScope(
@@ -522,23 +563,7 @@ class Binder(
                 val namespace = BoundNamespace[syntaxTree.projectPath]!!
                 binder.scope = namespace
                 for (s in syntaxTree.root.members) {
-                    when (s) {
-                        is FunctionDeclarationNode -> {
-                            symbols.add(binder.bindFunctionDeclaration(s))
-                        }
-                        is VariableDeclarationNode -> {
-                            val statement = binder.bindVariableDeclaration(s)
-                            statementBuilder.add(statement)
-                            symbols.add(statement.variable)
-                        }
-                        is UseStatementNode -> {
-                            binder.bindUseStatement(s)
-                        }
-                        is ReplStatementNode -> {
-                            val statement = binder.bindStatement(s.statementNode)
-                            statementBuilder.add(statement)
-                        }
-                    }
+                    binder.bindGlobalStatement(s, syntaxTree, statementBuilder, symbols)
                 }
                 binder.scope = prev
             }
@@ -561,7 +586,7 @@ class Binder(
                     null,
                         Symbol.MetaData()
                 )
-                if (!isRepl) {
+                if (!isRepl && !isSharedLib) {
                     diagnostics.reportNoMainFn()
                 }
             }
@@ -732,6 +757,7 @@ class Binder(
         for (annotation in node.annotations) {
             when (annotation.identifier.string) {
                 "inline" -> meta.isInline = true
+                "internal" -> meta.isInternal = true
                 "extern" -> meta.isExtern = true
                 "entry" -> {
                     if (Symbol.MetaData.entryExists) {

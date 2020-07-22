@@ -192,7 +192,9 @@ class Parser(
 
     private fun parseGlobalStatement(): TopLevelNode {
         skipSeparators()
-        val statement = parseStatement()
+        val statement = if (current.kind == SyntaxType.NamespaceToken) {
+            parseNamespace()
+        } else parseStatement()
         if (statement !is TopLevelNode) {
             if (!isRepl) {
                 diagnostics.reportStatementCantBeGlobal(statement.location, statement.kind)
@@ -237,6 +239,35 @@ class Parser(
                 keyword,
                 directories,
                 isInclude)
+    }
+
+    private fun parseNamespace(): NamespaceStatementNode {
+        val keyword = match(SyntaxType.NamespaceToken)
+        val identifier = match(SyntaxType.Identifier)
+
+        val openBrace = match(SyntaxType.OpenCurlyBracket)
+
+        val statements = ArrayList<TopLevelNode>()
+
+        while (
+            current.kind != SyntaxType.EOF &&
+            current.kind != SyntaxType.ClosedCurlyBracket
+        ) {
+            skipSeparators()
+            val startToken = current
+
+            val statement = parseGlobalStatement()
+            statements.add(statement)
+
+            skipSeparators()
+            if (startToken == current) {
+                skipSeparators()
+                next()
+            }
+        }
+
+        val closedBrace = match(SyntaxType.ClosedCurlyBracket)
+        return NamespaceStatementNode(syntaxTree, keyword, identifier, openBrace, statements, closedBrace)
     }
 
     private fun parseStatement(): StatementNode {

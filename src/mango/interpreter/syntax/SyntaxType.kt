@@ -38,6 +38,9 @@ enum class SyntaxType {
     VariableDeclaration,
     FunctionDeclaration,
     UseStatement,
+    NamespaceStatement,
+
+    ReplStatement,
 
     // Brackets
     OpenRoundedBracket,
@@ -91,6 +94,7 @@ enum class SyntaxType {
     Val,
     Var,
     Fn,
+    NamespaceToken,
     Colon,
 
     // Conditional keywords
