@@ -1,16 +1,17 @@
 package mango
 
 import conf.ConfParser
-import mango.console.MangoRepl
 import mango.compilation.Compilation
 import mango.compilation.EmissionType
 import mango.console.Console
+import mango.console.MangoRepl
 import mango.interpreter.syntax.SyntaxTree
 import java.io.File
 import kotlin.system.exitProcess
 
 var isRepl = false; private set
 var isProject = false; private set
+var isSharedLib = false; private set
 
 fun main(args: Array<String>) {
     if (args.isEmpty()) {
@@ -22,111 +23,124 @@ fun main(args: Array<String>) {
             val repl = MangoRepl()
             repl.run()
         }
-        "compile" -> {
-            if (args.size < 2) {
-                exitAndPrintCompileHelp()
-            }
-            val inFileName = args[1]
-            var outName: String? = null
-            var target: String? = null
-            var emissionType: EmissionType = EmissionType.Binary
-            var doSuggestions = true
-            var i = 2
-            while (i < args.size) {
-                when (args[i]) {
-                    "-out" -> {
-                        if (++i < args.size) {
-                            outName = args[i]
-                        }
-                    }
-                    "-target" -> {
-                        if (++i < args.size) {
-                            target = args[i].toLowerCase()
-                        }
-                    }
-                    "-type" -> if (++i < args.size) {
-                        when(args[i].toLowerCase()) {
-                            "asm", "assembly" -> emissionType = EmissionType.Assembly
-                            "ir", "llvm" -> emissionType = EmissionType.IR
-                            "obj", "object" -> emissionType = EmissionType.Object
-                            "bin", "binary" -> emissionType = EmissionType.Binary
-                            else -> exitAndPrintCompileHelp()
-                        }
-                    }
-                    "-nosuggest" -> doSuggestions = false
-                    else -> exitAndPrintCompileHelp()
-                }
-                i++
-            }
-            if (outName == null) {
-                outName = deduceOutputName(inFileName, emissionType)
-            }
-            if (target == null) {
-                target = System.getProperty("os.name").substringBefore(' ').toLowerCase()
-            }
-            val moduleName = inFileName.substringAfterLast(File.separatorChar).substringBefore('.')
-            val syntaxTree = SyntaxTree.load(inFileName)
-            compile(moduleName, outName, target, emissionType, doSuggestions, listOf(syntaxTree))
-        }
-        "build" -> {
-            val conf = File("project.conf")
-            if (!conf.exists() || !conf.isFile) {
-                print(Console.RED)
-                print("This isn't a project directory (no project.conf file found)")
-                println(Console.RESET)
-                ExitCodes.ERROR()
-            }
-            val src = File("src")
-            if (!src.exists() || !src.isDirectory) {
-                print(Console.RED)
-                print("This isn't a project directory (no src directory found)")
-                println(Console.RESET)
-                ExitCodes.ERROR()
-            }
-
-            val (confData, errors) = ConfParser.parse(conf)
-
-            val moduleName = confData["name"]
-            if (moduleName.isNullOrBlank()) {
-                errors.reportConfMissingMandatoryField("name")
-            }
-
-            if (errors.errorList.isNotEmpty()) {
-                for (error in errors.errorList) {
-                    error.printAsError()
-                    println()
-                }
-                ExitCodes.ERROR()
-            }
-
-            var emissionType: EmissionType = EmissionType.Binary
-            val outName = "out/" + (confData["outFileName"] ?: "binary")
-            val target = System.getProperty("os.name").substringBefore(' ').toLowerCase()
-
-            var i = 1
-            while (i < args.size) {
-                when (args[i]) {
-                    "-type" -> if (++i < args.size) {
-                        when(args[i].toLowerCase()) {
-                            "asm", "assembly" -> emissionType = EmissionType.Assembly
-                            "ir", "llvm" -> emissionType = EmissionType.IR
-                            "obj", "object" -> emissionType = EmissionType.Object
-                            "bin", "binary" -> emissionType = EmissionType.Binary
-                            else -> exitAndPrintBuildHelp()
-                        }
-                    }
-                    else -> exitAndPrintBuildHelp()
-                }
-                i++
-            }
-
-            isProject = true
-
-            val syntaxTrees = SyntaxTree.loadProject()
-            compile(moduleName!!, outName, target, emissionType, true, syntaxTrees)
+        "compile" -> buildFile(args)
+        "build" -> build(args)
+        "run" -> ProcessBuilder(build(args)).run {
+            inheritIO()
+            start().waitFor()
         }
         else -> exitAndPrintHelp()
     }
+}
+
+private fun buildFile(args: Array<String>): String {
+    if (args.size < 2) {
+        exitAndPrintCompileHelp()
+    }
+    val inFileName = args[1]
+    var outName: String? = null
+    var target: String? = null
+    var emissionType: EmissionType = EmissionType.Binary
+    var doSuggestions = true
+    var i = 2
+    while (i < args.size) {
+        when (args[i]) {
+            "-out" -> {
+                if (++i < args.size) {
+                    outName = args[i]
+                }
+            }
+            "-target" -> {
+                if (++i < args.size) {
+                    target = args[i].toLowerCase()
+                }
+            }
+            "-type" -> if (++i < args.size) {
+                when(args[i].toLowerCase()) {
+                    "asm", "assembly" -> emissionType = EmissionType.Assembly
+                    "ir", "llvm" -> emissionType = EmissionType.IR
+                    "obj", "object" -> emissionType = EmissionType.Object
+                    "bin", "binary" -> emissionType = EmissionType.Binary
+                    else -> exitAndPrintCompileHelp()
+                }
+            }
+            "-nosuggest" -> doSuggestions = false
+            "-shared" -> isSharedLib = true
+            else -> exitAndPrintCompileHelp()
+        }
+        i++
+    }
+    if (outName == null) {
+        outName = deduceOutputName(inFileName, emissionType)
+    }
+    if (target == null) {
+        target = System.getProperty("os.name").substringBefore(' ').toLowerCase()
+    }
+    val moduleName = inFileName.substringAfterLast(File.separatorChar).substringBefore('.')
+    val syntaxTree = SyntaxTree.load(inFileName)
+    compile(moduleName, outName, target, emissionType, doSuggestions, listOf(syntaxTree))
+
+    return outName
+}
+
+private fun build(args: Array<String>): String {
+    val conf = File("project.conf")
+    if (!conf.exists() || !conf.isFile) {
+        print(Console.RED)
+        print("This isn't a project directory (no project.conf file found)")
+        println(Console.RESET)
+        ExitCodes.ERROR()
+    }
+    val src = File("src")
+    if (!src.exists() || !src.isDirectory) {
+        print(Console.RED)
+        print("This isn't a project directory (no src directory found)")
+        println(Console.RESET)
+        ExitCodes.ERROR()
+    }
+
+    val (confData, errors) = ConfParser.parse(conf)
+
+    val moduleName = confData["name"]
+    if (moduleName.isNullOrBlank()) {
+        errors.reportConfMissingMandatoryField("name")
+    }
+
+    if (errors.errorList.isNotEmpty()) {
+        for (error in errors.errorList) {
+            error.printAsError()
+            println()
+        }
+        ExitCodes.ERROR()
+    }
+
+    var emissionType: EmissionType = EmissionType.Binary
+    val outName = "out/" + System.getProperty("os.name").substringBefore(' ').toLowerCase() + '/' + (confData["outFileName"] ?: "binary")
+    val target = System.getProperty("os.name").substringBefore(' ').toLowerCase()
+
+    var i = 1
+    while (i < args.size) {
+        when (args[i]) {
+            "-type" -> if (++i < args.size) {
+                when(args[i].toLowerCase()) {
+                    "asm", "assembly" -> emissionType = EmissionType.Assembly
+                    "ir", "llvm" -> emissionType = EmissionType.IR
+                    "obj", "object" -> emissionType = EmissionType.Object
+                    "bin", "binary" -> emissionType = EmissionType.Binary
+                    else -> exitAndPrintBuildHelp()
+                }
+            }
+            else -> exitAndPrintBuildHelp()
+        }
+        i++
+    }
+
+    isProject = true
+
+    val syntaxTrees = SyntaxTree.loadProject()
+    compile(moduleName!!, outName, target, emissionType, true, syntaxTrees)
+
+    return outName
 }
 
 private fun compile(
@@ -184,8 +198,8 @@ private fun exitAndPrintHelp() {
     val r = Console.RESET
     println("${Console.BOLD}Usage of mango:${Console.RESET}")
     println("${p}compile $d<${r}file$d>$r  $d│$r Compile one file")
-    println("${p}build           $d│$r Compile the project")
-    //println("${p}run             $d│$r Build and run project")
+    println("${p}build           $d│$r Build the project")
+    println("${p}run             $d│$r Build and run project")
     println("${p}repl            $d│$r Use the repl")
     ExitCodes.ERROR()
 }
@@ -195,14 +209,15 @@ private fun exitAndPrintCompileHelp() {
     val d = Console.GRAY
     val r = Console.RESET
     println("usage: ${Console.GREEN_BOLD_BRIGHT}compile $d<${r}file$d>$r $d[${r}parameters$d]$r")
+    println("$p-nosuggest     $d│$r Disable warnings and style suggestions")
     println("$p-out           $d│$r Path of the output file")
-    println("$p-target        $d│$r Path of the output file")
-    println("$p-type          $d│$r Type of the output")
     println("  asm / assembly")
     println("  ir / llvm")
     println("  obj / object")
     println("  bin / binary")
-    println("$p-nosuggest     $d│$r Disable warnings and style suggestions")
+    println("$p-target        $d│$r Path of the output file")
+    println("$p-type          $d│$r Type of the output")
+    println("$p-shared        $d│$r Compile to a shared library")
     ExitCodes.ERROR()
 }
 
@@ -210,7 +225,7 @@ fun exitAndPrintBuildHelp() {
     val p = Console.CYAN_BOLD_BRIGHT
     val d = Console.GRAY
     val r = Console.RESET
-    println("usage: ${Console.GREEN_BOLD_BRIGHT}build $d<${r}file$d>$r $d[${r}parameters$d]$r")
+    println("usage: ${Console.GREEN_BOLD_BRIGHT}build/run $d<${r}file$d>$r $d[${r}parameters$d]$r")
     println("$p-type          $d│$r Type of the output")
     println("  asm / assembly")
     println("  ir / llvm")
