@@ -1,14 +1,17 @@
 package mango.compilation
 
+import mango.compilation.headers.HeaderEmitter
 import mango.compilation.llvm.LLVMEmitter
 import mango.interpreter.binding.Binder
 import mango.interpreter.binding.BoundGlobalScope
 import mango.interpreter.binding.BoundProgram
-import mango.eval.EvaluationResult
 import mango.interpreter.symbols.FunctionSymbol
 import mango.interpreter.symbols.VariableSymbol
 import mango.interpreter.syntax.SyntaxTree
+import mango.isProject
 import mango.isRepl
+import mango.isSharedLib
+import mango.useStd
 import java.io.File
 
 
@@ -23,7 +26,7 @@ class Compilation(
 
     private fun getProgram(): BoundProgram = Binder.bindProgram(previous?.getProgram(), globalScope)
 
-    fun evaluate(variables: HashMap<VariableSymbol, Any?>): CompilationResult {
+    fun evaluate(): CompilationResult {
 
         val diagnostics = globalScope.diagnostics
         if (diagnostics.hasErrors()) {
@@ -54,12 +57,9 @@ class Compilation(
             return CompilationResult(d.errorList, d.nonErrorList)
         }
 
-        //val evaluator = Evaluator(program, variables)
         diagnostics.sortBySpan()
-        if (isRepl) {
-            //val value = evaluator.evaluate()
-            return EvaluationResult(0, diagnostics.errorList, diagnostics.nonErrorList)
-        }
+        //if (isRepl) {
+        //}
         return CompilationResult(diagnostics.errorList, diagnostics.nonErrorList)
     }
 
@@ -70,13 +70,13 @@ class Compilation(
         symbol.printStructure()
         print(' ')
         val body = program.functions[symbol]
-        body?.printStructure()
+        body?.run { print(structureString()) }
         println()
     }
 
-    fun emit(moduleName: String, references: Array<String>, outputPath: String, target: String, emissionType: EmissionType) {
+    fun emit(moduleName: String, outputPath: String, target: String, emissionType: EmissionType) {
         val program = getProgram()
-        val code = LLVMEmitter.emit(program, moduleName, references, outputPath)
+        val code = LLVMEmitter.emit(program, moduleName)
         if (emissionType == EmissionType.IR) {
             return File(outputPath).writeText(code)
         }
@@ -108,7 +108,17 @@ class Compilation(
                     }
                 }
                 File(outputPath).parentFile.mkdirs()
-                ProcessBuilder("gcc", objFile.absolutePath, "/usr/local/lib/mangoLang/std.so", "-o", outputPath).run {
+                if (isSharedLib) {
+                    ProcessBuilder("gcc", objFile.absolutePath, "-o", outputPath, "-shared")
+                    File(if (isProject) "out/headers.m" else outputPath.substringBeforeLast('/') + "/headers.m").run {
+                        createNewFile()
+                        writeText(HeaderEmitter.emit(program, moduleName))
+                    }
+                } else if (useStd) {
+                    ProcessBuilder("gcc", objFile.absolutePath, "/usr/local/lib/mangoLang/std.so", "-o", outputPath)
+                } else {
+                    ProcessBuilder("gcc", objFile.absolutePath, "-o", outputPath)
+                }.run {
                     inheritIO()
                     start().waitFor()
                 }

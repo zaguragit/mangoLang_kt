@@ -4,8 +4,8 @@ import mango.interpreter.binding.BoundProgram
 
 interface Emitter {
 
-    fun emit(program: BoundProgram,
-             moduleName: String,
-             references: Array<String>,
-             outputPath: String): String
+    fun emit(
+        program: BoundProgram,
+        moduleName: String
+    ): String
 }

@@ -25,50 +25,50 @@ open class BoundScope(
         map[name to extra] = symbol
         return true
     }
-    fun tryLookup (path: List<String>, extra: String? = null): Pair<Symbol?, Boolean> = tryLookup(path, extra, true)
-    protected fun tryLookup (path: List<String>, extra: String? = null, isReal: Boolean): Pair<Symbol?, Boolean> {
+    fun tryLookup (path: List<String>, extra: String? = null): Symbol? = tryLookup(path, extra, true)
+    protected fun tryLookup (path: List<String>, extra: String? = null, isReal: Boolean): Symbol? {
         val parentNamespace = namespace
         return when {
             path.size == 1 -> {
                 val name = path.elementAt(0)
                 when {
                     map.containsKey(name to extra) -> {
-                        val symbol = map[name to extra]
-                        if (symbol != null) { symbol.apply { useCounter++ } to true } else null to false
+                        map[name to extra]?.apply { useCounter++ }
                     }
-                    parent == null -> return null to false
+                    parent == null -> return null
                     else -> {
                         val parentLookup = parent.tryLookup(path, extra, isReal)
-                        if (parentLookup.second) {
-                            parentLookup.first!!.useCounter++
+                        if (parentLookup != null) {
+                            parentLookup.useCounter++
                             return parentLookup
                         }
                         if (isReal) for (use in used) {
                             if (use.isInclude) {
                                 val namespace = BoundNamespace[use.path]!!
                                 val result = namespace.tryLookup(path, extra, false)
-                                if (result.second) {
-                                    result.first!!.useCounter++
+                                if (result != null) {
+                                    result.useCounter++
                                     return result
                                 }
                             }
                         }
-                        return null to false
+                        return null
                     }
                 }
             }
             else -> {
                 if (parentNamespace != null) {
                     val parentLookup = parentNamespace.tryLookup(path, extra, false)
-                    if (parentLookup.second) {
-                        parentLookup.first!!.useCounter++
+                    if (parentLookup != null) {
+                        parentLookup.useCounter++
                         return parentLookup
                     }
                     val namespace = BoundNamespace[parentNamespace.path + '.' + path.first()]
                     if (namespace != null) {
-                        val (symbol, result) = namespace.tryLookup(path.subList(1, path.size), extra, false)
-                        if (result) {
-                            return symbol to result
+                        val symbol = namespace.tryLookup(path.subList(1, path.size), extra, false)
+                        if (symbol != null) {
+                            symbol.useCounter++
+                            return symbol
                         }
                     }
                 }
@@ -77,8 +77,8 @@ open class BoundScope(
                         val namespace = BoundNamespace[use.path + '.' + path.first()]
                         if (namespace != null) {
                             val result = namespace.tryLookup(path.toMutableList().apply { removeAt(0) }, extra, false)
-                            if (result.second) {
-                                result.first!!.useCounter++
+                            if (result != null) {
+                                result.useCounter++
                                 return result
                             }
                         }
@@ -86,8 +86,8 @@ open class BoundScope(
                         val namespace = BoundNamespace[use.path]!!
                         if (namespace.path.split('.').last() == path.first()) {
                             val result = namespace.tryLookup(path.toMutableList().apply { removeAt(0) }, extra, false)
-                            if (result.second) {
-                                result.first!!.useCounter++
+                            if (result != null) {
+                                result.useCounter++
                                 return result
                             }
                         }
@@ -96,8 +96,8 @@ open class BoundScope(
                 val namespace = BoundNamespace[path.joinToString(".").substringBeforeLast('.')]
                 if (isReal && namespace != null) {
                     val lookup = namespace.tryLookup(listOf(path.last()), extra, false)
-                    if (lookup.second) {
-                        lookup.first!!.useCounter++
+                    if (lookup != null) {
+                        lookup.useCounter++
                         return lookup
                     }
                 }
@@ -105,7 +105,7 @@ open class BoundScope(
                 if (parent != null) {
                     return parent.tryLookup(path, extra, isReal)
                 }
-                return null to false
+                return null
             }
         }
     }

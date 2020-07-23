@@ -12,6 +12,7 @@ import kotlin.system.exitProcess
 var isRepl = false; private set
 var isProject = false; private set
 var isSharedLib = false; private set
+var useStd = true; private set
 
 fun main(args: Array<String>) {
     if (args.isEmpty()) {
@@ -65,6 +66,7 @@ private fun buildFile(args: Array<String>): String {
                 }
             }
             "-nosuggest" -> doSuggestions = false
+            "-nostd" -> useStd = false
             "-shared" -> isSharedLib = true
             else -> exitAndPrintCompileHelp()
         }
@@ -114,8 +116,17 @@ private fun build(args: Array<String>): String {
         ExitCodes.ERROR()
     }
 
+    when (confData["isLibrary"]) {
+        "true" -> isSharedLib = true
+        "false" -> isSharedLib = false
+    }
+    when (confData["useStd"]) {
+        "true" -> useStd = true
+        "false" -> useStd = false
+    }
+
     var emissionType: EmissionType = EmissionType.Binary
-    val outName = "out/" + System.getProperty("os.name").substringBefore(' ').toLowerCase() + '/' + (confData["outFileName"] ?: "binary")
+    val outName = "out/" + System.getProperty("os.name").substringBefore(' ').toLowerCase() + '/' + (confData["outFileName"] ?: if (isSharedLib) "$moduleName.so" else moduleName)
     val target = System.getProperty("os.name").substringBefore(' ').toLowerCase()
 
     var i = 1
@@ -152,14 +163,16 @@ private fun compile(
     localTrees: Collection<SyntaxTree>
 ) {
     val syntaxTrees = ArrayList(localTrees).apply {
-        addAll(SyntaxTree.loadLib("/usr/local/include/mangoLang/std/", "std"))
+        if (useStd) {
+            addAll(SyntaxTree.loadLib("/usr/local/include/mangoLang/std/", "std"))
+        }
     }
     val compilation = Compilation(null, syntaxTrees)
-    val result = compilation.evaluate(HashMap())
+    val result = compilation.evaluate()
     val errors = result.errors
     val nonErrors = result.nonErrors
     if (errors.isEmpty()) {
-        compilation.emit(moduleName, arrayOf(), outName, target, emissionType)
+        compilation.emit(moduleName, outName, target, emissionType)
         if (doSuggestions) {
             for (nonError in nonErrors) {
                 nonError.printAsSuggestion()

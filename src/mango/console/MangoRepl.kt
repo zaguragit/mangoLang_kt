@@ -2,7 +2,6 @@ package mango.console
 
 import mango.interpreter.symbols.VariableSymbol
 import mango.compilation.Compilation
-import mango.eval.EvaluationResult
 import mango.interpreter.symbols.FunctionSymbol
 import mango.interpreter.syntax.SyntaxTree
 
@@ -45,7 +44,7 @@ class MangoRepl : Repl() {
             compilation.printTree()
         }
 
-        val result = compilation.evaluate(variables)
+        val result = compilation.evaluate()
         val errors = result.errors
         val nonErrors = result.nonErrors
 
@@ -55,11 +54,11 @@ class MangoRepl : Repl() {
             }
             compilation.globalScope.diagnostics.clear()
             previous = compilation
-            if (result is EvaluationResult && result.value != null) {
+            /*if (result is EvaluationResult && result.value != null) {
                 print(Console.YELLOW_BOLD_BRIGHT)
                 println(result.value)
                 print(Console.RESET)
-            }
+            }*/
         } else {
             println()
             for (error in errors) {

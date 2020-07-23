@@ -6,15 +6,15 @@ import mango.interpreter.syntax.SyntaxType
 import mango.interpreter.syntax.Token
 
 class FunctionDeclarationNode(
-        syntaxTree: SyntaxTree,
-        val keyword: Token,
-        val identifier: Token,
-        val typeClause: TypeClauseNode?,
-        val params: SeparatedNodeList<ParameterNode>?,
-        val lambdaArrow: Token?,
-        val body: StatementNode?,
-        val annotations: Collection<AnnotationNode>,
-        val extensionType: TypeClauseNode?
+    syntaxTree: SyntaxTree,
+    val keyword: Token,
+    val identifier: Token,
+    val typeClause: TypeClauseNode?,
+    val params: SeparatedNodeList<ParameterNode>?,
+    val lambdaArrow: Token?,
+    val body: StatementNode?,
+    val annotations: Collection<AnnotationNode>,
+    val extensionType: TypeClauseNode?
 ) : TopLevelNode(syntaxTree) {
 
     override val kind = SyntaxType.FunctionDeclaration

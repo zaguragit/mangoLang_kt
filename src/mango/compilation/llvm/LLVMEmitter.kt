@@ -14,9 +14,7 @@ object LLVMEmitter : Emitter {
 
     override fun emit(
         program: BoundProgram,
-        moduleName: String,
-        references: Array<String>,
-        outputPath: String
+        moduleName: String
     ): String {
         val builder = ModuleBuilder()
         lateinit var initBlock: BlockBuilder

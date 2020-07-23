@@ -217,7 +217,7 @@ class ControlFlowGraph private constructor(
             println("        outgoing: ${b.outgoing.joinToString(", ")}")
             if (b.statements.any()) {
                 print("        statements ")
-                BoundBlockStatement(b.statements).printStructure(indent = 2, sameLine = true)
+                print(BoundBlockStatement(b.statements).structureString(indent = 2, sameLine = true))
             }
             println("    }")
         }
