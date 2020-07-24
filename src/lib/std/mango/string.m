@@ -25,12 +25,7 @@ fn Bool.toString String {
     else { return "false" }
 }
 
-/*
 [extern]
-[cname: "Int.toStringRadix"]
-fn Int.toString (radix Int) String
-
-[extern]
+[operator]
 [cname: "String$equals"]
-fn String.equals Bool
-*/
+fn String.equals(other String) Bool

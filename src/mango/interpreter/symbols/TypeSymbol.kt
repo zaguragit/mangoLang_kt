@@ -36,11 +36,12 @@ open class TypeSymbol private constructor(
         val map = HashMap<String, TypeSymbol>()
 
         val Any = TypeSymbol("Any", null, isBuiltin = true)
+        val Primitive = TypeSymbol("Primitive", Any, isBuiltin = true)
 
-        val AnyI = TypeSymbol("!I", Any, isBuiltin = true)
-        val AnyU = TypeSymbol("!U", Any, isBuiltin = true)
+        val AnyI = TypeSymbol("!I", Primitive, isBuiltin = true)
+        val AnyU = TypeSymbol("!U", Primitive, isBuiltin = true)
 
-        val Ptr = TypeSymbol("Ptr", Any, 1, arrayOf(Any), isBuiltin = true)
+        val Ptr = TypeSymbol("Ptr", Primitive, 1, arrayOf(Any), isBuiltin = true)
 
         val I8 = TypeSymbol("I8", AnyI, isBuiltin = true)
         //val U8 = TypeSymbol("U8", AnyU)
@@ -59,13 +60,13 @@ open class TypeSymbol private constructor(
         //val Double = TypeSymbol("Double", any)
         //val Float = TypeSymbol("Float", any)
 
-        val Bool = TypeSymbol("Bool", Any, isBuiltin = true)
+        val Bool = TypeSymbol("Bool", Primitive, isBuiltin = true)
 
         val String = StructTypeSymbol("String", arrayOf(StructTypeSymbol.Field("length", Int), StructTypeSymbol.Field("chars", Ptr(arrayOf(I8)))), Any)
 
         //val Fn = TypeSymbol("Fn", Any)
 
-        val Unit = TypeSymbol("Unit", Any, isBuiltin = true)
+        val Unit = TypeSymbol("Unit", Primitive, isBuiltin = true)
 
         val err = TypeSymbol("!Err", null, isBuiltin = true)
 

@@ -4,6 +4,7 @@ import mango.compilation.DiagnosticList
 import mango.interpreter.binding.nodes.BoundBinaryOperator
 import mango.interpreter.binding.nodes.BoundNodeType
 import mango.interpreter.binding.nodes.BoundUnaryOperator
+import mango.interpreter.binding.nodes.BoundUnaryOperatorType
 import mango.interpreter.binding.nodes.expressions.*
 import mango.interpreter.binding.nodes.statements.*
 import mango.interpreter.text.TextSpan
@@ -11,6 +12,7 @@ import mango.interpreter.symbols.*
 import mango.interpreter.syntax.SyntaxTree
 import mango.interpreter.syntax.SyntaxType
 import mango.interpreter.syntax.Token
+import mango.interpreter.syntax.Translator
 import mango.interpreter.syntax.nodes.*
 import mango.interpreter.text.TextLocation
 import mango.isRepl
@@ -395,6 +397,13 @@ class Binder(
         }
         val operator = BoundUnaryOperator.bind(node.operator.kind, operand.type)
         if (operator == null) {
+            val operatorFunction = scope.tryLookup(
+                listOf(Translator.unaryOperatorToString(node.operator.kind)),
+                CallableSymbol.generateSuffix(listOf(operand.type), true))
+            if (operatorFunction != null && operatorFunction.meta.isOperator) {
+                operatorFunction as CallableSymbol
+                return BoundCallExpression(operatorFunction, listOf(operand))
+            }
             diagnostics.reportUnaryOperator(node.operator.location, node.operator.kind, operand.type)
             return BoundErrorExpression()
         }
@@ -409,6 +418,25 @@ class Binder(
         }
         val operator = BoundBinaryOperator.bind(node.operator.kind, left.type, right.type)
         if (operator == null) {
+            if (node.operator.kind == SyntaxType.IsNotEqual) {
+                val operatorFunction = scope.tryLookup(
+                    listOf(Translator.binaryOperatorToString(SyntaxType.IsEqual)),
+                    CallableSymbol.generateSuffix(listOf(left.type, right.type), true))
+                if (operatorFunction != null && operatorFunction.meta.isOperator) {
+                    operatorFunction as CallableSymbol
+                    return BoundUnaryExpression(
+                        BoundUnaryOperator(SyntaxType.Not, BoundUnaryOperatorType.Not, TypeSymbol.Bool),
+                        BoundCallExpression(operatorFunction, listOf(left, right)))
+                }
+            } else {
+                val operatorFunction = scope.tryLookup(
+                    listOf(Translator.binaryOperatorToString(node.operator.kind)),
+                    CallableSymbol.generateSuffix(listOf(left.type, right.type), true))
+                if (operatorFunction != null && operatorFunction.meta.isOperator) {
+                    operatorFunction as CallableSymbol
+                    return BoundCallExpression(operatorFunction, listOf(left, right))
+                }
+            }
             diagnostics.reportBinaryOperator(node.operator.location, left.type, node.operator.kind, right.type)
             return BoundErrorExpression()
         }
@@ -427,7 +455,6 @@ class Binder(
             }
 
             if (symbol != null) {
-                symbol!!
                 if (node.right.kind == SyntaxType.CallExpression) {
                     node.right as CallExpressionNode
                     if (symbol !is CallableSymbol) {
@@ -771,6 +798,63 @@ class Binder(
                 "inline" -> meta.isInline = true
                 "internal" -> meta.isInternal = true
                 "extern" -> meta.isExtern = true
+                "operator" -> {
+                    if (function.meta.isExtension) {
+                        function.meta.isOperator = true
+                        when (function.name) {
+                            "equals" -> {
+                                if (function.parameters.size != 2) {
+                                    diagnostics.reportInvalidAnnotation(annotation.location)
+                                }
+                            }
+                            "plus" -> {
+                                if (function.parameters.size != 2 && function.parameters.size != 1) {
+                                    diagnostics.reportInvalidAnnotation(annotation.location)
+                                }
+                            }
+                            "minus" -> {
+                                if (function.parameters.size != 2 && function.parameters.size != 1) {
+                                    diagnostics.reportInvalidAnnotation(annotation.location)
+                                }
+                            }
+                            "times" -> {
+                                if (function.parameters.size != 2) {
+                                    diagnostics.reportInvalidAnnotation(annotation.location)
+                                }
+                            }
+                            "divide" -> {
+                                if (function.parameters.size != 2) {
+                                    diagnostics.reportInvalidAnnotation(annotation.location)
+                                }
+                            }
+                            "rem" -> {
+                                if (function.parameters.size != 2) {
+                                    diagnostics.reportInvalidAnnotation(annotation.location)
+                                }
+                            }
+                            "and" -> {
+                                if (function.parameters.size != 2) {
+                                    diagnostics.reportInvalidAnnotation(annotation.location)
+                                }
+                            }
+                            "or" -> {
+                                if (function.parameters.size != 2) {
+                                    diagnostics.reportInvalidAnnotation(annotation.location)
+                                }
+                            }
+                            "not" -> {
+                                if (function.parameters.size != 1) {
+                                    diagnostics.reportInvalidAnnotation(annotation.location)
+                                }
+                            }
+                            else -> {
+                                diagnostics.reportInvalidAnnotation(annotation.location)
+                            }
+                        }
+                    } else {
+                        diagnostics.reportInvalidAnnotation(annotation.location)
+                    }
+                }
                 "entry" -> {
                     if (Symbol.MetaData.entryExists) {
                         diagnostics.reportMultipleEntryFuncs(annotation.location)

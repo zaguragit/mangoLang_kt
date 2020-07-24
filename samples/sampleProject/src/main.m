@@ -7,6 +7,7 @@ fn test {
     use secondFile*
     fn doit String {
         val name = getName()
+        use std.string*
 
         if name == badName { // string comparisons don't work yet, so this is always false
             io.print("Go away, ")

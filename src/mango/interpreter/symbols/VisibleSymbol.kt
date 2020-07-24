@@ -11,6 +11,13 @@ interface VisibleSymbol {
         this as Symbol
         if (meta.cname != null) return meta.cname!!
         if (meta.isEntry) return "main"
+        if (meta.isOperator) return when (name) {
+            "equals" -> "=="
+            "not" -> "!"
+            "times" -> "*"
+            "divide" -> "/"
+            else -> name
+        }
         if (this is CallableSymbol && parameters.isNotEmpty()) {
             return path + suffix
         }

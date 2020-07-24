@@ -4,10 +4,10 @@ import mango.interpreter.symbols.TypeSymbol
 import mango.interpreter.syntax.SyntaxType
 
 class BoundUnaryOperator(
-        val syntaxType: SyntaxType,
-        val type: BoundUnaryOperatorType,
-        val operandType: TypeSymbol,
-        val resultType: TypeSymbol = operandType
+    val syntaxType: SyntaxType,
+    val type: BoundUnaryOperatorType,
+    val operandType: TypeSymbol,
+    val resultType: TypeSymbol = operandType
 ) {
     companion object {
 

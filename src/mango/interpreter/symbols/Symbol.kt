@@ -96,6 +96,7 @@ abstract class Symbol {
         var isEntry = false
         var cname: String? = null
         var isExtension = false
+        var isOperator = false
 
         //// STRUCT FIELDS /////////////////////////////////////////////////////////////////////////////////////////////
         //var init = false

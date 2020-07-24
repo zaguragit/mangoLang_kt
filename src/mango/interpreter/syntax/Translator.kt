@@ -28,4 +28,23 @@ object Translator {
 
         else -> SyntaxType.Identifier
     }
+
+    fun binaryOperatorToString(operator: SyntaxType) = when (operator) {
+        SyntaxType.Plus -> "plus"
+        SyntaxType.Minus -> "minus"
+        SyntaxType.Star -> "times"
+        SyntaxType.Div -> "divide"
+        SyntaxType.Rem -> "rem"
+        SyntaxType.BitAnd -> "and"
+        SyntaxType.BitOr -> "or"
+        SyntaxType.IsEqual -> "equals"
+        else -> ""
+    }
+
+    fun unaryOperatorToString(operator: SyntaxType) = when (operator) {
+        SyntaxType.Plus -> "plus"
+        SyntaxType.Minus -> "minus"
+        SyntaxType.Not -> "not"
+        else -> ""
+    }
 }
