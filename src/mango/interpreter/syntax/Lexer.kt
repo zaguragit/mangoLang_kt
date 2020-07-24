@@ -30,7 +30,7 @@ class Lexer(
         }
 
         return when (current) {
-            '0', '1', '2', '3', '4', '5', '6', '7', '8', '9' -> readNumberToken()
+            '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '.' -> readNumberToken()
             '+' -> Token(syntaxTree, SyntaxType.Plus, position++, string = "+")
             '-' -> {
                 if (lookAhead() == '>') {
@@ -102,13 +102,6 @@ class Lexer(
                     Token(syntaxTree, SyntaxType.LessThan, position++, string = ">")
                 }
             }
-            '.' -> {
-                if (lookAhead() == '.') {
-                    Token(syntaxTree, SyntaxType.Range, position, string = "..").also { position += 2 }
-                } else {
-                    Token(syntaxTree, SyntaxType.Dot, position++, string = ".")
-                }
-            }
             ',' -> Token(syntaxTree, SyntaxType.Comma, position++, string = ",")
             ':' -> Token(syntaxTree, SyntaxType.Colon, position++, string = ":")
             '"' -> readString()
@@ -121,18 +114,114 @@ class Lexer(
         }
     }
 
-    fun readNumberToken(): Token {
-        val start = position++
-        while (current.isDigit()) {
+    private fun readNumberToken(): Token {
+        var isFloat = false
+        if (current == '.') {
+            if (lookAhead() == '.') {
+                return Token(syntaxTree, SyntaxType.Range, position, string = "..").also { position += 2 }
+            } else if (!lookAhead().isDigit()) {
+                return Token(syntaxTree, SyntaxType.Dot, position++, string = ".")
+            } else {
+                isFloat = true
+                position++
+            }
+        }
+        val start = position
+        val stringBuilder = StringBuilder()
+        var isDouble = true
+        var isLong = false
+        if (current == '0') {
+            if (lookAhead() == 'x' || lookAhead() == 'b' || lookAhead() == 's') {
+                stringBuilder.append('0')
+                position++
+                stringBuilder.append(current)
+                position++
+            }
+        }
+        loop@ while (current.isDigit()) {
+            stringBuilder.append(current)
             position++
+            while (current == '_') {
+                position++
+            }
+            if (!current.isDigit()) {
+                when (current) {
+                    '.' -> {
+                        if (isFloat) {
+                            diagnostics.reportBadCharacter(TextLocation(sourceText, TextSpan(position, 1)), current)
+                        } else {
+                            isFloat = true
+                            stringBuilder.append('.')
+                            position++
+                        }
+                    }
+                    'f' -> {
+                        isDouble = false
+                        position++
+                        break@loop
+                    }
+                    'l' -> {
+                        if (isFloat) {
+                            diagnostics.reportBadCharacter(TextLocation(sourceText, TextSpan(position, 1)), current)
+                        } else {
+                            isLong = true
+                            position++
+                            break@loop
+                        }
+                    }
+                    else -> if (current.isLetter()) {
+                        diagnostics.reportBadCharacter(TextLocation(sourceText, TextSpan(position, 1)), current)
+                    }
+                }
+            }
         }
-        val text = sourceText.getText(start, position - start)
-        val value = text.toIntOrNull()
-        if (value == null) {
-            diagnostics.reportWrongType(TextLocation(sourceText, TextSpan(start, position - start)), text, TypeSymbol.Int)
-            return Token(syntaxTree, SyntaxType.Int, start, 1, text)
+        val textRaw = stringBuilder.toString()
+        if (isFloat) {
+            if (isDouble) {
+                val d = textRaw.toDoubleOrNull()
+                if (d != null) {
+                    return Token(syntaxTree, SyntaxType.Double, start, d, textRaw)
+                }
+            } else {
+                val f = textRaw.toFloatOrNull()
+                if (f != null) {
+                    return Token(syntaxTree, SyntaxType.Float, start, f, textRaw)
+                }
+            }
+        } else {
+            val (radix, text) = when {
+                textRaw.startsWith("0x") -> {
+                    16 to textRaw.substring(2)
+                }
+                textRaw.startsWith("0b") -> {
+                    2 to textRaw.substring(2)
+                }
+                textRaw.startsWith("0s") -> {
+                    6 to textRaw.substring(2)
+                }
+                else -> 10 to textRaw
+            }
+            if (!isLong) {
+                val i8 = text.toByteOrNull(radix)
+                if (i8 != null) {
+                    return Token(syntaxTree, SyntaxType.I8, start, i8, textRaw)
+                }
+                val i16 = text.toShortOrNull(radix)
+                if (i16 != null) {
+                    return Token(syntaxTree, SyntaxType.I16, start, i16, textRaw)
+                }
+                val i32 = text.toIntOrNull(radix)
+                if (i32 != null) {
+                    return Token(syntaxTree, SyntaxType.I32, start, i32, textRaw)
+                }
+            }
+            val i64 = text.toLongOrNull(radix)
+            if (i64 != null) {
+                return Token(syntaxTree, SyntaxType.I64, start, i64, textRaw)
+            }
         }
-        return Token(syntaxTree, SyntaxType.Int, start, value, text)
+        diagnostics.reportWrongType(TextLocation(sourceText, TextSpan(start, position - start)), textRaw, TypeSymbol.Int)
+        return Token(syntaxTree, SyntaxType.I32, start, 1, textRaw)
     }
 
     fun readIdentifierOrKeyword(): Token {

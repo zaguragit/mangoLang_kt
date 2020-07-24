@@ -236,8 +236,8 @@ class Binder(
         }
     }
 
-    private fun bindExpression(node: ExpressionNode, canBeUnit: Boolean = false): BoundExpression {
-        val result = bindExpressionInternal(node)
+    private fun bindExpression(node: ExpressionNode, canBeUnit: Boolean = false, type: TypeSymbol? = null): BoundExpression {
+        val result = bindExpressionInternal(node, type)
         if (!canBeUnit && result.type == TypeSymbol.Unit) {
             diagnostics.reportExpressionMustHaveValue(node.location)
             return BoundErrorExpression()
@@ -245,10 +245,10 @@ class Binder(
         return result
     }
 
-    private fun bindExpressionInternal(node: ExpressionNode): BoundExpression {
+    private fun bindExpressionInternal(node: ExpressionNode, type: TypeSymbol?): BoundExpression {
         return when (node.kind) {
             SyntaxType.ParenthesizedExpression -> bindParenthesizedExpression(node as ParenthesizedExpressionNode)
-            SyntaxType.LiteralExpression -> bindLiteralExpression(node as LiteralExpressionNode)
+            SyntaxType.LiteralExpression -> bindLiteralExpression(node as LiteralExpressionNode, type)
             SyntaxType.UnaryExpression -> bindUnaryExpression(node as UnaryExpressionNode)
             SyntaxType.BinaryExpression -> {
                 node as BinaryExpressionNode
@@ -350,7 +350,7 @@ class Binder(
     }
 
     private fun bindAssignmentExpression(node: AssignmentExpressionNode): BoundExpression {
-        val name = node.identifierToken.string ?: return BoundLiteralExpression(0)
+        val name = node.identifierToken.string ?: return BoundErrorExpression()
         val boundExpression = bindExpression(node.expression)
         val variable = scope.tryLookup(listOf(name))
         if (variable == null) {
@@ -387,8 +387,33 @@ class Binder(
     ) = bindExpression(node.expression)
 
     private fun bindLiteralExpression(
-        node: LiteralExpressionNode
-    ) = BoundLiteralExpression(node.value)
+        node: LiteralExpressionNode,
+        type: TypeSymbol?
+    ): BoundLiteralExpression {
+        return BoundLiteralExpression(node.value, when (node.value) {
+            is Byte -> when (type) {
+                TypeSymbol.I8 -> TypeSymbol.I8
+                TypeSymbol.I16 -> TypeSymbol.I16
+                TypeSymbol.I64 -> TypeSymbol.I64
+                else -> TypeSymbol.I32
+            }
+            is Short -> when (type) {
+                TypeSymbol.I16 -> TypeSymbol.I16
+                TypeSymbol.I64 -> TypeSymbol.I64
+                else -> TypeSymbol.I32
+            }
+            is Int -> when (type) {
+                TypeSymbol.I64 -> TypeSymbol.I64
+                else -> TypeSymbol.I32
+            }
+            is Long -> TypeSymbol.I64
+            is Float -> TypeSymbol.Float
+            is Double -> TypeSymbol.Double
+            is Boolean -> TypeSymbol.Bool
+            is String -> TypeSymbol.String
+            else -> throw Exception("Unexpected literal of type ${node.value?.javaClass}")
+        })
+    }
 
     private fun bindUnaryExpression(node: UnaryExpressionNode): BoundExpression {
         val operand = bindExpression(node.operand)
@@ -510,7 +535,8 @@ class Binder(
         if (node.right.kind == SyntaxType.CallExpression) {
             node.right as CallExpressionNode
             val arguments = arrayListOf(left).apply { for (a in node.right.arguments) add(bindExpression(a)) }
-            val function = scope.tryLookup(listOf(name), CallableSymbol.generateSuffix(arguments.map { it.type }, true))
+            val types = arguments.map { it.type }
+            val function = scope.tryLookup(listOf(name), CallableSymbol.generateSuffix(types, true))
             if (function != null) {
                 return BoundCallExpression(function as CallableSymbol, arguments)
             }
@@ -731,11 +757,11 @@ class Binder(
                     }
                 }
                 else if (statements.size != 0){
-                    val nullValue = BoundLiteralExpression("")
+                    val nullValue = BoundLiteralExpression("", TypeSymbol.String)
                     statements[0] = BoundReturnStatement(nullValue)
                 }
                 val body = Lowerer.lower(BoundBlockStatement(
-                        globalScope.statements
+                    globalScope.statements
                 ))
                 functions[globalScope.mainFn] = body
                 statement = BoundBlockStatement(listOf())
@@ -863,7 +889,7 @@ class Binder(
                     Symbol.MetaData.entryExists = true
                 }
                 "cname" -> {
-                    val expression = bindLiteralExpression(annotation.value as LiteralExpressionNode)
+                    val expression = bindLiteralExpression(annotation.value as LiteralExpressionNode, TypeSymbol.String)
                     meta.cname = expression.value as String
                 }
                 else -> {

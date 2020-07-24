@@ -34,6 +34,21 @@ fn test {
     io.print("a string: ")
     io.println(secondFile.astring)
     thing.something()
+
+    // Number literals test
+
+    io.println(10)
+    io.println(0x10)
+    io.println(0b10)
+    io.println(0s10)
+    /*
+    io.println(10l)
+    io.println(10.1)
+    io.println(10.1f)
+    io.println(.10)
+    io.println(.10f)
+    io.println(10f)
+    io.println(10.)*/
 }
 
 

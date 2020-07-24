@@ -22,8 +22,13 @@ enum class SyntaxType {
     AssignmentExpression,
     CallExpression,
 
-    // Types
-    Int,
+    // Literals
+    I8,
+    I16,
+    I32,
+    I64,
+    Float,
+    Double,
     String,
 
     // Statements

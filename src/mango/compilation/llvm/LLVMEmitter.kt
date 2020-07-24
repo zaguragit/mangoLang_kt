@@ -178,8 +178,10 @@ object LLVMEmitter : Emitter {
                 Struct(type, arrayOf(length, chars.ref))
             }
         }
-        expression.type.isOfType(TypeSymbol.AnyI) -> Int(expression.value as Int, LLVMType.valueOf(expression.type))
-        expression.type.isOfType(TypeSymbol.AnyU) -> Int(expression.value as Int, LLVMType.valueOf(expression.type))
+        expression.type.isOfType(TypeSymbol.AnyI) -> Int((expression.value as Number).toInt(), LLVMType.valueOf(expression.type))
+        expression.type.isOfType(TypeSymbol.AnyU) -> Int((expression.value as Number).toInt(), LLVMType.valueOf(expression.type))
+        expression.type.isOfType(TypeSymbol.Float) -> Float((expression.value as Number).toFloat(), LLVMType.Float)
+        expression.type.isOfType(TypeSymbol.Double) -> Float((expression.value as Number).toFloat(), LLVMType.Double)
         expression.type.isOfType(TypeSymbol.Bool) -> Bool(expression.value as Boolean)
         else -> throw Exception("Unknown literal type")
     }

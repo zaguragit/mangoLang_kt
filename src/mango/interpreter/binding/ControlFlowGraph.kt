@@ -189,7 +189,7 @@ class ControlFlowGraph private constructor(
         private fun negate(condition: BoundExpression): BoundExpression {
             if (condition is BoundLiteralExpression) {
                 val value = condition.value as Boolean
-                return BoundLiteralExpression(!value)
+                return BoundLiteralExpression(!value, TypeSymbol.Bool)
             }
             val unaryOperator = BoundUnaryOperator.bind(SyntaxType.Not, TypeSymbol.Bool)!!
             return BoundUnaryExpression(unaryOperator, condition)

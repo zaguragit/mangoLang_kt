@@ -5,9 +5,9 @@ import mango.interpreter.syntax.Token
 import mango.interpreter.syntax.SyntaxTree
 
 class LiteralExpressionNode(
-        syntaxTree: SyntaxTree,
-        val literalToken: Token,
-        val value: Any? = literalToken.value
+    syntaxTree: SyntaxTree,
+    val literalToken: Token,
+    val value: Any? = literalToken.value
 ) : ExpressionNode(syntaxTree) {
     override val kind = SyntaxType.LiteralExpression
     override val children

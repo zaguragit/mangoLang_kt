@@ -9,7 +9,7 @@ open class TypeSymbol private constructor(
     val isBuiltin: Boolean = false
 ) : Symbol() {
 
-    override val type = Type
+    override val type get() = null!!
 
     override val kind = Kind.Type
 
@@ -57,8 +57,9 @@ open class TypeSymbol private constructor(
         init {
             map["Int"] = I32
         }
-        //val Double = TypeSymbol("Double", any)
-        //val Float = TypeSymbol("Float", any)
+
+        val Float = TypeSymbol("Float", Primitive)
+        val Double = TypeSymbol("Double", Primitive)
 
         val Bool = TypeSymbol("Bool", Primitive, isBuiltin = true)
 
@@ -69,8 +70,6 @@ open class TypeSymbol private constructor(
         val Unit = TypeSymbol("Unit", Primitive, isBuiltin = true)
 
         val err = TypeSymbol("!Err", null, isBuiltin = true)
-
-        val Type = TypeSymbol("Type", Any, isBuiltin = true) // StructTypeSymbol("Type", arrayOf(StructTypeSymbol.Field("name", String), StructTypeSymbol.Field("parentType", Ptr(arrayOf(Type)))), Any)
 
         operator fun get(name: String) = map[name]
     }

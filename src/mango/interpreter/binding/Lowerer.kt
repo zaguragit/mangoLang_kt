@@ -79,9 +79,9 @@ class Lowerer : BoundTreeRewriter() {
         val increment = BoundExpressionStatement(BoundAssignmentExpression(
                 node.variable,
                 BoundBinaryExpression(
-                        variableExpression,
-                        BoundBinaryOperator.bind(SyntaxType.Plus, TypeSymbol.Int, TypeSymbol.Int)!!,
-                        BoundLiteralExpression(1)
+                    variableExpression,
+                    BoundBinaryOperator.bind(SyntaxType.Plus, TypeSymbol.Int, TypeSymbol.Int)!!,
+                    BoundLiteralExpression(1, TypeSymbol.I32)
                 )
         ))
         val body = BoundBlockStatement(listOf(

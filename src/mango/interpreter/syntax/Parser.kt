@@ -441,9 +441,14 @@ class Parser(
     private fun parsePrimaryExpression() = when (current.kind) {
         SyntaxType.OpenRoundedBracket -> parseParenthesizedExpression()
         SyntaxType.False, SyntaxType.True -> parseBooleanLiteral()
-        SyntaxType.Int -> parseNumberLiteral()
+        SyntaxType.I8,
+        SyntaxType.I16,
+        SyntaxType.I32,
+        SyntaxType.I64 -> parseIntLiteral()
+        SyntaxType.Float,
+        SyntaxType.Double-> parseFloatLiteral()
         SyntaxType.String -> parseStringLiteral()
-        SyntaxType.In -> parseNumberLiteral()
+        SyntaxType.In -> parseIntLiteral()
         else -> parseNameExpression()
     }
 
@@ -460,7 +465,31 @@ class Parser(
         return LiteralExpressionNode(syntaxTree, token, isTrue)
     }
 
-    private fun parseNumberLiteral() = LiteralExpressionNode(syntaxTree, match(SyntaxType.Int))
+    private fun parseIntLiteral(): LiteralExpressionNode {
+        val token = next()
+        return LiteralExpressionNode(syntaxTree, if (
+            token.kind == SyntaxType.I8 ||
+            token.kind == SyntaxType.I16 ||
+            token.kind == SyntaxType.I32 ||
+            token.kind == SyntaxType.I64) {
+            token
+        } else {
+            diagnostics.reportUnexpectedToken(current.location, current.kind, SyntaxType.I32)
+            Token(syntaxTree, SyntaxType.I32, current.position).apply { isMissing = true }
+        })
+    }
+
+    private fun parseFloatLiteral(): ExpressionNode {
+        val token = next()
+        return LiteralExpressionNode(syntaxTree, if (
+            token.kind == SyntaxType.Float ||
+            token.kind == SyntaxType.Double) {
+            token
+        } else {
+            diagnostics.reportUnexpectedToken(current.location, current.kind, SyntaxType.Float)
+            Token(syntaxTree, SyntaxType.Float, current.position).apply { isMissing = true }
+        })
+    }
 
     private fun parseStringLiteral() = LiteralExpressionNode(syntaxTree, match(SyntaxType.String))
 

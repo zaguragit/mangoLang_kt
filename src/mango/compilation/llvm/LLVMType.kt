@@ -24,6 +24,8 @@ interface LLVMType {
                 //TypeSymbol.U32 -> U32
                 TypeSymbol.I64.name -> I64
                 //TypeSymbol.U64 -> U64
+                TypeSymbol.Float.name -> Float
+                TypeSymbol.Double.name -> Double
                 TypeSymbol.Bool.name -> Bool
                 TypeSymbol.Ptr.name -> Ptr(valueOf(type.params[0]))
                 TypeSymbol.Unit.name -> Void

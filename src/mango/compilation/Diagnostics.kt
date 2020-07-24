@@ -3,6 +3,7 @@ package mango.compilation
 import mango.console.Console
 import mango.interpreter.binding.nodes.BoundBinaryOperator
 import mango.interpreter.binding.nodes.BoundUnaryOperator
+import mango.interpreter.symbols.FunctionSymbol
 import mango.interpreter.symbols.Symbol
 import mango.interpreter.symbols.TypeSymbol
 import mango.interpreter.syntax.SyntaxType
@@ -169,6 +170,12 @@ class DiagnosticList {
         location: TextLocation,
         name: String
     ) = report(location, "Undefined name \"$name\"")
+
+    fun reportUndefinedFunction(
+        location: TextLocation,
+        name: String,
+        parameters: Collection<TypeSymbol>
+    ) = report(location, "Undefined name ( $name(${parameters.joinToString(", ") { it.name }}) )")
 
     fun reportSymbolAlreadyDeclared(
         location: TextLocation,
