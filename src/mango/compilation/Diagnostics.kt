@@ -1,9 +1,8 @@
 package mango.compilation
 
 import mango.console.Console
-import mango.interpreter.binding.nodes.BoundBinaryOperator
-import mango.interpreter.binding.nodes.BoundUnaryOperator
-import mango.interpreter.symbols.FunctionSymbol
+import mango.interpreter.binding.nodes.BoundBiOperator
+import mango.interpreter.binding.nodes.BoundUnOperator
 import mango.interpreter.symbols.Symbol
 import mango.interpreter.symbols.TypeSymbol
 import mango.interpreter.syntax.SyntaxType
@@ -157,14 +156,14 @@ class DiagnosticList {
         location: TextLocation,
         operatorType: SyntaxType,
         operandType: TypeSymbol
-    ) = report(location, "\"${BoundUnaryOperator.getString(operatorType)}\" isn't compatible with $operandType")
+    ) = report(location, "\"${BoundUnOperator.getString(operatorType)}\" isn't compatible with $operandType")
 
     fun reportBinaryOperator(
         location: TextLocation,
         leftType: TypeSymbol,
         operatorType: SyntaxType,
         rightType: TypeSymbol
-    ) = report(location, "\"${BoundBinaryOperator.getString(operatorType)}\" isn't compatible with $leftType and $rightType")
+    ) = report(location, "\"${BoundBiOperator.getString(operatorType)}\" isn't compatible with $leftType and $rightType")
 
     fun reportUndefinedName(
         location: TextLocation,

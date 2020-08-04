@@ -4,11 +4,13 @@ import mango.interpreter.syntax.SyntaxType
 import mango.interpreter.syntax.Token
 import mango.interpreter.syntax.SyntaxTree
 
-open class NameExpressionNode(
+class UnsafeBlockNode(
     syntaxTree: SyntaxTree,
-    val identifier: Token
+    val keyword: Token,
+    val block: BlockNode
 ) : Node(syntaxTree) {
 
-    override val kind = SyntaxType.NameExpression
-    override val children: Collection<Node> get() = listOf(identifier)
+    override val kind = SyntaxType.UnsafeBlock
+
+    override val children: Collection<Node> get() = listOf(keyword, block)
 }

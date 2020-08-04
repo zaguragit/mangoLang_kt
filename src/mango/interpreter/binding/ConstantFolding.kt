@@ -1,9 +1,7 @@
 package mango.interpreter.binding
 
-import mango.interpreter.binding.nodes.BoundBinaryOperator
-import mango.interpreter.binding.nodes.BoundBinaryOperatorType
-import mango.interpreter.binding.nodes.BoundUnaryOperator
-import mango.interpreter.binding.nodes.BoundUnaryOperatorType
+import mango.interpreter.binding.nodes.BoundBiOperator
+import mango.interpreter.binding.nodes.BoundUnOperator
 import mango.interpreter.binding.nodes.expressions.BoundConstant
 import mango.interpreter.binding.nodes.expressions.BoundExpression
 import mango.interpreter.symbols.TypeSymbol
@@ -11,21 +9,21 @@ import mango.interpreter.symbols.TypeSymbol
 object ConstantFolding {
 
     fun computeConstant(
-            left: BoundExpression,
-            operator: BoundBinaryOperator,
-            right: BoundExpression
+        left: BoundExpression,
+        operator: BoundBiOperator,
+        right: BoundExpression
     ): BoundConstant? {
         val leftConst = left.constantValue
         val rightConst = right.constantValue
         if (leftConst == null) {
             return null
         }
-        if (operator.type == BoundBinaryOperatorType.LogicAnd) {
+        if (operator.type == BoundBiOperator.Type.LogicAnd) {
             if (leftConst.value == false || rightConst?.value == false) {
                 return BoundConstant(false)
             }
         }
-        if (operator.type == BoundBinaryOperatorType.LogicOr) {
+        if (operator.type == BoundBiOperator.Type.LogicOr) {
             if (leftConst.value == true || rightConst?.value == true) {
                 return BoundConstant(true)
             }
@@ -36,54 +34,54 @@ object ConstantFolding {
         val leftVal = leftConst.value
         val rightVal = rightConst.value
         return BoundConstant(when (operator.type) {
-            BoundBinaryOperatorType.Add -> {
+            BoundBiOperator.Type.Add -> {
                 if (left.type == TypeSymbol.String) {
                     leftVal as String + rightVal as String
                 } else {
                     leftVal as Int + rightVal as Int
                 }
             }
-            BoundBinaryOperatorType.Sub -> leftVal as Int - rightVal as Int
-            BoundBinaryOperatorType.Mul -> leftVal as Int * rightVal as Int
-            BoundBinaryOperatorType.Div -> leftVal as Int / rightVal as Int
-            BoundBinaryOperatorType.Rem -> leftVal as Int % rightVal as Int
-            BoundBinaryOperatorType.BitAnd -> {
+            BoundBiOperator.Type.Sub -> leftVal as Int - rightVal as Int
+            BoundBiOperator.Type.Mul -> leftVal as Int * rightVal as Int
+            BoundBiOperator.Type.Div -> leftVal as Int / rightVal as Int
+            BoundBiOperator.Type.Rem -> leftVal as Int % rightVal as Int
+            BoundBiOperator.Type.BitAnd -> {
                 if (left.type == TypeSymbol.Bool) {
                     leftVal as Boolean and rightVal as Boolean
                 } else {
                     leftVal as Int and rightVal as Int
                 }
             }
-            BoundBinaryOperatorType.BitOr -> {
+            BoundBiOperator.Type.BitOr -> {
                 if (left.type == TypeSymbol.Bool) {
                     leftVal as Boolean or rightVal as Boolean
                 } else {
                     leftVal as Int or rightVal as Int
                 }
             }
-            BoundBinaryOperatorType.LogicAnd -> leftVal as Boolean && rightVal as Boolean
-            BoundBinaryOperatorType.LogicOr -> leftVal as Boolean || rightVal as Boolean
-            BoundBinaryOperatorType.LessThan -> (leftVal as Int) < rightVal as Int
-            BoundBinaryOperatorType.MoreThan -> leftVal as Int > rightVal as Int
-            BoundBinaryOperatorType.IsEqual -> leftVal == rightVal
-            BoundBinaryOperatorType.IsEqualOrMore -> leftVal as Int >= rightVal as Int
-            BoundBinaryOperatorType.IsEqualOrLess -> leftVal as Int <= rightVal as Int
-            BoundBinaryOperatorType.IsNotEqual -> leftVal != rightVal
-            BoundBinaryOperatorType.IsIdentityEqual -> leftVal === rightVal
-            BoundBinaryOperatorType.IsNotIdentityEqual -> leftVal !== rightVal
+            BoundBiOperator.Type.LogicAnd -> leftVal as Boolean && rightVal as Boolean
+            BoundBiOperator.Type.LogicOr -> leftVal as Boolean || rightVal as Boolean
+            BoundBiOperator.Type.LessThan -> (leftVal as Int) < rightVal as Int
+            BoundBiOperator.Type.MoreThan -> leftVal as Int > rightVal as Int
+            BoundBiOperator.Type.IsEqual -> leftVal == rightVal
+            BoundBiOperator.Type.IsEqualOrMore -> leftVal as Int >= rightVal as Int
+            BoundBiOperator.Type.IsEqualOrLess -> leftVal as Int <= rightVal as Int
+            BoundBiOperator.Type.IsNotEqual -> leftVal != rightVal
+            BoundBiOperator.Type.IsIdentityEqual -> leftVal === rightVal
+            BoundBiOperator.Type.IsNotIdentityEqual -> leftVal !== rightVal
         })
     }
 
     fun computeConstant(
-            operator: BoundUnaryOperator,
+            operator: BoundUnOperator,
             operand: BoundExpression
     ): BoundConstant? {
         if (operand.constantValue != null) {
             val value = operand.constantValue!!.value
             return when (operator.type) {
-                BoundUnaryOperatorType.Identity -> BoundConstant(value)
-                BoundUnaryOperatorType.Negation -> BoundConstant(-(value as Int))
-                BoundUnaryOperatorType.Not -> BoundConstant(!(value as Boolean))
+                BoundUnOperator.Type.Identity -> BoundConstant(value)
+                BoundUnOperator.Type.Negation -> BoundConstant(-(value as Int))
+                BoundUnOperator.Type.Not -> BoundConstant(!(value as Boolean))
             }
         }
         return null

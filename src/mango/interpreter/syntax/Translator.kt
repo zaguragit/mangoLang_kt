@@ -12,6 +12,8 @@ object Translator {
         "fn" -> SyntaxType.Fn
         "namespace" -> SyntaxType.NamespaceToken
 
+        "unsafe" -> SyntaxType.Unsafe
+
         "if" -> SyntaxType.If
         "else" -> SyntaxType.Else
 
@@ -44,7 +46,7 @@ object Translator {
     fun unaryOperatorToString(operator: SyntaxType) = when (operator) {
         SyntaxType.Plus -> "plus"
         SyntaxType.Minus -> "minus"
-        SyntaxType.Not -> "not"
+        SyntaxType.Bang -> "not"
         else -> ""
     }
 }

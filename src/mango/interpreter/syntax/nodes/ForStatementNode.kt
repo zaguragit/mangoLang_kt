@@ -9,11 +9,11 @@ class ForStatementNode(
         val keyword: Token,
         val identifier: Token,
         val inToken: Token,
-        val lowerBound: ExpressionNode,
+        val lowerBound: Node,
         val rangeToken: Token,
-        val upperBound: ExpressionNode,
-        val body: BlockStatementNode
-) : StatementNode(syntaxTree) {
+        val upperBound: Node,
+        val body: BlockNode
+) : Node(syntaxTree) {
 
     override val kind = SyntaxType.ForStatement
     override val children: Collection<Node>

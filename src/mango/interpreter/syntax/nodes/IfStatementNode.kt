@@ -7,10 +7,10 @@ import mango.interpreter.syntax.SyntaxTree
 class IfStatementNode(
         syntaxTree: SyntaxTree,
         val keyword: Token,
-        val condition: ExpressionNode,
-        val thenStatement: BlockStatementNode,
+        val condition: Node,
+        val thenStatement: BlockNode,
         val elseClause: ElseClauseNode?
-) : StatementNode(syntaxTree) {
+) : Node(syntaxTree) {
     override val kind
         get() = SyntaxType.IfStatement
     override val children

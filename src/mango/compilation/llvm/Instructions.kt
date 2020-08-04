@@ -16,6 +16,13 @@ val LLVMInstruction?.isJump get() =
     this !is Jmp &&
     this !is If
 
+class Alloc(
+    val privType: LLVMType
+) : LLVMInstruction {
+    override val type = LLVMType.Ptr(privType)
+    override val code get() = "alloca ${privType.code}"
+}
+
 class Ret(val value: LLVMValue) : LLVMInstruction {
     override val type get() = LLVMType.Void
     override val code get() = "ret ${value.type.code} ${value.code}"

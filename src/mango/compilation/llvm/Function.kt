@@ -13,14 +13,6 @@ interface Var {
     val ref: LLVMValue
 }
 
-class Alloc(
-    val name: String,
-    val type: LLVMType
-) : Var {
-    override fun allocCode() = "%$name = alloca ${type.code}"
-    override val ref get() = LocalRef(name, LLVMType.Ptr(type))
-}
-
 class BlockBuilder(
     val functionBuilder: FunctionBuilder,
     val name: String? = null
@@ -34,7 +26,7 @@ class BlockBuilder(
     }
 
     inline fun tmpVal(value: LLVMInstruction): TmpVal {
-        val tempValue = TmpVal("tmp${functionBuilder.tmpIndex()}", value)
+        val tempValue = TmpVal(".tmp${functionBuilder.tmpIndex()}", value)
         addInstruction(tempValue)
         return tempValue
     }
@@ -62,7 +54,9 @@ class BlockBuilder(
 
     inline fun jump(name: String) = addInstruction(Jmp(name))
 
-    inline fun alloc(name: String, type: LLVMType) = functionBuilder.alloc(type, name)
+    inline fun alloc(type: LLVMType): LocalRef {
+        return tmpVal(Alloc(type)).ref
+    }
 
     fun code() = (if (name != null) "$name:\n    " else "") + instructions.joinToString(separator = "\n    ") { it.code }
 
@@ -75,9 +69,18 @@ class BlockBuilder(
         return Label(name)
     }
 
-    inline fun load(value: LLVMValue): LLVMValue {
+    inline fun load(value: LLVMValue): LocalRef {
         val tempValue = tmpVal(Load(value, (value.type as LLVMType.Ptr).element))
         return tempValue.ref
+    }
+
+    inline fun load(name: String, value: LLVMValue): LocalRef {
+        val tempValue = tmpVal(name, Load(value, (value.type as LLVMType.Ptr).element))
+        return tempValue.ref
+    }
+
+    inline fun store(destination: LLVMValue, value: LLVMValue) {
+        addInstruction(Store(value, destination))
     }
 }
 
@@ -93,7 +96,7 @@ class FunctionBuilder(
             LLVMType.Ptr(type)
         else type)
     }
-    private val variables = LinkedList<Alloc>()
+    //private val variables = LinkedList<Alloc>()
     private val blocks = LinkedList<BlockBuilder>()
     private val attributes = LinkedList<String>()
 
@@ -106,15 +109,9 @@ class FunctionBuilder(
 
     fun addAttribute (string: String) = attributes.add(string)
 
-    fun alloc (type: LLVMType, name: String): Alloc {
-        val variable = Alloc(name, type)
-        variables.add(variable)
-        return variable
-    }
-
     fun code() =
         "define ${returnType.code} @\"${symbol.mangledName()}\"(${paramTypes.map(LLVMType::code).joinToString(separator = ", ")}) ${attributes.joinToString(" ")} {\n" +
-        "    ${variables.joinToString("\n    ") { it.allocCode() }}\n" +
+        //"    ${variables.joinToString("\n    ") { it.allocCode() }}\n" +
         "    ${blocks.joinToString("\n    ") { it.code() }}\n}\n"
 
 

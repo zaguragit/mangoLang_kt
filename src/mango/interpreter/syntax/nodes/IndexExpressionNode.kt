@@ -5,17 +5,17 @@ import mango.interpreter.syntax.Token
 import mango.interpreter.syntax.SeparatedNodeList
 import mango.interpreter.syntax.SyntaxTree
 
-class CallExpressionNode(
+class IndexExpressionNode(
     syntaxTree: SyntaxTree,
-    identifier: Token,
+    val expression: Node,
     val leftBracket: Token,
     val arguments: SeparatedNodeList<Node>,
     val rightBracket: Token
-) : NameExpressionNode(syntaxTree, identifier) {
+) : Node(syntaxTree) {
 
-    override val kind = SyntaxType.CallExpression
-    override val children: Collection<Node> get() = arrayListOf<Node>(
-            identifier, leftBracket
+    override val kind = SyntaxType.IndexExpression
+    override val children: Collection<Node> get() = arrayListOf(
+            expression, leftBracket
         ).apply {
             addAll(arguments.nodesAndSeparators)
             add(rightBracket)

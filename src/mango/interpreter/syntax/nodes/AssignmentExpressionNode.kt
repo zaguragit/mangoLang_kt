@@ -8,8 +8,8 @@ class AssignmentExpressionNode(
         syntaxTree: SyntaxTree,
         val identifierToken: Token,
         val equalsToken: Token,
-        val expression: ExpressionNode
-) : ExpressionNode(syntaxTree) {
+        val expression: Node
+) : Node(syntaxTree) {
     override val kind = SyntaxType.AssignmentExpression
     override val children
         get() = listOf(identifierToken, equalsToken, expression)

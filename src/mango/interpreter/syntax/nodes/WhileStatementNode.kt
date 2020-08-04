@@ -7,9 +7,9 @@ import mango.interpreter.syntax.SyntaxTree
 class WhileStatementNode(
         syntaxTree: SyntaxTree,
         val keyword: Token,
-        val condition: ExpressionNode,
-        val body: BlockStatementNode
-) : StatementNode(syntaxTree) {
+        val condition: Node,
+        val body: BlockNode
+) : Node(syntaxTree) {
     override val kind
         get() = SyntaxType.WhileStatement
     override val children: Collection<Node>

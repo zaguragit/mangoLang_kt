@@ -4,4 +4,4 @@ import mango.interpreter.syntax.SyntaxTree
 
 abstract class TopLevelNode(
     syntaxTree: SyntaxTree
-) : StatementNode(syntaxTree)
+) : Node(syntaxTree)

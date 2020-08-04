@@ -4,14 +4,14 @@ import mango.interpreter.syntax.SyntaxType
 import mango.interpreter.syntax.Token
 import mango.interpreter.syntax.SyntaxTree
 
-class BlockStatementNode(
+class BlockNode(
     syntaxTree: SyntaxTree,
     val openBrace: Token,
-    val statements: Collection<StatementNode>,
+    val statements: Collection<Node>,
     val closedBrace: Token
-) : StatementNode(syntaxTree) {
+) : Node(syntaxTree) {
 
-    override val kind = SyntaxType.BlockStatement
+    override val kind = SyntaxType.Block
 
     override val children: Collection<Node>
         get() = ArrayList<Node>().apply {

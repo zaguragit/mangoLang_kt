@@ -7,7 +7,8 @@ open class VariableSymbol private constructor(
     override val type: TypeSymbol,
     val isReadOnly: Boolean,
     constant: BoundConstant?,
-    override val kind: Kind
+    override val kind: Kind,
+    var realName: String
 ) : Symbol() {
 
     val constant =
@@ -21,7 +22,8 @@ open class VariableSymbol private constructor(
             type,
             true,
             null,
-            Kind.Parameter
+            Kind.Parameter,
+            ".p_$name"
         )
 
         fun visible(
@@ -31,9 +33,9 @@ open class VariableSymbol private constructor(
             constant: BoundConstant?,
             path: String
         ): VariableSymbol = object : VariableSymbol(
-            name, type, isReadOnly, constant, Kind.VisibleVariable
+            name, type, isReadOnly, constant, Kind.VisibleVariable, path
         ), VisibleSymbol {
-            override val path = path
+            override val path get() = realName
         }
 
         fun local(
@@ -41,6 +43,6 @@ open class VariableSymbol private constructor(
             type: TypeSymbol,
             isReadOnly: Boolean,
             constant: BoundConstant?
-        ) = VariableSymbol(name, type, isReadOnly, constant, Kind.Variable)
+        ) = VariableSymbol(name, type, isReadOnly, constant, Kind.Variable, name)
     }
 }

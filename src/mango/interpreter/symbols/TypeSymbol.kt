@@ -6,7 +6,8 @@ open class TypeSymbol private constructor(
     val parentType: TypeSymbol?,
     val paramCount: Int = 0,
     val params: Array<TypeSymbol> = arrayOf(),
-    val isBuiltin: Boolean = false
+    val isBuiltin: Boolean = false,
+    val size: Int = -1
 ) : Symbol() {
 
     override val type get() = null!!
@@ -43,13 +44,13 @@ open class TypeSymbol private constructor(
 
         val Ptr = TypeSymbol("Ptr", Primitive, 1, arrayOf(Any), isBuiltin = true)
 
-        val I8 = TypeSymbol("I8", AnyI, isBuiltin = true)
+        val I8 = TypeSymbol("I8", AnyI, isBuiltin = true, size = 8)
         //val U8 = TypeSymbol("U8", AnyU)
-        val I16 = TypeSymbol("I16", AnyI, isBuiltin = true)
+        val I16 = TypeSymbol("I16", AnyI, isBuiltin = true, size = 16)
         //val U16 = TypeSymbol("U16", AnyU)
-        val I32 = TypeSymbol("I32", AnyI, isBuiltin = true)
+        val I32 = TypeSymbol("I32", AnyI, isBuiltin = true, size = 32)
         //val U32 = TypeSymbol("U32", AnyU)
-        val I64 = TypeSymbol("I64", AnyI, isBuiltin = true)
+        val I64 = TypeSymbol("I64", AnyI, isBuiltin = true, size = 64)
         //val U64 = TypeSymbol("U64", AnyU)
 
         val Int = I32
@@ -61,13 +62,13 @@ open class TypeSymbol private constructor(
         val Float = TypeSymbol("Float", Primitive)
         val Double = TypeSymbol("Double", Primitive)
 
-        val Bool = TypeSymbol("Bool", Primitive, isBuiltin = true)
+        val Bool = TypeSymbol("Bool", Primitive, isBuiltin = true, size = 1)
 
         val String = StructTypeSymbol("String", arrayOf(StructTypeSymbol.Field("length", Int), StructTypeSymbol.Field("chars", Ptr(arrayOf(I8)))), Any)
 
         //val Fn = TypeSymbol("Fn", Any)
 
-        val Unit = TypeSymbol("Unit", Primitive, isBuiltin = true)
+        val Unit = TypeSymbol("Unit", Any, isBuiltin = true)
 
         val err = TypeSymbol("!Err", null, isBuiltin = true)
 

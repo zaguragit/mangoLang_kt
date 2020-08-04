@@ -7,7 +7,7 @@ import mango.interpreter.syntax.SyntaxTree
 class ContinueStatementNode(
         syntaxTree: SyntaxTree,
         val keyword: Token
-) : StatementNode(syntaxTree) {
+) : Node(syntaxTree) {
 
     override val kind = SyntaxType.ContinueStatement
     override val children: Collection<Node> get() = listOf(keyword)

@@ -9,7 +9,7 @@ class AnnotationNode(
         val left: Token,
         val identifier: Token,
         val colon: Token?,
-        val value: ExpressionNode?,
+        val value: Node?,
         val right: Token
 ) : Node(syntaxTree) {
 

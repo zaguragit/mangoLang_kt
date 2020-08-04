@@ -122,6 +122,7 @@ open class BoundTreeRewriter {
             BoundNodeType.CastExpression -> rewriteCastExpression(node as BoundCastExpression)
             BoundNodeType.ErrorExpression -> node
             BoundNodeType.StructFieldAccess -> rewriteStructFieldAccess(node as BoundStructFieldAccess)
+            BoundNodeType.BlockExpression -> rewriteBlockExpression(node as BoundBlockExpression)
             else -> throw Exception("Unexpected node: ${node.boundType}")
         }
     }
@@ -190,5 +191,27 @@ open class BoundTreeRewriter {
             return node
         }
         return BoundStructFieldAccess(struct, node.i)
+    }
+
+    protected open fun rewriteBlockExpression(node: BoundBlockExpression): BoundExpression {
+        var statements: ArrayList<BoundStatement>? = null
+        for (i in node.statements.indices) {
+            val oldStatement = node.statements.elementAt(i)
+            val newStatement = rewriteStatement(oldStatement)
+            if (newStatement != oldStatement) {
+                if (statements == null) {
+                    statements = ArrayList()
+                    for (j in 0 until i) {
+                        statements.add(node.statements.elementAt(j))
+                    }
+                }
+            }
+            statements?.add(newStatement)
+        }
+
+        if (statements == null) {
+            return node
+        }
+        return BoundBlockExpression(statements, node.type)
     }
 }

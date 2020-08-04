@@ -1,7 +1,7 @@
 package mango.interpreter.binding
 
 import mango.interpreter.binding.nodes.BoundNodeType
-import mango.interpreter.binding.nodes.BoundUnaryOperator
+import mango.interpreter.binding.nodes.BoundUnOperator
 import mango.interpreter.binding.nodes.expressions.BoundExpression
 import mango.interpreter.binding.nodes.expressions.BoundLiteralExpression
 import mango.interpreter.binding.nodes.expressions.BoundUnaryExpression
@@ -191,7 +191,7 @@ class ControlFlowGraph private constructor(
                 val value = condition.value as Boolean
                 return BoundLiteralExpression(!value, TypeSymbol.Bool)
             }
-            val unaryOperator = BoundUnaryOperator.bind(SyntaxType.Not, TypeSymbol.Bool)!!
+            val unaryOperator = BoundUnOperator.bind(SyntaxType.Bang, TypeSymbol.Bool)!!
             return BoundUnaryExpression(unaryOperator, condition)
         }
 

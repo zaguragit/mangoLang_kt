@@ -37,10 +37,11 @@ fn test {
 
     // Number literals test
 
-    io.println(10)
-    io.println(0x10)
-    io.println(0b10)
-    io.println(0s10)
+    io.println(10)   // 10
+    io.println(0x10) // 16
+    io.println(0b10) // 2
+    io.println(0s10) // 6
+
     /*
     io.println(10l)
     io.println(10.1)
@@ -49,6 +50,26 @@ fn test {
     io.println(.10f)
     io.println(10f)
     io.println(10.)*/
+
+    unsafe {
+        val a Int = 1 + 3
+        val aa Int = 1
+        io.println("blablabla67")
+    }
+
+    val b = unsafe {
+        io.println("blablabla26")
+        0
+    }
+
+    val dddd = {
+        5
+    }
+    io.println(b)
+    io.println({
+        io.println(4)
+        5
+    })
 }
 
 

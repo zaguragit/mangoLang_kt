@@ -40,7 +40,7 @@ abstract class BoundNode {
             BoundNodeType.UnaryExpression -> {
                 this as BoundUnaryExpression
                 val precedence = operator.syntaxType.getUnaryOperatorPrecedence()
-                builder.append(BoundUnaryOperator.getString(operator.type))
+                builder.append(BoundUnOperator.getString(operator.type))
                 writeNestedExpression(builder, indent + 1, precedence, operand)
             }
             BoundNodeType.BinaryExpression -> {
@@ -48,9 +48,21 @@ abstract class BoundNode {
                 val precedence = operator.syntaxType.getBinaryOperatorPrecedence()
                 writeNestedExpression(builder, indent + 1, precedence, left)
                 builder.append(' ')
-                builder.append(BoundBinaryOperator.getString(operator.type))
+                builder.append(BoundBiOperator.getString(operator.type))
                 builder.append(' ')
                 writeNestedExpression(builder, indent + 1, precedence, right)
+            }
+            BoundNodeType.BlockExpression -> {
+                this as BoundBlockExpression
+                builder.append('{')
+                builder.append('\n')
+                for (statement in statements) {
+                    builder.append(statement.structureString(indent + 1))
+                }
+                for (t in 0 until indent) {
+                    builder.append("    ")
+                }
+                builder.append('}')
             }
             BoundNodeType.LiteralExpression -> {
                 this as BoundLiteralExpression
@@ -204,6 +216,7 @@ enum class BoundNodeType {
     CastExpression,
     NamespaceFieldAccess,
     StructFieldAccess,
+    BlockExpression,
 
     BlockStatement,
     ExpressionStatement,

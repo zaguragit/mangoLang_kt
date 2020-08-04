@@ -6,10 +6,10 @@ import mango.interpreter.syntax.SyntaxTree
 
 class BinaryExpressionNode(
         syntaxTree: SyntaxTree,
-        val left: ExpressionNode,
+        val left: Node,
         val operator: Token,
-        val right: ExpressionNode
-) : ExpressionNode(syntaxTree) {
+        val right: Node
+) : Node(syntaxTree) {
     override val kind = SyntaxType.BinaryExpression
     override val children
         get() = listOf(left, operator, right)

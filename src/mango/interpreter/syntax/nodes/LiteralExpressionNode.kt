@@ -8,7 +8,7 @@ class LiteralExpressionNode(
     syntaxTree: SyntaxTree,
     val literalToken: Token,
     val value: Any? = literalToken.value
-) : ExpressionNode(syntaxTree) {
+) : Node(syntaxTree) {
     override val kind = SyntaxType.LiteralExpression
     override val children
         get() = listOf(literalToken)

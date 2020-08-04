@@ -3,9 +3,9 @@ package mango.compilation.llvm
 import mango.compilation.Emitter
 import mango.compilation.llvm.LLVMValue.*
 import mango.interpreter.binding.*
-import mango.interpreter.binding.nodes.BoundBinaryOperatorType
+import mango.interpreter.binding.nodes.BoundBiOperator
 import mango.interpreter.binding.nodes.BoundNodeType
-import mango.interpreter.binding.nodes.BoundUnaryOperatorType
+import mango.interpreter.binding.nodes.BoundUnOperator
 import mango.interpreter.binding.nodes.expressions.*
 import mango.interpreter.binding.nodes.statements.*
 import mango.interpreter.symbols.*
@@ -49,9 +49,20 @@ object LLVMEmitter : Emitter {
                     BoundNodeType.VariableDeclaration -> {
                         instruction as BoundVariableDeclaration
 
-                        currentBlock.tmpVal(
-                            instruction.variable.name,
-                            emitInstruction(currentBlock, instruction.initializer)!!)
+                        if (instruction.initializer.boundType == BoundNodeType.LiteralExpression) {
+                            val alloc = currentBlock.alloc(
+                                LLVMType.valueOf(instruction.initializer.type)
+                            )
+                            currentBlock.store(
+                                alloc,
+                                emitValue(currentBlock, instruction.initializer)!!
+                            )
+                            currentBlock.load(instruction.variable.realName, alloc)
+                        } else {
+                            currentBlock.tmpVal(
+                                instruction.variable.realName,
+                                emitInstruction(currentBlock, instruction.initializer)!!)
+                        }
                         /*
                         if (instruction.initializer.type.kind == Symbol.Kind.Struct) {
                             val structType = LLVMType.valueOf(instruction.initializer.type)
@@ -192,7 +203,7 @@ object LLVMEmitter : Emitter {
     ): LLVMValue = when (expression.symbol.kind) {
         Symbol.Kind.Parameter -> {
             val i = block.functionBuilder.symbol.parameters.indexOfFirst {
-                it.name == expression.symbol.name
+                it.realName == expression.symbol.realName
             }
             block.functionBuilder.paramReference(i)
         }
@@ -206,7 +217,7 @@ object LLVMEmitter : Emitter {
         }
         else -> {
             val variable = expression.symbol
-            LocalRef(variable.name, if (variable.type.kind == Symbol.Kind.Struct) LLVMType.Ptr(LLVMType.valueOf(variable.type)) else LLVMType.valueOf(variable.type))
+            LocalRef(variable.realName, if (variable.type.kind == Symbol.Kind.Struct) LLVMType.Ptr(LLVMType.valueOf(variable.type)) else LLVMType.valueOf(variable.type))
         }
     }
 
@@ -234,9 +245,9 @@ object LLVMEmitter : Emitter {
     ): LLVMInstruction {
         val operand = emitValue(block, expression.operand)!!
         return when (expression.operator.type) {
-            BoundUnaryOperatorType.Identity -> IntAdd(Int(0, operand.type), operand)
-            BoundUnaryOperatorType.Negation -> IntSub(Int(0, operand.type), operand)
-            BoundUnaryOperatorType.Not -> IntSub(Int(1, LLVMType.Bool), operand)
+            BoundUnOperator.Type.Identity -> IntAdd(Int(0, operand.type), operand)
+            BoundUnOperator.Type.Negation -> IntSub(Int(0, operand.type), operand)
+            BoundUnOperator.Type.Not -> IntSub(Int(1, LLVMType.Bool), operand)
         }
     }
 
@@ -247,33 +258,33 @@ object LLVMEmitter : Emitter {
         val left = emitValue(block, expression.left)!!
         val right = emitValue(block, expression.right)!!
         return when (expression.operator.type) {
-            BoundBinaryOperatorType.Add -> if (expression.right.type == TypeSymbol.AnyI) {
+            BoundBiOperator.Type.Add -> if (expression.right.type.isOfType(TypeSymbol.AnyI)) {
                 IntAdd(left, right)
             } else null
-            BoundBinaryOperatorType.Sub -> if (expression.right.type == TypeSymbol.AnyI) {
+            BoundBiOperator.Type.Sub -> if (expression.right.type.isOfType(TypeSymbol.AnyI)) {
                 IntSub(left, right)
             } else null
-            BoundBinaryOperatorType.Mul -> if (expression.right.type == TypeSymbol.AnyI) {
+            BoundBiOperator.Type.Mul -> if (expression.right.type.isOfType(TypeSymbol.AnyI)) {
                 IntMul(left, right)
             } else null
-            BoundBinaryOperatorType.Div -> when (expression.right.type) {
-                TypeSymbol.AnyI -> IntDiv(left, right)
-                TypeSymbol.AnyU -> UIntDiv(left, right)
+            BoundBiOperator.Type.Div -> when {
+                expression.right.type.isOfType(TypeSymbol.AnyI) -> IntDiv(left, right)
+                expression.right.type.isOfType(TypeSymbol.AnyU) -> UIntDiv(left, right)
                 else -> null
             }
-            BoundBinaryOperatorType.Rem -> null
-            BoundBinaryOperatorType.BitAnd -> null
-            BoundBinaryOperatorType.BitOr -> null
-            BoundBinaryOperatorType.LogicAnd -> null
-            BoundBinaryOperatorType.LogicOr -> null
-            BoundBinaryOperatorType.LessThan -> Icmp(Icmp.Type.LessThan, left, right)
-            BoundBinaryOperatorType.MoreThan -> Icmp(Icmp.Type.MoreThan, left, right)
-            BoundBinaryOperatorType.IsEqual -> Icmp(Icmp.Type.IsEqual, left, right)
-            BoundBinaryOperatorType.IsEqualOrMore -> Icmp(Icmp.Type.IsEqualOrMore, left, right)
-            BoundBinaryOperatorType.IsEqualOrLess -> Icmp(Icmp.Type.IsEqualOrLess, left, right)
-            BoundBinaryOperatorType.IsNotEqual -> Icmp(Icmp.Type.IsNotEqual, left, right)
-            BoundBinaryOperatorType.IsIdentityEqual -> Icmp(Icmp.Type.IsEqual, left, right)
-            BoundBinaryOperatorType.IsNotIdentityEqual -> Icmp(Icmp.Type.IsNotEqual, left, right)
+            BoundBiOperator.Type.Rem -> null
+            BoundBiOperator.Type.BitAnd -> null
+            BoundBiOperator.Type.BitOr -> null
+            BoundBiOperator.Type.LogicAnd -> null
+            BoundBiOperator.Type.LogicOr -> null
+            BoundBiOperator.Type.LessThan -> Icmp(Icmp.Type.LessThan, left, right)
+            BoundBiOperator.Type.MoreThan -> Icmp(Icmp.Type.MoreThan, left, right)
+            BoundBiOperator.Type.IsEqual -> Icmp(Icmp.Type.IsEqual, left, right)
+            BoundBiOperator.Type.IsEqualOrMore -> Icmp(Icmp.Type.IsEqualOrMore, left, right)
+            BoundBiOperator.Type.IsEqualOrLess -> Icmp(Icmp.Type.IsEqualOrLess, left, right)
+            BoundBiOperator.Type.IsNotEqual -> Icmp(Icmp.Type.IsNotEqual, left, right)
+            BoundBiOperator.Type.IsIdentityEqual -> Icmp(Icmp.Type.IsEqual, left, right)
+            BoundBiOperator.Type.IsNotIdentityEqual -> Icmp(Icmp.Type.IsNotEqual, left, right)
         }
     }
 

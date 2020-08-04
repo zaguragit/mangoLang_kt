@@ -73,10 +73,13 @@ class Lexer(
                     } else {
                         Token(syntaxTree, SyntaxType.IsNotEqual, position, string = "!=").also { position += 2 }
                     }
+                } else if (lookAhead() == '!') {
+                    Token(syntaxTree, SyntaxType.DoubleBang, position, string = "!!").also { position += 2 }
                 } else {
-                    Token(syntaxTree, SyntaxType.Not, position++, string = "!")
+                    Token(syntaxTree, SyntaxType.Bang, position++, string = "!")
                 }
             }
+            '?' -> Token(syntaxTree, SyntaxType.QuestionMark, position++, string = "?")
             '=' -> {
                 if (lookAhead() == '=') {
                     if (peek(2) == '=') {

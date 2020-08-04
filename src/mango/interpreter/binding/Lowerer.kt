@@ -1,6 +1,7 @@
 package mango.interpreter.binding
 
-import mango.interpreter.binding.nodes.BoundBinaryOperator
+import mango.interpreter.binding.nodes.BoundBiOperator
+import mango.interpreter.binding.nodes.BoundNodeType
 import mango.interpreter.binding.nodes.expressions.*
 import mango.interpreter.binding.nodes.statements.*
 import mango.interpreter.symbols.TypeSymbol
@@ -8,6 +9,7 @@ import mango.interpreter.symbols.VariableSymbol
 import mango.interpreter.syntax.SyntaxType
 import java.util.*
 import kotlin.collections.ArrayList
+import kotlin.collections.HashSet
 
 class Lowerer : BoundTreeRewriter() {
 
@@ -33,10 +35,38 @@ class Lowerer : BoundTreeRewriter() {
             val arrayList = ArrayList<BoundStatement>()
             val stack = Stack<BoundStatement>()
             stack.push(statement)
+            val variableNames = HashSet<String>()
+
             while (stack.count() > 0) {
                 val current = stack.pop()
                 if (current is BoundBlockStatement) {
                     for (s in current.statements.reversed()) {
+                        var s = s
+                        when (s.boundType) {
+                            BoundNodeType.VariableDeclaration -> {
+                                s as BoundVariableDeclaration
+                                if (!variableNames.add(s.variable.realName)) {
+                                    var string = s.variable.realName
+                                    while (!variableNames.add(string)) {
+                                        string = ".l_$string"
+                                    }
+                                    s.variable.realName = string
+                                }
+                                s = BoundVariableDeclaration(s.variable, flattenExpression(s.initializer, stack, variableNames))
+                            }
+                            BoundNodeType.ExpressionStatement -> {
+                                s as BoundExpressionStatement
+                                s = BoundExpressionStatement(flattenExpression(s.expression, stack, variableNames))
+                            }
+                            BoundNodeType.ConditionalGotoStatement -> {
+                                s as BoundConditionalGotoStatement
+                                s = BoundConditionalGotoStatement(s.label, flattenExpression(s.condition, stack, variableNames), s.jumpIfTrue)
+                            }
+                            BoundNodeType.ReturnStatement -> {
+                                s as BoundReturnStatement
+                                s = BoundReturnStatement(s.expression?.let { flattenExpression(it, stack, variableNames) })
+                            }
+                        }
                         stack.push(s)
                     }
                 } else {
@@ -44,6 +74,68 @@ class Lowerer : BoundTreeRewriter() {
                 }
             }
             return BoundBlockStatement(arrayList)
+        }
+
+        private fun flattenExpression(expression: BoundExpression, stack: Stack<BoundStatement>, variableNames: HashSet<String>): BoundExpression {
+            return when (expression.boundType) {
+                BoundNodeType.UnaryExpression -> {
+                    expression as BoundUnaryExpression
+                    BoundUnaryExpression(expression.operator, flattenExpression(expression.operand, stack, variableNames))
+                }
+                BoundNodeType.BinaryExpression -> {
+                    expression as BoundBinaryExpression
+                    BoundBinaryExpression(flattenExpression(expression.left, stack, variableNames), expression.operator, flattenExpression(expression.right, stack, variableNames))
+                }
+                BoundNodeType.AssignmentExpression -> {
+                    expression as BoundAssignmentExpression
+                    BoundAssignmentExpression(expression.variable, flattenExpression(expression.expression, stack, variableNames))
+                }
+                BoundNodeType.CallExpression -> {
+                    expression as BoundCallExpression
+                    BoundCallExpression(expression.symbol, expression.arguments.map { flattenExpression(it, stack, variableNames) })
+                }
+                BoundNodeType.CastExpression -> {
+                    expression as BoundCastExpression
+                    BoundCastExpression(expression.type, flattenExpression(expression.expression, stack, variableNames))
+                }
+                BoundNodeType.BlockExpression -> {
+                    expression as BoundBlockExpression
+                    for (i in expression.statements.indices) {
+                        var s = expression.statements.elementAt(i)
+                        when (s.boundType) {
+                            BoundNodeType.VariableDeclaration -> {
+                                s as BoundVariableDeclaration
+                                if (!variableNames.add(s.variable.realName)) {
+                                    var string = s.variable.realName
+                                    while (!variableNames.add(string)) {
+                                        string = ".l_$string"
+                                    }
+                                    s.variable.realName = string
+                                }
+                                s = BoundVariableDeclaration(s.variable, flattenExpression(s.initializer, stack, variableNames))
+                            }
+                            BoundNodeType.ExpressionStatement -> {
+                                s as BoundExpressionStatement
+                                if (i == expression.statements.size - 1) {
+                                    return flattenExpression(s.expression, stack, variableNames)
+                                }
+                                s = BoundExpressionStatement(flattenExpression(s.expression, stack, variableNames))
+                            }
+                            BoundNodeType.ConditionalGotoStatement -> {
+                                s as BoundConditionalGotoStatement
+                                s = BoundConditionalGotoStatement(s.label, flattenExpression(s.condition, stack, variableNames), s.jumpIfTrue)
+                            }
+                            BoundNodeType.ReturnStatement -> {
+                                s as BoundReturnStatement
+                                s = BoundReturnStatement(s.expression?.let { flattenExpression(it, stack, variableNames) })
+                            }
+                        }
+                        stack.push(s)
+                    }
+                    expression
+                }
+                else -> expression
+            }
         }
 
         private fun removeDeadCode(block: BoundBlockStatement): BoundBlockStatement {
@@ -71,23 +163,23 @@ class Lowerer : BoundTreeRewriter() {
         val upperBoundSymbol = VariableSymbol.local("0upperBound", TypeSymbol.Int, true, node.upperBound.constantValue)
         val upperBoundDeclaration = BoundVariableDeclaration(upperBoundSymbol, node.upperBound)
         val condition = BoundBinaryExpression(
-                variableExpression,
-                BoundBinaryOperator.bind(SyntaxType.IsEqualOrLess, TypeSymbol.Int, TypeSymbol.Int)!!,
-                BoundVariableExpression(upperBoundSymbol)
+            variableExpression,
+            BoundBiOperator.bind(SyntaxType.IsEqualOrLess, TypeSymbol.Int, TypeSymbol.Int)!!,
+            BoundVariableExpression(upperBoundSymbol)
         )
         val continueLabelStatement = BoundLabelStatement(node.continueLabel)
         val increment = BoundExpressionStatement(BoundAssignmentExpression(
-                node.variable,
-                BoundBinaryExpression(
-                    variableExpression,
-                    BoundBinaryOperator.bind(SyntaxType.Plus, TypeSymbol.Int, TypeSymbol.Int)!!,
-                    BoundLiteralExpression(1, TypeSymbol.I32)
-                )
+            node.variable,
+            BoundBinaryExpression(
+                variableExpression,
+                BoundBiOperator.bind(SyntaxType.Plus, TypeSymbol.Int, TypeSymbol.Int)!!,
+                BoundLiteralExpression(1, TypeSymbol.I32)
+            )
         ))
         val body = BoundBlockStatement(listOf(
-                node.body,
-                continueLabelStatement,
-                increment
+            node.body,
+            continueLabelStatement,
+            increment
         ))
         val whileStatement = BoundWhileStatement(condition, body, node.breakLabel, generateLabel())
         val result = BoundBlockStatement(listOf(variableDeclaration, upperBoundDeclaration, whileStatement))
@@ -111,12 +203,12 @@ class Lowerer : BoundTreeRewriter() {
         val elseLabelStatement = BoundLabelStatement(elseLabel)
         val endLabelStatement = BoundLabelStatement(endLabel)
         val result = BoundBlockStatement(listOf(
-                gotoFalse,
-                node.statement,
-                gotoEnd,
-                elseLabelStatement,
-                node.elseStatement,
-                endLabelStatement
+            gotoFalse,
+            node.statement,
+            gotoEnd,
+            elseLabelStatement,
+            node.elseStatement,
+            endLabelStatement
         ))
         return rewriteStatement(result)
     }
@@ -129,12 +221,12 @@ class Lowerer : BoundTreeRewriter() {
         val gotoTrue = BoundConditionalGotoStatement(node.continueLabel, node.condition, true)
         val breakLabelStatement = BoundLabelStatement(node.breakLabel)
         return BoundBlockStatement(listOf(
-                gotoCheck,
-                continueLabelStatement,
-                rewriteBlockStatement(node.body),
-                checkLabelStatement,
-                rewriteConditionalGotoStatement(gotoTrue),
-                breakLabelStatement
+            gotoCheck,
+            continueLabelStatement,
+            rewriteBlockStatement(node.body),
+            checkLabelStatement,
+            rewriteConditionalGotoStatement(gotoTrue),
+            breakLabelStatement
         ))
     }
 

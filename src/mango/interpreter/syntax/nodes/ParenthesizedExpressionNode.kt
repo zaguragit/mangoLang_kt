@@ -7,9 +7,9 @@ import mango.interpreter.syntax.SyntaxTree
 class ParenthesizedExpressionNode(
         syntaxTree: SyntaxTree,
         val open: Token,
-        val expression: ExpressionNode,
+        val expression: Node,
         val closed: Token
-) : ExpressionNode(syntaxTree) {
+) : Node(syntaxTree) {
     override val kind = SyntaxType.ParenthesizedExpression
     override val children
         get() = listOf(open, expression, closed)

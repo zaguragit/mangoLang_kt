@@ -7,8 +7,8 @@ import mango.interpreter.syntax.SyntaxTree
 class UnaryExpressionNode(
         syntaxTree: SyntaxTree,
         val operator: Token,
-        val operand: ExpressionNode
-) : ExpressionNode(syntaxTree) {
+        val operand: Node
+) : Node(syntaxTree) {
     override val kind: SyntaxType = SyntaxType.UnaryExpression
     override val children: Collection<Node>
         get() = listOf(operator, operand)

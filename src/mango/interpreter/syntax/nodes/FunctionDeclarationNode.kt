@@ -12,7 +12,7 @@ class FunctionDeclarationNode(
     val typeClause: TypeClauseNode?,
     val params: SeparatedNodeList<ParameterNode>?,
     val lambdaArrow: Token?,
-    val body: StatementNode?,
+    val body: Node?,
     val annotations: Collection<AnnotationNode>,
     val extensionType: TypeClauseNode?
 ) : TopLevelNode(syntaxTree) {

@@ -21,6 +21,8 @@ enum class SyntaxType {
     NameExpression,
     AssignmentExpression,
     CallExpression,
+    IndexExpression,
+    UnsafeBlock,
 
     // Literals
     I8,
@@ -32,7 +34,6 @@ enum class SyntaxType {
     String,
 
     // Statements
-    BlockStatement,
     ExpressionStatement,
     IfStatement,
     WhileStatement,
@@ -46,6 +47,8 @@ enum class SyntaxType {
     NamespaceStatement,
 
     ReplStatement,
+
+    Block,
 
     // Brackets
     OpenRoundedBracket,
@@ -66,7 +69,7 @@ enum class SyntaxType {
     BitOr,
     LogicAnd,
     LogicOr,
-    Not,
+    Bang,
     LessThan,
     MoreThan,
     IsEqual,
@@ -77,6 +80,8 @@ enum class SyntaxType {
     IsNotIdentityEqual,
     In,
     Range,
+    DoubleBang,
+    QuestionMark,
 
     // Assignment operators
     Equals,
@@ -117,6 +122,8 @@ enum class SyntaxType {
 
     Use,
 
+    Unsafe,
+
     SingleLineComment,
     MultilineComment;
 
@@ -133,7 +140,7 @@ enum class SyntaxType {
     }
 
     fun getUnaryOperatorPrecedence() = when (this) {
-        Plus, Minus, Not -> 9
+        Plus, Minus, Bang -> 9
         else -> 0
     }
 }

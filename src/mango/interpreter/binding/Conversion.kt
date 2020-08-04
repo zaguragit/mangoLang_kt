@@ -1,5 +1,6 @@
 package mango.interpreter.binding
 
+import mango.interpreter.symbols.Symbol
 import mango.interpreter.symbols.TypeSymbol
 
 enum class Conversion(
@@ -15,20 +16,12 @@ enum class Conversion(
 
     companion object {
         fun classify(from: TypeSymbol, to: TypeSymbol): Conversion {
-            if (from == to) {
-                return Identity
+            return when {
+                from == to -> Identity
+                from.isOfType(to) -> Implicit
+                from.kind == Symbol.Kind.Struct && to.kind == Symbol.Kind.Struct -> Explicit
+                else -> None
             }
-            if (from == TypeSymbol.Int || from == TypeSymbol.Bool) {
-                if (to == TypeSymbol.String) {
-                    return Explicit
-                }
-            }
-            if (from == TypeSymbol.String) {
-                if (to == TypeSymbol.Int || to == TypeSymbol.Bool) {
-                    return Explicit
-                }
-            }
-            return None
         }
     }
 }

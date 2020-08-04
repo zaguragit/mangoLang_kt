@@ -1,7 +1,6 @@
 package mango.compilation.headers
 
 import mango.compilation.Emitter
-import mango.interpreter.binding.Binder
 import mango.interpreter.binding.BoundNamespace
 import mango.interpreter.binding.BoundProgram
 import mango.interpreter.binding.nodes.statements.BoundBlockStatement
