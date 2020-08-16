@@ -7,10 +7,8 @@ import mango.interpreter.binding.Binder
 import mango.interpreter.binding.BoundGlobalScope
 import mango.interpreter.binding.BoundProgram
 import mango.interpreter.symbols.FunctionSymbol
-import mango.interpreter.symbols.VariableSymbol
 import mango.interpreter.syntax.SyntaxTree
 import mango.isProject
-import mango.isRepl
 import mango.isSharedLib
 import mango.useStd
 import java.io.File

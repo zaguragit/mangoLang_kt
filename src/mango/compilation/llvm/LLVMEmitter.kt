@@ -126,7 +126,7 @@ object LLVMEmitter : Emitter {
                     }
                 }
             }
-            builder.globalVariable((v.variable as VisibleSymbol).mangledName(), LLVMType.get(v.variable.type), value!!.code)
+            builder.globalVariable((v.variable as VisibleSymbol).mangledName(), LLVMType[v.variable.type], value!!.code)
         }
         return builder.code()
     }
@@ -231,7 +231,7 @@ object LLVMEmitter : Emitter {
     ): LLVMInstruction? = when (expression.kind) {
         BoundNodeType.CallExpression -> {
             expression as BoundCallExpression
-            val type = if (expression.type.kind == Symbol.Kind.Struct) LLVMType.Ptr(LLVMType[expression.type]) else LLVMType.get(expression.type)
+            val type = if (expression.type.kind == Symbol.Kind.Struct) LLVMType.Ptr(LLVMType[expression.type]) else LLVMType[expression.type]
             val function = expression.symbol
             Call(type, function, *Array(expression.arguments.size) {
                 emitValue(block, expression.arguments.elementAt(it))!!

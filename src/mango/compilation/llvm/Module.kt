@@ -141,10 +141,10 @@ class ModuleBuilder {
 
     fun addImportedDeclaration (symbol: FunctionSymbol) {
         val returnType = if (symbol.returnType.kind == Symbol.Kind.Struct) {
-            LLVMType.Ptr(LLVMType.get(symbol.returnType))
-        } else LLVMType.get(symbol.returnType)
+            LLVMType.Ptr(LLVMType[symbol.returnType])
+        } else LLVMType[symbol.returnType]
         importedDeclarations.add("declare ${returnType.code} @\"${symbol.mangledName()}\"(${symbol.parameters.joinToString(", ") {
-            val type = LLVMType.get(it.type)
+            val type = LLVMType[it.type]
             (if (it.type.kind == Symbol.Kind.Struct)
                 LLVMType.Ptr(type)
             else type).code
@@ -157,7 +157,7 @@ class ModuleBuilder {
 
     fun createFunction (symbol: FunctionSymbol): FunctionBuilder {
         val function = FunctionBuilder(this, List(symbol.parameters.size) {
-            val type = LLVMType.get(symbol.parameters[it].type)
+            val type = LLVMType[symbol.parameters[it].type]
             (if (symbol.parameters[it].type.kind == Symbol.Kind.Struct)
                 LLVMType.Ptr(type)
             else type)

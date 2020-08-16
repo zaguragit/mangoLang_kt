@@ -6,7 +6,6 @@ import mango.interpreter.symbols.Symbol
 import mango.interpreter.symbols.TypeSymbol
 import mango.util.EmitterError
 import java.util.*
-import kotlin.collections.HashMap
 
 data class Label(val name: String)
 

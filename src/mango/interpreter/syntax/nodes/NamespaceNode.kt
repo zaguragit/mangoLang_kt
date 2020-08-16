@@ -1,8 +1,7 @@
 package mango.interpreter.syntax.nodes
 
-import mango.interpreter.syntax.SyntaxType
 import mango.interpreter.syntax.SyntaxTree
-import mango.interpreter.syntax.Token
+import mango.interpreter.syntax.SyntaxType
 
 class NamespaceNode(
     syntaxTree: SyntaxTree,

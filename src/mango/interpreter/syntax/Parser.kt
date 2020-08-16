@@ -1,7 +1,6 @@
 package mango.interpreter.syntax
 
 import mango.compilation.DiagnosticList
-import mango.console.Console
 import mango.interpreter.syntax.nodes.*
 import mango.interpreter.text.SourceText
 import mango.interpreter.text.TextLocation

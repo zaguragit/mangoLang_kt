@@ -1,6 +1,5 @@
 package conf
 
-import mango.compilation.Diagnostic
 import mango.compilation.DiagnosticList
 import mango.interpreter.text.SourceText
 import mango.interpreter.text.TextLocation

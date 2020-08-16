@@ -2,7 +2,6 @@ package mango.interpreter.binding.nodes.expressions
 
 import mango.interpreter.binding.nodes.BoundNodeType
 import mango.interpreter.symbols.TypeSymbol
-import mango.interpreter.symbols.VariableSymbol
 
 class BoundStructFieldAccess(
     val struct: BoundExpression,
