@@ -5,5 +5,5 @@ import mango.interpreter.symbols.TypeSymbol
 
 class BoundErrorExpression : BoundExpression() {
     override val type = TypeSymbol.err
-    override val boundType = BoundNodeType.ErrorExpression
+    override val kind = BoundNodeType.ErrorExpression
 }

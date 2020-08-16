@@ -6,7 +6,7 @@ import mango.interpreter.symbols.TypeSymbol
 
 abstract class BoundNode {
 
-    abstract val boundType: BoundNodeType
+    abstract val kind: BoundNodeType
 
     private fun writeNestedExpression(builder: StringBuilder, indent: Int, parentPrecedence: Int, expression: BoundExpression) {
         when (expression) {
@@ -31,12 +31,12 @@ abstract class BoundNode {
 
     fun structureString(indent: Int = 0, sameLine: Boolean = false): String {
         val builder = StringBuilder()
-        if (!sameLine && boundType != BoundNodeType.LabelStatement) {
+        if (!sameLine && kind != BoundNodeType.LabelStatement) {
             for (t in 0 until indent) {
                 builder.append("    ")
             }
         }
-        when (boundType) {
+        when (kind) {
             BoundNodeType.UnaryExpression -> {
                 this as BoundUnaryExpression
                 val precedence = operator.syntaxType.getUnaryOperatorPrecedence()
@@ -106,7 +106,7 @@ abstract class BoundNode {
             }
             BoundNodeType.ErrorExpression -> {
                 this as BoundErrorExpression
-                builder.append("ERROR")
+                builder.append("// ERROR")
             }
             BoundNodeType.CastExpression -> {
                 this as BoundCastExpression
@@ -115,6 +115,30 @@ abstract class BoundNode {
                 builder.append(expression.structureString(indent + 1, true))
                 builder.append(')')
             }
+            BoundNodeType.NamespaceFieldAccess -> {
+                this as BoundNamespaceFieldAccess
+                builder.append("// ERROR")
+            }
+            BoundNodeType.StructFieldAccess -> {
+                this as BoundStructFieldAccess
+                builder.append(struct.structureString(indent + 1, true))
+                builder.append('.')
+                builder.append(field.name)
+            }
+            BoundNodeType.ReferenceExpression -> {
+                this as BoundReference
+                builder.append('&')
+                builder.append(expression.structureString(indent + 1, true))
+            }
+            BoundNodeType.PointerAccessExpression -> {
+                this as BoundPointerAccess
+                builder.append(expression.structureString(indent + 1, true))
+                builder.append('[')
+                builder.append(i.structureString(indent + 1, true))
+                builder.append(']')
+            }
+
+
             BoundNodeType.BlockStatement -> {
                 this as BoundBlockStatement
                 builder.append('{')
@@ -217,6 +241,8 @@ enum class BoundNodeType {
     NamespaceFieldAccess,
     StructFieldAccess,
     BlockExpression,
+    ReferenceExpression,
+    PointerAccessExpression,
 
     BlockStatement,
     ExpressionStatement,

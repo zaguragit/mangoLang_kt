@@ -4,7 +4,9 @@ import mango.compilation.llvm.LLVMValue.LocalRef
 import mango.interpreter.symbols.FunctionSymbol
 import mango.interpreter.symbols.Symbol
 import mango.interpreter.symbols.TypeSymbol
+import mango.util.EmitterError
 import java.util.*
+import kotlin.collections.HashMap
 
 data class Label(val name: String)
 
@@ -38,8 +40,8 @@ class BlockBuilder(
     }
 
     fun getStructField(struct: LLVMValue, i: Int, field: TypeSymbol.StructTypeSymbol.Field): LLVMValue {
-        val loadedStruct = tmpVal(GetPtr((struct.type as LLVMType.Ptr).element, struct, LLVMValue.Int(i, LLVMType.I32))).ref
-        val type = LLVMType.valueOf(field.type)
+        val loadedStruct = tmpVal(GetPtr((struct.type as LLVMType.Ptr).element, struct, LLVMValue.Int(0, LLVMType.I64), LLVMValue.Int(i, LLVMType.I32))).ref
+        val type = LLVMType[field.type]
         return tmpVal(Load(loadedStruct, if (field.type.kind == Symbol.Kind.Struct) LLVMType.Ptr(type) else type)).ref
     }
 
@@ -54,9 +56,9 @@ class BlockBuilder(
 
     inline fun jump(name: String) = addInstruction(Jmp(name))
 
-    inline fun alloc(type: LLVMType): LocalRef {
-        return tmpVal(Alloc(type)).ref
-    }
+    inline fun alloc(type: LLVMType) = tmpVal(Alloc(type)).ref
+
+    inline fun alloc(name: String, type: LLVMType) = tmpVal(name, Alloc(type)).ref
 
     fun code() = (if (name != null) "$name:\n    " else "") + instructions.joinToString(separator = "\n    ") { it.code }
 
@@ -65,7 +67,7 @@ class BlockBuilder(
     inline fun assignVar(variable: Var, value: LLVMValue) = addInstruction(Store(value, variable.ref))
 
     fun label(): Label {
-        if (name == null) throw UnsupportedOperationException()
+        if (name == null) throw EmitterError("Label name can't be null")
         return Label(name)
     }
 
@@ -90,13 +92,14 @@ class FunctionBuilder(
     val symbol: FunctionSymbol
 ) {
     val returnType: LLVMType
+
     init {
-        val type = LLVMType.valueOf(symbol.type)
-        returnType = (if (symbol.type.kind == Symbol.Kind.Struct)
+        val type = LLVMType[symbol.returnType]
+        returnType = (if (symbol.returnType.kind == Symbol.Kind.Struct)
             LLVMType.Ptr(type)
         else type)
     }
-    //private val variables = LinkedList<Alloc>()
+
     private val blocks = LinkedList<BlockBuilder>()
     private val attributes = LinkedList<String>()
 
@@ -130,7 +133,7 @@ class FunctionBuilder(
 
     fun paramReference (index: Int): LLVMValue {
         if (index < 0 || index >= paramTypes.size) {
-            throw IllegalArgumentException("Expected an index between 0 and ${paramTypes.size - 1}, found $index")
+            throw EmitterError("Expected an index between 0 and ${paramTypes.size - 1}, found $index")
         }
         val type = paramTypes[index]
         return LocalRef("$index", type)

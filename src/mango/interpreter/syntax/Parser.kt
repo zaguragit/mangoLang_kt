@@ -1,6 +1,7 @@
 package mango.interpreter.syntax
 
 import mango.compilation.DiagnosticList
+import mango.console.Console
 import mango.interpreter.syntax.nodes.*
 import mango.interpreter.text.SourceText
 import mango.interpreter.text.TextLocation
@@ -93,7 +94,7 @@ class Parser(
     private fun parseAnnotations(): Collection<AnnotationNode> {
         val list = ArrayList<AnnotationNode>()
         var lastAnnotationLine = 0
-        while (current.kind == SyntaxType.OpenSquareBracket) {
+        while (current.kind == SyntaxType.OpenBracket) {
             val left = next()
             if (left.location.startLineI > lastAnnotationLine + 1 && list.isNotEmpty()) {
                 val last = list.last()
@@ -109,7 +110,7 @@ class Parser(
                     expression = parseStringLiteral()
                 }
                 skipSeparators()
-                val right = match(SyntaxType.ClosedSquareBracket)
+                val right = match(SyntaxType.ClosedBracket)
                 if (current.kind == SyntaxType.LineSeparator) {
                     position++
                 }
@@ -135,18 +136,17 @@ class Parser(
         val identifier = match(SyntaxType.Identifier)
 
         var params: SeparatedNodeList<ParameterNode>? = null
-        skipSeparators()
-        if (current.kind == SyntaxType.OpenRoundedBracket) {
+        if (current.kind == SyntaxType.OpenParentheses) {
             position++
             params = parseParamList()
-            match(SyntaxType.ClosedRoundedBracket)
+            match(SyntaxType.ClosedParentheses)
         }
 
-        skipSeparators()
         var type: TypeClauseNode? = null
         if (current.kind == SyntaxType.Identifier) {
             type = parseTypeClause()
         }
+        skipSeparators()
         return if (annotations.find { it.identifier.string == "extern" } == null) {
             skipSeparators()
             var lambdaArrow: Token? = null
@@ -167,7 +167,7 @@ class Parser(
         val nodesNSeparators = ArrayList<Node>()
 
         while (
-            current.kind != SyntaxType.ClosedRoundedBracket &&
+            current.kind != SyntaxType.ClosedParentheses &&
             current.kind != SyntaxType.EOF
         ) {
             val param = parseParam()
@@ -245,13 +245,13 @@ class Parser(
         val keyword = match(SyntaxType.NamespaceToken)
         val identifier = match(SyntaxType.Identifier)
 
-        val openBrace = match(SyntaxType.OpenCurlyBracket)
+        val openBrace = match(SyntaxType.OpenBrace)
 
         val statements = ArrayList<TopLevelNode>()
 
         while (
             current.kind != SyntaxType.EOF &&
-            current.kind != SyntaxType.ClosedCurlyBracket
+            current.kind != SyntaxType.ClosedBrace
         ) {
             skipSeparators()
             val startToken = current
@@ -266,7 +266,7 @@ class Parser(
             }
         }
 
-        val closedBrace = match(SyntaxType.ClosedCurlyBracket)
+        val closedBrace = match(SyntaxType.ClosedBrace)
         return NamespaceStatementNode(syntaxTree, keyword, identifier, openBrace, statements, closedBrace)
     }
 
@@ -322,12 +322,12 @@ class Parser(
 
     private fun parseBlock(): BlockNode {
         val statements = ArrayList<Node>()
-        val openBrace = match(SyntaxType.OpenCurlyBracket)
+        val openBrace = match(SyntaxType.OpenBrace)
 
         skipSeparators()
         while (
             current.kind != SyntaxType.EOF &&
-            current.kind != SyntaxType.ClosedCurlyBracket
+            current.kind != SyntaxType.ClosedBrace
         ) {
             skipSeparators()
             val startToken = current
@@ -342,7 +342,7 @@ class Parser(
             }
         }
 
-        val closedBrace = match(SyntaxType.ClosedCurlyBracket)
+        val closedBrace = match(SyntaxType.ClosedBrace)
         return BlockNode(syntaxTree, openBrace, statements, closedBrace)
     }
 
@@ -421,18 +421,45 @@ class Parser(
     }
 
     private fun parseBinaryExpression(parentPrecedence: Int = 0): Node {
-        var left: Node
 
         val unaryOperatorPrecedence = current.kind.getUnaryOperatorPrecedence()
-        left = if (unaryOperatorPrecedence != 0 && unaryOperatorPrecedence >= parentPrecedence) {
+
+        var left = if (unaryOperatorPrecedence != 0 && unaryOperatorPrecedence >= parentPrecedence) {
             val operatorToken = next()
-            val operand = parseBinaryExpression(unaryOperatorPrecedence)
+            //println("is here")
+            var operand = parseBinaryExpression(unaryOperatorPrecedence)
+            if (current.kind == SyntaxType.OpenBracket) {
+                /*println()
+                println("PRE")
+                println(parentPrecedence)
+                println(SyntaxType.Dot.getBinaryOperatorPrecedence())
+                println()*/
+                if (parentPrecedence != SyntaxType.Dot.getBinaryOperatorPrecedence()) {
+                    val open = match(SyntaxType.OpenBracket)
+                    val arguments = parseArguments()
+                    val closed = match(SyntaxType.ClosedBracket)
+                    operand = IndexExpressionNode(syntaxTree, operand, open, arguments, closed)
+                }
+            }
             UnaryExpressionNode(syntaxTree, operatorToken, operand)
         } else {
-            parseSecondaryExpression()
+            val primary = parsePrimaryExpression()
+            primary
         }
 
         while (true) {
+            if (current.kind == SyntaxType.OpenBracket) {
+                /*println()
+                println(parentPrecedence)
+                println(SyntaxType.Dot.getBinaryOperatorPrecedence())*/
+                if (parentPrecedence != SyntaxType.Dot.getBinaryOperatorPrecedence()) {
+                    //println(parentPrecedence != SyntaxType.Dot.getBinaryOperatorPrecedence())
+                    val open = match(SyntaxType.OpenBracket)
+                    val arguments = parseArguments()
+                    val closed = match(SyntaxType.ClosedBracket)
+                    left = IndexExpressionNode(syntaxTree, left, open, arguments, closed)
+                }
+            }
             val precedence = current.kind.getBinaryOperatorPrecedence()
             if (precedence == 0 || precedence <= parentPrecedence)
                 break
@@ -440,11 +467,12 @@ class Parser(
             val right = parseBinaryExpression(precedence)
             left = BinaryExpressionNode(syntaxTree, left, operatorToken, right)
         }
+
         return left
     }
 
     private fun parsePrimaryExpression() = when (current.kind) {
-        SyntaxType.OpenRoundedBracket -> parseParenthesizedExpression()
+        SyntaxType.OpenParentheses -> parseParenthesizedExpression()
         SyntaxType.False, SyntaxType.True -> parseBooleanLiteral()
         SyntaxType.I8,
         SyntaxType.I16,
@@ -455,25 +483,25 @@ class Parser(
         SyntaxType.String -> parseStringLiteral()
         SyntaxType.In -> parseIntLiteral()
         SyntaxType.Unsafe -> parseUnsafeExpression()
-        SyntaxType.OpenCurlyBracket -> parseBlock()
+        SyntaxType.OpenBrace -> parseBlock()
         else -> parseNameExpression()
     }
 
     private fun parseSecondaryExpression(): Node {
         val primary = parsePrimaryExpression()
-        if (current.kind == SyntaxType.OpenSquareBracket) {
-            val open = match(SyntaxType.OpenSquareBracket)
+        if (current.kind == SyntaxType.OpenBracket) {
+            val open = match(SyntaxType.OpenBracket)
             val arguments = parseArguments()
-            val closed = match(SyntaxType.ClosedSquareBracket)
+            val closed = match(SyntaxType.ClosedBracket)
             return IndexExpressionNode(syntaxTree, primary, open, arguments, closed)
         }
         return primary
     }
 
     private fun parseParenthesizedExpression(): ParenthesizedExpressionNode {
-        val left = match(SyntaxType.OpenRoundedBracket)
+        val left = match(SyntaxType.OpenParentheses)
         val expression = parseExpression()
-        val right = match(SyntaxType.ClosedRoundedBracket)
+        val right = match(SyntaxType.ClosedParentheses)
         return ParenthesizedExpressionNode(syntaxTree, left, expression, right)
     }
 
@@ -520,10 +548,10 @@ class Parser(
     private fun parseNameExpression(): Node {
         val identifier = match(SyntaxType.Identifier)
         return when (peek(0).kind) {
-            SyntaxType.OpenRoundedBracket -> {
-                val leftBracket = match(SyntaxType.OpenRoundedBracket)
+            SyntaxType.OpenParentheses -> {
+                val leftBracket = match(SyntaxType.OpenParentheses)
                 val arguments = parseArguments()
-                val rightBracket = match(SyntaxType.ClosedRoundedBracket)
+                val rightBracket = match(SyntaxType.ClosedParentheses)
                 CallExpressionNode(syntaxTree, identifier, leftBracket, arguments, rightBracket)
             }
             else -> NameExpressionNode(syntaxTree, identifier)
@@ -535,7 +563,7 @@ class Parser(
         val nodesNSeparators = ArrayList<Node>()
 
         while (
-            current.kind != SyntaxType.ClosedRoundedBracket &&
+            current.kind != SyntaxType.ClosedParentheses &&
             current.kind != SyntaxType.EOF
         ) {
             val expression = parseExpression()

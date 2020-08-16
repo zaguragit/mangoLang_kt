@@ -60,12 +60,12 @@ class Lexer(
                     Token(syntaxTree, SyntaxType.BitOr, position++, string = "|")
                 }
             }
-            '(' -> Token(syntaxTree, SyntaxType.OpenRoundedBracket, position++, string = "(")
-            ')' -> Token(syntaxTree, SyntaxType.ClosedRoundedBracket, position++, string = ")")
-            '{' -> Token(syntaxTree, SyntaxType.OpenCurlyBracket, position++, string = "{")
-            '}' -> Token(syntaxTree, SyntaxType.ClosedCurlyBracket, position++, string = "}")
-            '[' -> Token(syntaxTree, SyntaxType.OpenSquareBracket, position++, string = "[")
-            ']' -> Token(syntaxTree, SyntaxType.ClosedSquareBracket, position++, string = "]")
+            '(' -> Token(syntaxTree, SyntaxType.OpenParentheses, position++, string = "(")
+            ')' -> Token(syntaxTree, SyntaxType.ClosedParentheses, position++, string = ")")
+            '{' -> Token(syntaxTree, SyntaxType.OpenBrace, position++, string = "{")
+            '}' -> Token(syntaxTree, SyntaxType.ClosedBrace, position++, string = "}")
+            '[' -> Token(syntaxTree, SyntaxType.OpenBracket, position++, string = "[")
+            ']' -> Token(syntaxTree, SyntaxType.ClosedBracket, position++, string = "]")
             '!' -> {
                 if (lookAhead() == '=') {
                     if (peek(2) == '=') {
@@ -160,6 +160,7 @@ class Lexer(
                     }
                     'f' -> {
                         isDouble = false
+                        isFloat = true
                         position++
                         break@loop
                     }

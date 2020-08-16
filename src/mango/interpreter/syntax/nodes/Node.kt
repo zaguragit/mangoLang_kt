@@ -32,10 +32,10 @@ abstract class Node(val syntaxTree: SyntaxTree) {
         if (this is Token) {
             print(Console.CYAN_BRIGHT)
             print(kind.name)
-            if (value != null) {
+            if (string != null) {
                 print(" ")
                 print(Console.GREEN_BOLD_BRIGHT)
-                print(value)
+                print(string)
             }
         } else {
             print(Console.RESET)

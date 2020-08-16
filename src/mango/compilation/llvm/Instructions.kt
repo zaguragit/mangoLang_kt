@@ -73,11 +73,12 @@ data class Icmp(
 }
 
 class TmpVal(
-    val name: String,
+    name: String,
     val value: LLVMInstruction
 ) : LLVMInstruction {
     override val code get(): String = "%$name = ${value.code}"
-    val ref get() = LocalRef(name, value.type)
+    val ref = LocalRef(name, value.type)
+    val name get() = ref.name
     override val type get() = value.type
 }
 
@@ -90,11 +91,17 @@ class Store(
 }
 
 class GetPtr(
-    override val type: LLVMType,
+    val privType: LLVMType,
     val pointer: LLVMValue,
-    val index: LLVMValue
+    val pointerI: LLVMValue,
+    val fieldI: LLVMValue? = null
 ) : LLVMInstruction {
-    override val code get() = "getelementptr inbounds ${type.code}, ${pointer.type.code} ${pointer.code}, i64 0, ${index.type.code} ${index.code}"
+    override val type = LLVMType.Ptr(privType)
+    override val code get() = "getelementptr inbounds ${privType.code}, ${pointer.type.code} ${pointer.code}, ${pointerI.type.code} ${pointerI.code}".let {
+        if (fieldI == null) it else {
+            it + ", ${fieldI.type.code} ${fieldI.code}"
+        }
+    }
 }
 
 class Call(

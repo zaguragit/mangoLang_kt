@@ -8,6 +8,7 @@ import mango.interpreter.binding.nodes.expressions.BoundUnaryExpression
 import mango.interpreter.binding.nodes.statements.*
 import mango.interpreter.symbols.TypeSymbol
 import mango.interpreter.syntax.SyntaxType
+import mango.util.BinderError
 
 class ControlFlowGraph private constructor(
     val start: BasicBlock,
@@ -56,7 +57,7 @@ class ControlFlowGraph private constructor(
 
         fun build(block: BoundBlockStatement): ArrayList<BasicBlock> {
             for (statement in block.statements) {
-                when (statement.boundType) {
+                when (statement.kind) {
                     BoundNodeType.LabelStatement -> {
                         startBlock()
                         statements.add(statement)
@@ -72,7 +73,7 @@ class ControlFlowGraph private constructor(
                         statements.add(statement)
                     }
                     BoundNodeType.NopStatement -> {}
-                    else -> throw Exception("Unexpected statement ${statement.boundType}")
+                    else -> throw BinderError("Unexpected statement ${statement.kind}")
                 }
             }
             endBlock()
@@ -118,7 +119,7 @@ class ControlFlowGraph private constructor(
                 val next = blocks.getOrElse(i + 1) { end }
 
                 for (statement in block.statements) {
-                    when (statement.boundType) {
+                    when (statement.kind) {
                         BoundNodeType.GotoStatement -> {
                             statement as BoundGotoStatement
                             val toBlock = blockFromLabel[statement.label]!!
@@ -148,7 +149,7 @@ class ControlFlowGraph private constructor(
                             }
                         }
                         BoundNodeType.NopStatement -> {}
-                        else -> throw Exception("Unexpected statement ${statement.boundType}")
+                        else -> throw BinderError("Unexpected statement ${statement.kind}")
                     }
                 }
             }
@@ -243,7 +244,7 @@ class ControlFlowGraph private constructor(
 
             for (branch in graph.end.incoming) {
                 if (branch.from.statements.isEmpty() ||
-                    branch.from.statements.last().boundType != BoundNodeType.ReturnStatement) {
+                    branch.from.statements.last().kind != BoundNodeType.ReturnStatement) {
                     return false
                 }
             }

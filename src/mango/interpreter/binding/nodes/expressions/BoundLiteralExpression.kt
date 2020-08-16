@@ -18,7 +18,7 @@ class BoundLiteralExpression(
     }*/
 ) : BoundExpression() {
 
-    override val boundType = BoundNodeType.LiteralExpression
+    override val kind = BoundNodeType.LiteralExpression
     override fun toString() =
         if (type == TypeSymbol.String) { '"' + value.toString() + '"' }
         else { value.toString() }

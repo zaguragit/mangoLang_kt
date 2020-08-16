@@ -9,5 +9,5 @@ class BoundIfStatement(
         val elseStatement: BoundStatement?
 ) : BoundStatement() {
 
-    override val boundType = BoundNodeType.IfStatement
+    override val kind = BoundNodeType.IfStatement
 }

@@ -9,8 +9,8 @@ class BoundCallExpression(
 ) : BoundExpression() {
 
     override
-    val type get() = symbol.type
+    val type get() = symbol.returnType
 
     override
-    val boundType = BoundNodeType.CallExpression
+    val kind = BoundNodeType.CallExpression
 }

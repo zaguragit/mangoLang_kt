@@ -11,6 +11,6 @@ class BoundWhileStatement(
         continueLabel: BoundLabel
 ) : BoundLoopStatement(breakLabel, continueLabel) {
 
-    override val boundType
+    override val kind
         get() = BoundNodeType.WhileStatement
 }

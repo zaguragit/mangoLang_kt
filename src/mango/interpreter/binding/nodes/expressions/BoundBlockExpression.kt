@@ -9,5 +9,5 @@ class BoundBlockExpression(
     override val type: TypeSymbol
 ) : BoundExpression() {
 
-    override val boundType = BoundNodeType.BlockExpression
+    override val kind = BoundNodeType.BlockExpression
 }

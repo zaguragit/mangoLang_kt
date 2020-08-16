@@ -13,7 +13,7 @@ interface LLVMValue {
     }
 
     class LocalRef(
-        val name: String,
+        var name: String,
         val privType: LLVMType
     ) : LLVMValue {
         override val type get() = privType

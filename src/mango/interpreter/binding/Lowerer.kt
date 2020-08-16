@@ -42,7 +42,7 @@ class Lowerer : BoundTreeRewriter() {
                 if (current is BoundBlockStatement) {
                     for (s in current.statements.reversed()) {
                         var s = s
-                        when (s.boundType) {
+                        when (s.kind) {
                             BoundNodeType.VariableDeclaration -> {
                                 s as BoundVariableDeclaration
                                 if (!variableNames.add(s.variable.realName)) {
@@ -77,7 +77,7 @@ class Lowerer : BoundTreeRewriter() {
         }
 
         private fun flattenExpression(expression: BoundExpression, stack: Stack<BoundStatement>, variableNames: HashSet<String>): BoundExpression {
-            return when (expression.boundType) {
+            return when (expression.kind) {
                 BoundNodeType.UnaryExpression -> {
                     expression as BoundUnaryExpression
                     BoundUnaryExpression(expression.operator, flattenExpression(expression.operand, stack, variableNames))
@@ -102,7 +102,7 @@ class Lowerer : BoundTreeRewriter() {
                     expression as BoundBlockExpression
                     for (i in expression.statements.indices) {
                         var s = expression.statements.elementAt(i)
-                        when (s.boundType) {
+                        when (s.kind) {
                             BoundNodeType.VariableDeclaration -> {
                                 s as BoundVariableDeclaration
                                 if (!variableNames.add(s.variable.realName)) {

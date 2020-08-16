@@ -7,5 +7,5 @@ class BoundCastExpression(
     override val type: TypeSymbol,
     val expression: BoundExpression
 ) : BoundExpression() {
-    override val boundType = BoundNodeType.CastExpression
+    override val kind = BoundNodeType.CastExpression
 }

@@ -9,5 +9,5 @@ class BoundAssignmentExpression(
 ) : BoundExpression() {
 
     override val type get() = expression.type
-    override val boundType = BoundNodeType.AssignmentExpression
+    override val kind = BoundNodeType.AssignmentExpression
 }

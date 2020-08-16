@@ -51,12 +51,12 @@ enum class SyntaxType {
     Block,
 
     // Brackets
-    OpenRoundedBracket,
-    ClosedRoundedBracket,
-    OpenCurlyBracket,
-    ClosedCurlyBracket,
-    OpenSquareBracket,
-    ClosedSquareBracket,
+    OpenParentheses,
+    ClosedParentheses,
+    OpenBrace,
+    ClosedBrace,
+    OpenBracket,
+    ClosedBracket,
 
     // Operators
     Dot,
@@ -140,7 +140,7 @@ enum class SyntaxType {
     }
 
     fun getUnaryOperatorPrecedence() = when (this) {
-        Plus, Minus, Bang -> 9
+        Plus, Minus, Bang, BitAnd -> 9
         else -> 0
     }
 }

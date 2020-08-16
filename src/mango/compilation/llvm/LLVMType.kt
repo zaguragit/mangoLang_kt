@@ -2,6 +2,7 @@ package mango.compilation.llvm
 
 import mango.interpreter.symbols.Symbol
 import mango.interpreter.symbols.TypeSymbol
+import mango.util.EmitterError
 
 interface LLVMType {
     val code: String
@@ -10,8 +11,8 @@ interface LLVMType {
 
     companion object {
 
-        fun valueOf(type: TypeSymbol.StructTypeSymbol) = Struct(type.name)
-        fun valueOf(type: TypeSymbol): LLVMType {
+        operator fun get(type: TypeSymbol.StructTypeSymbol) = Struct(type.name)
+        operator fun get(type: TypeSymbol): LLVMType {
             return if (type.kind == Symbol.Kind.Struct) {
                 Struct(type.name)
             } else when (type.name) {
@@ -27,9 +28,9 @@ interface LLVMType {
                 TypeSymbol.Float.name -> Float
                 TypeSymbol.Double.name -> Double
                 TypeSymbol.Bool.name -> Bool
-                TypeSymbol.Ptr.name -> Ptr(valueOf(type.params[0]))
+                TypeSymbol.Ptr.name -> Ptr(get(type.params[0]))
                 TypeSymbol.Unit.name -> Void
-                else -> throw Exception("internal error: type unknown to LLVM (${type.name})")
+                else -> throw EmitterError("internal error: type unknown to LLVM (${type.name})")
             }
         }
     }
@@ -69,5 +70,12 @@ interface LLVMType {
         val name: String
     ) : LLVMType {
         override val code = "%.struct.$name"
+    }
+
+    class Fn(
+        val returnType: LLVMType,
+        args: Collection<LLVMType>
+    ) : LLVMType {
+        override val code = "${returnType.code} (${args.joinToString(", ") { it.code }})*"
     }
 }

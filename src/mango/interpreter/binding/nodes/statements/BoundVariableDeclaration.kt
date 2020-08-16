@@ -9,5 +9,5 @@ class BoundVariableDeclaration(
     val initializer: BoundExpression
 ) : BoundStatement() {
 
-    override val boundType = BoundNodeType.VariableDeclaration
+    override val kind = BoundNodeType.VariableDeclaration
 }

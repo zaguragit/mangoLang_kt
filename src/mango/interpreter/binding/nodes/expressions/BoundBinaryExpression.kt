@@ -11,7 +11,7 @@ class BoundBinaryExpression(
 ) : BoundExpression() {
 
     override val type get() = operator.resultType
-    override val boundType = BoundNodeType.BinaryExpression
+    override val kind = BoundNodeType.BinaryExpression
     override val constantValue = ConstantFolding.computeConstant(left, operator, right)
 }
 

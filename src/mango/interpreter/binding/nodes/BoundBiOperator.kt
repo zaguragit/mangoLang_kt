@@ -50,18 +50,18 @@ data class BoundBiOperator(
 
         private val intOperators = arrayOf(
 
-            BoundBiOperator(SyntaxType.Plus, Type.Add, TypeSymbol.AnyI),
-            BoundBiOperator(SyntaxType.Minus, Type.Sub, TypeSymbol.AnyI),
-            BoundBiOperator(SyntaxType.Star, Type.Mul, TypeSymbol.AnyI),
-            BoundBiOperator(SyntaxType.Div, Type.Div, TypeSymbol.AnyI),
+            BoundBiOperator(SyntaxType.Plus, Type.Add, TypeSymbol.Integer),
+            BoundBiOperator(SyntaxType.Minus, Type.Sub, TypeSymbol.Integer),
+            BoundBiOperator(SyntaxType.Star, Type.Mul, TypeSymbol.Integer),
+            BoundBiOperator(SyntaxType.Div, Type.Div, TypeSymbol.Integer),
 
-            BoundBiOperator(SyntaxType.LessThan, Type.LessThan, TypeSymbol.AnyI, resultType = TypeSymbol.Bool),
-            BoundBiOperator(SyntaxType.MoreThan, Type.MoreThan, TypeSymbol.AnyI, resultType = TypeSymbol.Bool),
-            BoundBiOperator(SyntaxType.IsEqualOrLess, Type.IsEqualOrLess, TypeSymbol.AnyI, resultType = TypeSymbol.Bool),
-            BoundBiOperator(SyntaxType.IsEqualOrMore, Type.IsEqualOrMore, TypeSymbol.AnyI, resultType = TypeSymbol.Bool),
+            BoundBiOperator(SyntaxType.LessThan, Type.LessThan, TypeSymbol.Integer, resultType = TypeSymbol.Bool),
+            BoundBiOperator(SyntaxType.MoreThan, Type.MoreThan, TypeSymbol.Integer, resultType = TypeSymbol.Bool),
+            BoundBiOperator(SyntaxType.IsEqualOrLess, Type.IsEqualOrLess, TypeSymbol.Integer, resultType = TypeSymbol.Bool),
+            BoundBiOperator(SyntaxType.IsEqualOrMore, Type.IsEqualOrMore, TypeSymbol.Integer, resultType = TypeSymbol.Bool),
 
-            BoundBiOperator(SyntaxType.BitAnd, Type.BitAnd, TypeSymbol.AnyI),
-            BoundBiOperator(SyntaxType.BitOr, Type.BitOr, TypeSymbol.AnyI)
+            BoundBiOperator(SyntaxType.BitAnd, Type.BitAnd, TypeSymbol.Integer),
+            BoundBiOperator(SyntaxType.BitOr, Type.BitOr, TypeSymbol.Integer)
         )
 
         fun bind(syntaxType: SyntaxType, leftType: TypeSymbol, rightType: TypeSymbol): BoundBiOperator? {
@@ -73,14 +73,16 @@ data class BoundBiOperator(
                     return null
                 }
             }
-            if (leftType.isOfType(TypeSymbol.AnyI) && rightType.isOfType(TypeSymbol.AnyI)) {
+            if (leftType.isOfType(TypeSymbol.Integer) && rightType.isOfType(TypeSymbol.Integer)) {
                 for (op in intOperators) {
                     if (op.syntaxType == syntaxType) {
-                        when (max(leftType.size, rightType.size)) {
-                            8 -> return op.copy(resultType = TypeSymbol.I8)
-                            16 -> return op.copy(resultType = TypeSymbol.I16)
-                            32 -> return op.copy(resultType = TypeSymbol.I32)
-                            64 -> return op.copy(resultType = TypeSymbol.I64)
+                        if (op.resultType == TypeSymbol.Integer) {
+                            when (max(leftType.size, rightType.size)) {
+                                8 -> return op.copy(resultType = TypeSymbol.I8)
+                                16 -> return op.copy(resultType = TypeSymbol.I16)
+                                32 -> return op.copy(resultType = TypeSymbol.I32)
+                                64 -> return op.copy(resultType = TypeSymbol.I64)
+                            }
                         }
                         return op
                     }

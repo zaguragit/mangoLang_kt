@@ -11,7 +11,7 @@ class BoundNamespaceFieldAccess(
 ) : BoundExpression() {
 
     override val type get() = TypeSymbol.err
-    override val boundType = BoundNodeType.NamespaceFieldAccess
+    override val kind = BoundNodeType.NamespaceFieldAccess
 
     override fun toString() = namespace.path
 }

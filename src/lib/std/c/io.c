@@ -12,6 +12,10 @@ Unit println (String* string) {
 	putchar('\n');
 }
 
+Unit flushPrint () {
+	fflush(stdout);
+}
+
 String* readln () {
 	String* string = malloc(sizeof(String));
     string->length = 0;

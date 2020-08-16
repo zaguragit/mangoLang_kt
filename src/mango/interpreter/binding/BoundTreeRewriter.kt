@@ -1,13 +1,15 @@
 package mango.interpreter.binding
 
 import mango.interpreter.binding.nodes.BoundNodeType
+import mango.interpreter.binding.nodes.expressions.BoundPointerAccess
 import mango.interpreter.binding.nodes.expressions.*
 import mango.interpreter.binding.nodes.statements.*
+import mango.util.BinderError
 
 open class BoundTreeRewriter {
 
     fun rewriteStatement(node: BoundStatement): BoundStatement {
-        return when (node.boundType) {
+        return when (node.kind) {
             BoundNodeType.BlockStatement -> rewriteBlockStatement(node as BoundBlockStatement)
             BoundNodeType.ExpressionStatement -> rewriteExpressionStatement(node as BoundExpressionStatement)
             BoundNodeType.VariableDeclaration -> rewriteVariableDeclaration(node as BoundVariableDeclaration)
@@ -19,7 +21,7 @@ open class BoundTreeRewriter {
             BoundNodeType.ConditionalGotoStatement -> rewriteConditionalGotoStatement(node as BoundConditionalGotoStatement)
             BoundNodeType.ReturnStatement -> rewriteReturnStatement(node as BoundReturnStatement)
             BoundNodeType.NopStatement -> rewriteNopStatement(node as BoundNopStatement)
-            else -> throw Exception("Unexpected node: ${node.boundType}")
+            else -> throw BinderError("Unexpected node: ${node.kind}")
         }
     }
 
@@ -111,20 +113,20 @@ open class BoundTreeRewriter {
         return node
     }
 
-    private fun rewriteExpression(node: BoundExpression): BoundExpression {
-        return when (node.boundType) {
-            BoundNodeType.UnaryExpression -> rewriteUnaryExpression(node as BoundUnaryExpression)
-            BoundNodeType.BinaryExpression -> rewriteBinaryExpression(node as BoundBinaryExpression)
-            BoundNodeType.LiteralExpression -> rewriteLiteralExpression(node as BoundLiteralExpression)
-            BoundNodeType.VariableExpression -> rewriteVariableExpression(node as BoundVariableExpression)
-            BoundNodeType.AssignmentExpression -> rewriteAssignmentExpression(node as BoundAssignmentExpression)
-            BoundNodeType.CallExpression -> rewriteCallExpression(node as BoundCallExpression)
-            BoundNodeType.CastExpression -> rewriteCastExpression(node as BoundCastExpression)
-            BoundNodeType.ErrorExpression -> node
-            BoundNodeType.StructFieldAccess -> rewriteStructFieldAccess(node as BoundStructFieldAccess)
-            BoundNodeType.BlockExpression -> rewriteBlockExpression(node as BoundBlockExpression)
-            else -> throw Exception("Unexpected node: ${node.boundType}")
-        }
+    private fun rewriteExpression(node: BoundExpression) = when (node.kind) {
+        BoundNodeType.UnaryExpression -> rewriteUnaryExpression(node as BoundUnaryExpression)
+        BoundNodeType.BinaryExpression -> rewriteBinaryExpression(node as BoundBinaryExpression)
+        BoundNodeType.LiteralExpression -> rewriteLiteralExpression(node as BoundLiteralExpression)
+        BoundNodeType.VariableExpression -> rewriteVariableExpression(node as BoundVariableExpression)
+        BoundNodeType.AssignmentExpression -> rewriteAssignmentExpression(node as BoundAssignmentExpression)
+        BoundNodeType.CallExpression -> rewriteCallExpression(node as BoundCallExpression)
+        BoundNodeType.CastExpression -> rewriteCastExpression(node as BoundCastExpression)
+        BoundNodeType.ErrorExpression -> node
+        BoundNodeType.StructFieldAccess -> rewriteStructFieldAccess(node as BoundStructFieldAccess)
+        BoundNodeType.BlockExpression -> rewriteBlockExpression(node as BoundBlockExpression)
+        BoundNodeType.ReferenceExpression -> rewriteReferenceExpression(node as BoundReference)
+        BoundNodeType.PointerAccessExpression -> rewritePointerAccessExpression(node as BoundPointerAccess)
+        else -> throw BinderError("Unexpected node: ${node.kind}")
     }
 
     protected open fun rewriteLiteralExpression(node: BoundLiteralExpression) = node
@@ -213,5 +215,22 @@ open class BoundTreeRewriter {
             return node
         }
         return BoundBlockExpression(statements, node.type)
+    }
+
+    protected fun rewriteReferenceExpression(node: BoundReference): BoundExpression {
+        val expression = rewriteVariableExpression(node.expression)
+        if (expression == node.expression) {
+            return node
+        }
+        return BoundReference(expression)
+    }
+
+    protected fun rewritePointerAccessExpression(node: BoundPointerAccess): BoundExpression {
+        val expression = rewriteExpression(node.expression)
+        val i = rewriteExpression(node.i)
+        if (expression == node.expression && i == node.i) {
+            return node
+        }
+        return BoundPointerAccess(expression, i)
     }
 }

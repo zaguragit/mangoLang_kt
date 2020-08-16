@@ -12,7 +12,7 @@ class BoundStructFieldAccess(
     inline val field get() = (struct.type as TypeSymbol.StructTypeSymbol).fields[i]
 
     override val type = field.type
-    override val boundType = BoundNodeType.StructFieldAccess
+    override val kind = BoundNodeType.StructFieldAccess
 
     override fun toString() = field.name
 }

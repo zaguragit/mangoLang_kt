@@ -14,5 +14,5 @@ class BoundForStatement(
         continueLabel: BoundLabel
 ) : BoundLoopStatement(breakLabel, continueLabel) {
 
-    override val boundType = BoundNodeType.ForStatement
+    override val kind = BoundNodeType.ForStatement
 }

@@ -2,6 +2,7 @@ package mango.compilation
 
 import mango.compilation.headers.HeaderEmitter
 import mango.compilation.llvm.LLVMEmitter
+import mango.console.Console
 import mango.interpreter.binding.Binder
 import mango.interpreter.binding.BoundGlobalScope
 import mango.interpreter.binding.BoundProgram
@@ -13,6 +14,7 @@ import mango.isRepl
 import mango.isSharedLib
 import mango.useStd
 import java.io.File
+import java.io.FileNotFoundException
 
 
 class Compilation(
@@ -77,8 +79,14 @@ class Compilation(
     fun emit(moduleName: String, outputPath: String, target: String, emissionType: EmissionType) {
         val program = getProgram()
         val code = LLVMEmitter.emit(program, moduleName)
+        val outFile = File(outputPath)
         if (emissionType == EmissionType.IR) {
-            return File(outputPath).writeText(code)
+            return try {
+                outFile.writeText(code)
+            } catch (e: FileNotFoundException) {
+                println(Console.RED + "Couldn't write to file $outputPath")
+                return
+            }
         }
         val llFile = File.createTempFile("mangoLang", ".ll").apply {
             deleteOnExit()
@@ -86,14 +94,14 @@ class Compilation(
         }
         when (emissionType) {
             EmissionType.Assembly -> {
-                File(outputPath).parentFile.mkdirs()
+                outFile.parentFile.mkdirs()
                 ProcessBuilder("llc", llFile.absolutePath, "-o=$outputPath", "-filetype=asm", "-relocation-model=pic").run {
                     inheritIO()
                     start().waitFor()
                 }
             }
             EmissionType.Object -> {
-                File(outputPath).parentFile.mkdirs()
+                outFile.parentFile.mkdirs()
                 ProcessBuilder("llc", llFile.absolutePath, "-o=$outputPath", "-filetype=obj", "-relocation-model=pic").run {
                     inheritIO()
                     start().waitFor()
@@ -107,7 +115,7 @@ class Compilation(
                         start().waitFor()
                     }
                 }
-                File(outputPath).parentFile.mkdirs()
+                outFile.parentFile.mkdirs()
                 if (isSharedLib) {
                     ProcessBuilder("gcc", objFile.absolutePath, "-o", outputPath, "-shared")
                     File(if (isProject) "out/headers.m" else outputPath.substringBeforeLast('/') + "/headers.m").run {

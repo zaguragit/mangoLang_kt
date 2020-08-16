@@ -1,5 +1,7 @@
 package mango.interpreter.symbols
 
+import mango.util.BinderError
+
 
 open class TypeSymbol private constructor(
     override val name: String,
@@ -32,6 +34,15 @@ open class TypeSymbol private constructor(
         )
     }
 
+    class Fn(
+        val returnType: TypeSymbol,
+        val args: Collection<TypeSymbol>
+    ) : TypeSymbol("Fn", Any) {
+        companion object {
+            val entry = Fn(Unit, listOf())
+        }
+    }
+
     companion object {
 
         val map = HashMap<String, TypeSymbol>()
@@ -39,18 +50,18 @@ open class TypeSymbol private constructor(
         val Any = TypeSymbol("Any", null, isBuiltin = true)
         val Primitive = TypeSymbol("Primitive", Any, isBuiltin = true)
 
-        val AnyI = TypeSymbol("!I", Primitive, isBuiltin = true)
-        val AnyU = TypeSymbol("!U", Primitive, isBuiltin = true)
+        val Integer = TypeSymbol("!I", Primitive, isBuiltin = true)
+        val UInteger = TypeSymbol("!U", Primitive, isBuiltin = true)
 
         val Ptr = TypeSymbol("Ptr", Primitive, 1, arrayOf(Any), isBuiltin = true)
 
-        val I8 = TypeSymbol("I8", AnyI, isBuiltin = true, size = 8)
+        val I8 = TypeSymbol("I8", Integer, isBuiltin = true, size = 8)
         //val U8 = TypeSymbol("U8", AnyU)
-        val I16 = TypeSymbol("I16", AnyI, isBuiltin = true, size = 16)
+        val I16 = TypeSymbol("I16", Integer, isBuiltin = true, size = 16)
         //val U16 = TypeSymbol("U16", AnyU)
-        val I32 = TypeSymbol("I32", AnyI, isBuiltin = true, size = 32)
+        val I32 = TypeSymbol("I32", Integer, isBuiltin = true, size = 32)
         //val U32 = TypeSymbol("U32", AnyU)
-        val I64 = TypeSymbol("I64", AnyI, isBuiltin = true, size = 64)
+        val I64 = TypeSymbol("I64", Integer, isBuiltin = true, size = 64)
         //val U64 = TypeSymbol("U64", AnyU)
 
         val Int = I32
@@ -66,24 +77,24 @@ open class TypeSymbol private constructor(
 
         val String = StructTypeSymbol("String", arrayOf(StructTypeSymbol.Field("length", Int), StructTypeSymbol.Field("chars", Ptr(arrayOf(I8)))), Any)
 
-        //val Fn = TypeSymbol("Fn", Any)
-
         val Unit = TypeSymbol("Unit", Any, isBuiltin = true)
 
         val err = TypeSymbol("!Err", null, isBuiltin = true)
 
+        //val Array = StructTypeSymbol("String", arrayOf(StructTypeSymbol.Field("length", Int), StructTypeSymbol.Field("chars", Ptr(arrayOf(I8)))), Any)
+
         operator fun get(name: String) = map[name]
     }
 
-    fun isOfType(other: TypeSymbol): Boolean = this == other || parentType?.isOfType(other) ?: false
+    fun isOfType(other: TypeSymbol): Boolean = this.name == other.name || parentType?.isOfType(other) ?: false
 
     operator fun invoke(params: Array<TypeSymbol>): TypeSymbol {
         if (params.size != paramCount) {
-            throw Exception("Wrong param count!")
+            throw BinderError("Wrong param count!")
         }
         for (i in params.indices) {
             if (!params[i].isOfType(this.params[i])) {
-                throw Exception("Parameters at position $i don't match!")
+                throw BinderError("Parameters at position $i don't match!")
             }
         }
         return TypeSymbol(name, parentType, paramCount, params)
@@ -91,7 +102,8 @@ open class TypeSymbol private constructor(
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
-        if (javaClass != other?.javaClass) return false
+        if (other === null) return false
+        if (javaClass != other.javaClass) return false
 
         other as TypeSymbol
 

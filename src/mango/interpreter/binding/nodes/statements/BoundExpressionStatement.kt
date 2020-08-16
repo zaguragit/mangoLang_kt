@@ -6,5 +6,5 @@ import mango.interpreter.binding.nodes.expressions.BoundExpression
 class BoundExpressionStatement(
     val expression: BoundExpression
 ) : BoundStatement() {
-    override val boundType = BoundNodeType.ExpressionStatement
+    override val kind = BoundNodeType.ExpressionStatement
 }

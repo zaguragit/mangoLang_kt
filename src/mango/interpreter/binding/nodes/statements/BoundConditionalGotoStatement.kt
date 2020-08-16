@@ -10,5 +10,5 @@ class BoundConditionalGotoStatement(
         val jumpIfTrue: Boolean
 ) : BoundStatement() {
 
-    override val boundType = BoundNodeType.ConditionalGotoStatement
+    override val kind = BoundNodeType.ConditionalGotoStatement
 }

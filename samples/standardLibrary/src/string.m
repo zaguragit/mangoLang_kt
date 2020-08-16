@@ -14,5 +14,9 @@ fn String.toInt Int -> this.toInt(10)
 
 [extern]
 [operator]
-[cname: "String$equals"]
+[cname: "stringEquals"]
 fn String.equals(other String) Bool
+
+[inline]
+[operator]
+fn String.get(i Int) I8 -> unsafe { this.chars[i] }

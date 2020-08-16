@@ -8,7 +8,7 @@ class BoundVariableExpression(
 ) : BoundExpression() {
 
     override val type = symbol.type
-    override val boundType = BoundNodeType.VariableExpression
+    override val kind = BoundNodeType.VariableExpression
 
     override fun toString() = symbol.name
 

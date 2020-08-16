@@ -10,12 +10,13 @@ abstract class Symbol {
     open val meta = MetaData()
 
     enum class Kind {
-        VisibleVariable,
         Variable,
+        VisibleVariable,
         Parameter,
-        Struct,
         Function,
-        Type
+        Type,
+        Struct,
+        FunctionType
     }
 
     override fun toString() = name
@@ -26,6 +27,7 @@ abstract class Symbol {
         Kind.Function -> printFunction()
         Kind.Type -> printType()
         Kind.Struct -> printStruct()
+        Kind.FunctionType -> printFnType()
     }
 
     private fun printVariable() {
@@ -81,6 +83,13 @@ abstract class Symbol {
             println()
         }
         print('}')
+    }
+
+    private fun printFnType() {
+        this as TypeSymbol.Fn
+        print("(")
+
+        print(")")
     }
 
     companion object {

@@ -10,7 +10,7 @@ class BoundUnaryExpression(
 ) : BoundExpression() {
 
     override val type = operator.resultType
-    override val boundType = BoundNodeType.UnaryExpression
+    override val kind = BoundNodeType.UnaryExpression
     override val constantValue = ConstantFolding.computeConstant(operator, operand)
 }
 

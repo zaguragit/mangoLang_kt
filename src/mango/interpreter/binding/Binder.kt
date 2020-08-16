@@ -14,19 +14,20 @@ import mango.interpreter.syntax.nodes.*
 import mango.interpreter.text.TextLocation
 import mango.isRepl
 import mango.isSharedLib
+import mango.util.BinderError
 import java.util.*
-import kotlin.Exception
 import kotlin.collections.ArrayList
 import kotlin.collections.HashMap
 import kotlin.collections.HashSet
 
 class Binder(
-        var scope: BoundScope,
-        val function: FunctionSymbol?,
-        val functions: HashMap<FunctionSymbol, BoundBlockStatement?>,
-        val functionBodies: HashMap<FunctionSymbol, BoundBlockStatement?>?
+    var scope: BoundScope,
+    val function: FunctionSymbol?,
+    val functions: HashMap<FunctionSymbol, BoundBlockStatement?>,
+    val functionBodies: HashMap<FunctionSymbol, BoundBlockStatement?>?
 ) {
 
+    var isUnsafe = false
     val diagnostics = DiagnosticList()
     private val loopStack = Stack<Pair<BoundLabel, BoundLabel>>()
     private var labelCount = 0
@@ -49,7 +50,7 @@ class Binder(
             SyntaxType.BreakStatement -> bindBreakStatement(node as BreakStatementNode)
             SyntaxType.ContinueStatement -> bindContinueStatement(node as ContinueStatementNode)
             SyntaxType.ReturnStatement -> bindReturnStatement(node as ReturnStatementNode)
-            else -> throw Exception("Unexpected node: ${node.kind}")
+            else -> throw BinderError("Unexpected node: ${node.kind}")
         }
     }
 
@@ -133,7 +134,7 @@ class Binder(
         if (function == null) {
             diagnostics.reportReturnOutsideFunction(node.keyword.location)
         }
-        else if (function.type == TypeSymbol.Unit) {
+        else if (function.returnType == TypeSymbol.Unit) {
             if (expression != null) {
                 diagnostics.reportCantReturnInUnitFunction(node.expression.location)
             }
@@ -142,8 +143,8 @@ class Binder(
             if (expression == null) {
                 diagnostics.reportCantReturnWithoutValue(node.keyword.location)
             }
-            else if (expression.type != TypeSymbol.err && !expression.type.isOfType(function.type)) {
-                diagnostics.reportWrongType(node.expression.location, expression.type, function.type)
+            else if (expression.type != TypeSymbol.err && !expression.type.isOfType(function.returnType)) {
+                diagnostics.reportWrongType(node.expression.location, expression.type, function.returnType)
             }
         }
         return BoundReturnStatement(expression)
@@ -168,7 +169,7 @@ class Binder(
             else -> {
                 val expression = bindExpression(node.expression, canBeUnit = true)
                 if (function == null && !isRepl || function != null && function.declarationNode?.lambdaArrow == null) {
-                    val kind = expression.boundType
+                    val kind = expression.kind
                     val isAllowedExpression =
                             kind == BoundNodeType.AssignmentExpression ||
                                     kind == BoundNodeType.CallExpression ||
@@ -266,7 +267,7 @@ class Binder(
                 isExpression = true,
                 isUnsafe = false
             ) as BoundExpression
-            else -> throw Exception("Unexpected node: ${node.kind}")
+            else -> throw BinderError("Unexpected node: ${node.kind}")
         }
     }
 
@@ -274,7 +275,7 @@ class Binder(
         val result = bindExpression(node)
         if (type != TypeSymbol.err &&
             result.type != TypeSymbol.err &&
-            result.type != type) {
+            !result.type.isOfType(type)) {
             diagnostics.reportWrongType(node.location, result.type, type)
         }
         return result
@@ -291,15 +292,20 @@ class Binder(
 
         for (a in node.arguments) {
             val arg = bindExpression(a, canBeUnit = true)
+            if (arg.kind == BoundNodeType.ErrorExpression) {
+                return BoundErrorExpression()
+            }
             arguments.add(arg)
         }
 
+        val types = arguments.map { it.type }
+
         val function = scope.tryLookup(
             listOf(node.identifier.string),
-            CallableSymbol.generateSuffix(arguments.map { it.type }, false))
+            CallableSymbol.generateSuffix(types, false))
 
         if (function == null) {
-            diagnostics.reportUndefinedName(node.identifier.location, node.identifier.string)
+            diagnostics.reportUndefinedFunction(node.identifier.location, node.identifier.string, types, false)
             return BoundErrorExpression()
         }
 
@@ -340,10 +346,22 @@ class Binder(
 
     private fun bindIndexExpression(node: IndexExpressionNode): BoundExpression {
         val expression = bindExpression(node.expression)
+
+        if (expression.kind == BoundNodeType.ErrorExpression) {
+            return BoundErrorExpression()
+        }
+
         val list = ArrayList<BoundExpression>()
         list.add(expression)
         for (it in node.arguments) {
             list.add(bindExpression(it))
+        }
+        if (expression.type.isOfType(TypeSymbol.Ptr) && list.size == 2 && list[1].type.isOfType(TypeSymbol.Integer)) {
+            if (!isUnsafe) {
+                diagnostics.reportPointerOperationsAreUnsafe(node.location)
+                return BoundErrorExpression()
+            }
+            return BoundPointerAccess(expression, list[1])
         }
         val operatorFunction = scope.tryLookup(
             listOf("get"),
@@ -354,6 +372,7 @@ class Binder(
             return BoundCallExpression(operatorFunction, list)
         }
 
+        diagnostics.reportUndefinedFunction(node.location, "get", list.map { it.type }, true)
         return BoundErrorExpression()
     }
 
@@ -362,6 +381,8 @@ class Binder(
         val previous = scope
         scope = BoundScope(scope)
         var type = TypeSymbol.Unit
+        val isLastUnsafe = this.isUnsafe
+        this.isUnsafe = this.isUnsafe || isUnsafe
         for (i in node.statements.indices) {
             val s = node.statements.elementAt(i)
             when (s.kind) {
@@ -385,6 +406,7 @@ class Binder(
                 }
             }
         }
+        this.isUnsafe = isLastUnsafe
         scope = previous
         return if (isExpression) {
             BoundBlockExpression(statements, type)
@@ -499,7 +521,7 @@ class Binder(
             is Double -> TypeSymbol.Double
             is Boolean -> TypeSymbol.Bool
             is String -> TypeSymbol.String
-            else -> throw Exception("Unexpected literal of type ${node.value?.javaClass}")
+            else -> throw BinderError("Unexpected literal of type ${node.value?.javaClass}")
         }
         return BoundLiteralExpression(when (type) {
             TypeSymbol.I8 -> (node.value as Number).toByte()
@@ -515,6 +537,22 @@ class Binder(
         val operand = bindExpression(node.operand)
         if (operand.type == TypeSymbol.err) {
             return BoundErrorExpression()
+        }
+        if (node.operator.kind == SyntaxType.BitAnd) {
+            if (!isUnsafe) {
+                diagnostics.reportPointerOperationsAreUnsafe(node.operator.location)
+                return BoundErrorExpression()
+            }
+            if (operand.kind != BoundNodeType.VariableExpression) {
+                diagnostics.reportReferenceRequiresMutableVar(node.operator.location)
+                return BoundErrorExpression()
+            }
+            operand as BoundVariableExpression
+            if (operand.symbol.isReadOnly) {
+                diagnostics.reportReferenceRequiresMutableVar(node.operator.location)
+                return BoundErrorExpression()
+            }
+            return BoundReference(operand)
         }
         val operator = BoundUnOperator.bind(node.operator.kind, operand.type)
         if (operator == null) {
@@ -579,15 +617,20 @@ class Binder(
                 scope.tryLookup(leftName.split('.').toMutableList().apply { add(rightName) })
             }
 
-            if (symbol != null) {
-                if (node.right.kind == SyntaxType.CallExpression) {
+            if (node.right.kind == SyntaxType.CallExpression) {
+                if (symbol != null) {
                     node.right as CallExpressionNode
                     if (symbol !is CallableSymbol) {
                         diagnostics.reportNotCallable(node.right.location, symbol)
                         return BoundErrorExpression()
                     }
                     return BoundCallExpression(symbol as FunctionSymbol, node.right.arguments.map { bindExpression(it) })
-                } else {
+                }
+                node.right as CallExpressionNode
+                diagnostics.reportUndefinedFunction(node.right.location, rightName, node.right.arguments.map { bindExpression(it).type }, false)
+                return BoundErrorExpression()
+            } else {
+                if (symbol != null) {
                     symbol as VariableSymbol
                     return BoundVariableExpression(symbol)
                 }
@@ -617,7 +660,7 @@ class Binder(
         val left = bindExpression(node.left)
         val name = node.right.identifier.string ?: return BoundErrorExpression()
 
-        if (left.boundType == BoundNodeType.NamespaceFieldAccess) {
+        if (left.kind == BoundNodeType.NamespaceFieldAccess) {
             left as BoundNamespaceFieldAccess
             val leftName = left.namespace.path
             return bindNamespaceAccess(leftName, name)
@@ -641,6 +684,8 @@ class Binder(
             if (function != null) {
                 return BoundCallExpression(function as CallableSymbol, arguments)
             }
+            diagnostics.reportUndefinedFunction(node.right.location, name, types, true)
+            return BoundErrorExpression()
         }
         diagnostics.reportUndefinedName(node.right.location, name)
         return BoundErrorExpression()
@@ -682,7 +727,7 @@ class Binder(
                 }
                 scope = prev
             }
-            else -> throw Exception("Incorrect statement got to be global (${statement.kind})")
+            else -> throw BinderError("Incorrect statement got to be global (${statement.kind})")
         }
     }
 
@@ -722,7 +767,7 @@ class Binder(
             var entryFn = symbols.find {
                 it.kind == Symbol.Kind.Function &&
                 (it as FunctionSymbol).meta.isEntry &&
-                it.type == TypeSymbol.Unit &&
+                it.type == TypeSymbol.Fn.entry &&
                 it.parameters.isEmpty()
             } as FunctionSymbol?
 
@@ -745,6 +790,7 @@ class Binder(
             if (previous != null) {
                 diagnostics.append(previous.diagnostics)
             }
+
             return BoundGlobalScope(
                 previous,
                 diagnostics,
@@ -805,7 +851,7 @@ class Binder(
                 symbol.declarationNode!!.lambdaArrow == null -> {
                     val body = binder.bindBlock(symbol.declarationNode.body as BlockNode, false) as BoundBlockStatement
                     val loweredBody = Lowerer.lower(body)
-                    if (symbol.type != TypeSymbol.Unit && !ControlFlowGraph.allPathsReturn(loweredBody)) {
+                    if (symbol.returnType != TypeSymbol.Unit && !ControlFlowGraph.allPathsReturn(loweredBody)) {
                         diagnostics.reportAllPathsMustReturn(symbol.declarationNode.identifier.location)
                     }
                     functions[symbol] = loweredBody
@@ -975,6 +1021,7 @@ class Binder(
                                     diagnostics.reportInvalidAnnotation(annotation.location)
                                 }
                             }
+                            "get" -> {}
                             else -> {
                                 diagnostics.reportInvalidAnnotation(annotation.location)
                             }

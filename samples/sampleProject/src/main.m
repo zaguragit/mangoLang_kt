@@ -52,7 +52,9 @@ fn test {
     io.println(10.)*/
 
     unsafe {
-        val a Int = 1 + 3
+        var a Int = 1 + 3
+        val dd22 = &a
+        val theNewA = dd22[0]
         val aa Int = 1
         io.println("blablabla67")
     }
@@ -70,8 +72,9 @@ fn test {
         io.println(4)
         5
     })
-}
 
+    printt("TEST!!")
+}
 
 namespace thing {
     val someRandomString = "this is a random string"
@@ -79,4 +82,26 @@ namespace thing {
     fn something {
         io.println(someRandomString)
     }
+}
+
+[inline]
+[operator]
+fn String.get(i Int) I8 -> unsafe { this.chars[i] }
+
+[extern]
+[cname: "putchar"]
+fn print (char I8)
+
+fn printt (string String) {
+	var i = 0;
+	while i < string.length {
+		print(string[i])
+		i = i + 1
+	}
+
+    [extern]
+    [cname: "flushPrint"]
+    fn flushPrint
+
+	flushPrint()
 }

@@ -173,8 +173,13 @@ class DiagnosticList {
     fun reportUndefinedFunction(
         location: TextLocation,
         name: String,
-        parameters: Collection<TypeSymbol>
-    ) = report(location, "Undefined name ( $name(${parameters.joinToString(", ") { it.name }}) )")
+        parameters: List<TypeSymbol>,
+        isExtension: Boolean
+    ) = report(location, "Undefined name ( ${if (isExtension) {
+        parameters.elementAt(0).name + ".$name" + "(${parameters.subList(1, parameters.size) .joinToString(", ") { it.name }})"
+    } else {
+        name + "(${parameters.joinToString(", ") { it.name }})"
+    }} )")
 
     fun reportSymbolAlreadyDeclared(
         location: TextLocation,
@@ -300,6 +305,13 @@ class DiagnosticList {
         symbol: Symbol
     ) = report(location, "${symbol.name} can't be called")
 
+    fun reportPointerOperationsAreUnsafe(
+        location: TextLocation
+    ) = report(location, "Pointer operations are unsafe (need to be performed inside an unsafe block)")
+
+    fun reportReferenceRequiresMutableVar(
+        location: TextLocation
+    ) = report(location, "You can only get a reference from a mutable variable")
 
     /// CONF ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
