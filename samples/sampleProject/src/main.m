@@ -72,8 +72,6 @@ fn test {
         io.println(4)
         5
     })
-
-    printt("TEST!!")
 }
 
 namespace thing {
@@ -82,26 +80,4 @@ namespace thing {
     fn something {
         io.println(someRandomString)
     }
-}
-
-[inline]
-[operator]
-fn String.get(i Int) I8 -> unsafe { this.chars[i] }
-
-[extern]
-[cname: "putchar"]
-fn print (char I8)
-
-fn printt (string String) {
-	var i = 0;
-	while i < string.length {
-		print(string[i])
-		i = i + 1
-	}
-
-    [extern]
-    [cname: "flushPrint"]
-    fn flushPrint
-
-	flushPrint()
 }

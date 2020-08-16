@@ -49,16 +49,3 @@ Int stringToInt (String* string, Int radix) {
 	}
 	return n;
 }
-
-Bool String$equals (String* str0, String* str1) {
-	U32 size = str0->length;
-	if (size != str1->length) return false;
-    U32 i = 0;
-    while (i < size) {
-        if (str0->chars[i] != str1->chars[i]) {
-            return false;
-        }
-        i++;
-    }
-	return true;
-}

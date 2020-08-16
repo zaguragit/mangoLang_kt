@@ -1,10 +1,23 @@
 use std.string*
 
 
-
 [extern]
-[cname: "print"]
-fn print (text String)
+[cname: "putchar"]
+fn print (char I8)
+
+fn print (string String) {
+	var i = 0
+	while i < string.length {
+		print(string[i])
+		i = i + 1
+	}
+
+    [extern]
+    [cname: "flushPrint"]
+    fn flushPrint
+
+	flushPrint()
+}
 
 [inline]
 fn print (i Int) -> print(i.toString())
@@ -42,10 +55,6 @@ fn readln String
 [cname: "getchar"]
 fn readChar I8
 
-[extern]
-[cname: "putchar"]
-fn print (char I8)
-
 fn readln String {
 	val string = new MutableString {
 	    length: 0
@@ -57,19 +66,6 @@ fn readln String {
         ch = readChar()
     }
     return string
-}
-
-fn print (string String) {
-	val i = 0;
-	while i < string.length {
-		print(string.chars[i++])
-	}
-
-    [extern]
-    [cname: "flushPrint"]
-    fn flushPrint
-
-	flushPrint()
 }
 
 */

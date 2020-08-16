@@ -113,7 +113,6 @@ object LLVMEmitter : Emitter {
                 BoundNodeType.CastExpression -> emitValue(initBlock, (expression as BoundCastExpression).expression)
                 BoundNodeType.LiteralExpression -> emitLiteral(initBlock, expression as BoundLiteralExpression, false)
                 BoundNodeType.VariableExpression -> emitVariableExpression(initBlock, expression as BoundVariableExpression)
-                BoundNodeType.StructFieldAccess -> emitStructFieldAccess(initBlock, expression as BoundStructFieldAccess)
                 else -> {
                     val instruction = emitInstruction(initBlock, expression)!!
                     val type = instruction.type
@@ -139,7 +138,6 @@ object LLVMEmitter : Emitter {
         BoundNodeType.CastExpression -> emitValue(block, (expression as BoundCastExpression).expression)
         BoundNodeType.LiteralExpression -> emitLiteral(block, expression as BoundLiteralExpression, true)
         BoundNodeType.VariableExpression -> emitVariableExpression(block, expression as BoundVariableExpression)
-        BoundNodeType.StructFieldAccess -> emitStructFieldAccess(block, expression as BoundStructFieldAccess)
         BoundNodeType.ErrorExpression -> throw EmitterError("Error expression got to the emission stage")
         BoundNodeType.ReferenceExpression -> emitReference(block, (expression as BoundReference).expression)
         else -> {
@@ -211,7 +209,7 @@ object LLVMEmitter : Emitter {
     private fun emitStructFieldAccess(
         block: BlockBuilder,
         expression: BoundStructFieldAccess
-    ): LLVMValue = block.getStructField(emitValue(block, expression.struct)!!, expression.i, expression.field)
+    ) = block.getStructField(emitValue(block, expression.struct)!!, expression.i, expression.field)
 
     private fun emitReference(
         block: BlockBuilder,
@@ -241,6 +239,7 @@ object LLVMEmitter : Emitter {
         BoundNodeType.BinaryExpression -> emitBinaryExpression(block, expression as BoundBinaryExpression)
         BoundNodeType.PointerAccessExpression -> emitPointerAccessExpression(block, expression as BoundPointerAccess)
         BoundNodeType.ReferenceExpression -> emitInstruction(block, (expression as BoundReference).expression)
+        BoundNodeType.StructFieldAccess -> emitStructFieldAccess(block, expression as BoundStructFieldAccess)
         BoundNodeType.ErrorExpression -> throw EmitterError("Error expression got to the emission stage")
         else -> throw EmitterError("internal error: Unknown expression to LLVM (${expression.kind})")
     }

@@ -1,17 +1,4 @@
 
-Unit print (String* string) {
-	Int i = 0;
-	while (i < string->length) {
-		putchar(string->chars[i++]);
-	}
-	fflush(stdout);
-}
-
-Unit println (String* string) {
-	print(string);
-	putchar('\n');
-}
-
 Unit flushPrint () {
 	fflush(stdout);
 }

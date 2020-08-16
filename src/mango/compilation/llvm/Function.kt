@@ -38,10 +38,10 @@ class BlockBuilder(
         return tempValue
     }
 
-    fun getStructField(struct: LLVMValue, i: Int, field: TypeSymbol.StructTypeSymbol.Field): LLVMValue {
+    fun getStructField(struct: LLVMValue, i: Int, field: TypeSymbol.StructTypeSymbol.Field): LLVMInstruction {
         val loadedStruct = tmpVal(GetPtr((struct.type as LLVMType.Ptr).element, struct, LLVMValue.Int(0, LLVMType.I64), LLVMValue.Int(i, LLVMType.I32))).ref
         val type = LLVMType[field.type]
-        return tmpVal(Load(loadedStruct, if (field.type.kind == Symbol.Kind.Struct) LLVMType.Ptr(type) else type)).ref
+        return Load(loadedStruct, if (field.type.kind == Symbol.Kind.Struct) LLVMType.Ptr(type) else type)
     }
 
     inline fun ret() = addInstruction(RetVoid())
