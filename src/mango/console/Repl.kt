@@ -9,6 +9,7 @@ abstract class Repl {
 
     fun run() {
         Console.setTitle("mango")
+        init()
         while (true) {
             val text = editSubmission() ?: return
             evaluateSubmission(text)
@@ -51,6 +52,8 @@ abstract class Repl {
         return stringBuilder.toString()
     }
 
+
+    protected abstract fun init()
     protected abstract fun isCompleteSubmission(string: String): Boolean
     protected abstract fun evaluateSubmission(text: String)
 

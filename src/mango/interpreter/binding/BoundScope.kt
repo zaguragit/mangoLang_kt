@@ -11,28 +11,37 @@ open class BoundScope(
         if (parent is BoundNamespace) parent
         else parent?.namespace
 
-    protected open val map by lazy { HashMap<Pair<String, String?>, Symbol>() }
-    open val symbols: Collection<Symbol> get() = map.values
+    protected open val map by lazy { HashMap<String, HashMap<String?, Symbol>>() }
+    open val symbols: Collection<Symbol> get() = map.values.flatMap { it.values }
 
     val used = ArrayList<BoundUse>()
 
-    fun tryDeclare(symbol: Symbol) = tryDeclare(symbol, symbol.name)
-    fun tryDeclare(symbol: Symbol, name: String): Boolean {
+    fun tryDeclare(symbol: Symbol): Boolean {
+        val name = symbol.name
         val extra = if (symbol is CallableSymbol) symbol.suffix else null
-        if (map.containsKey(name to extra)) {
-            return false
+        if (map.containsKey(name)) {
+            if (map[name]!!.containsKey(extra)) {
+                return false
+            }
+        } else {
+            map[name] = HashMap()
         }
-        map[name to extra] = symbol
+        map[name]!![extra] = symbol
         return true
     }
+
     fun tryLookup (path: List<String>, extra: String? = null): Symbol? = tryLookup(path, extra, true)
     protected fun tryLookup (path: List<String>, extra: String? = null, isReal: Boolean): Symbol? {
         val parentNamespace = namespace
         return if (path.size == 1) {
             val name = path.elementAt(0)
             when {
-                map.containsKey(name to extra) -> {
-                    map[name to extra]?.apply { useCounter++ }
+                map.containsKey(name) -> {
+                    var res = map[name]?.get(extra)
+                    if (res == null && extra == null) {
+                        res = map[name]?.values?.elementAtOrNull(0)
+                    }
+                    res?.apply { useCounter++ }
                 }
                 parent == null -> return null
                 else -> {

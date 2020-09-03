@@ -61,7 +61,7 @@ abstract class Symbol {
             print(')')
         }
         print(' ')
-        type.printStructure()
+        returnType.printStructure()
     }
 
     private fun printType() {

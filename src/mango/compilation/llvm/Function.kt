@@ -41,7 +41,7 @@ class BlockBuilder(
     fun getStructField(struct: LLVMValue, i: Int, field: TypeSymbol.StructTypeSymbol.Field): LLVMInstruction {
         val loadedStruct = tmpVal(GetPtr((struct.type as LLVMType.Ptr).element, struct, LLVMValue.Int(0, LLVMType.I64), LLVMValue.Int(i, LLVMType.I32))).ref
         val type = LLVMType[field.type]
-        return Load(loadedStruct, if (field.type.kind == Symbol.Kind.Struct) LLVMType.Ptr(type) else type)
+        return Load(loadedStruct, type)
     }
 
     inline fun ret() = addInstruction(RetVoid())
@@ -90,14 +90,7 @@ class FunctionBuilder(
     val paramTypes: List<LLVMType>,
     val symbol: FunctionSymbol
 ) {
-    val returnType: LLVMType
-
-    init {
-        val type = LLVMType[symbol.returnType]
-        returnType = (if (symbol.returnType.kind == Symbol.Kind.Struct)
-            LLVMType.Ptr(type)
-        else type)
-    }
+    val returnType = LLVMType[symbol.returnType]
 
     private val blocks = LinkedList<BlockBuilder>()
     private val attributes = LinkedList<String>()

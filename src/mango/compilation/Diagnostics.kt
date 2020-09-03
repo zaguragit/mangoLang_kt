@@ -1,6 +1,7 @@
 package mango.compilation
 
 import mango.console.Console
+import mango.interpreter.binding.BoundNamespace
 import mango.interpreter.binding.nodes.BoundBiOperator
 import mango.interpreter.binding.nodes.BoundUnOperator
 import mango.interpreter.symbols.Symbol
@@ -170,12 +171,21 @@ class DiagnosticList {
         name: String
     ) = report(location, "Undefined name \"$name\"")
 
+    fun reportNotFoundInNamespace(
+        location: TextLocation,
+        name: String,
+        namespace: BoundNamespace
+    ) = report(location, "There's no \"$name\" in ${namespace.path}")
+
     fun reportUndefinedFunction(
         location: TextLocation,
         name: String,
         parameters: List<TypeSymbol>,
         isExtension: Boolean
     ) = report(location, "Undefined name ( ${if (isExtension) {
+        if (parameters.size == 0) {
+            println(name)
+        }
         parameters.elementAt(0).name + ".$name" + "(${parameters.subList(1, parameters.size) .joinToString(", ") { it.name }})"
     } else {
         name + "(${parameters.joinToString(", ") { it.name }})"
@@ -185,6 +195,17 @@ class DiagnosticList {
         location: TextLocation,
         name: String
     ) = report(location, "\"$name\" is already declared")
+
+    fun reportFunctionAlreadyDeclared(
+        location: TextLocation,
+        name: String,
+        parameters: List<TypeSymbol>,
+        isExtension: Boolean
+    ) = report(location, "${if (isExtension) {
+        parameters.elementAt(0).name + ".$name" + "(${parameters.subList(1, parameters.size) .joinToString(", ") { it.name }})"
+    } else {
+        name + "(${parameters.joinToString(", ") { it.name }})"
+    }} is already declared")
 
     fun reportParamAlreadyExists(
         location: TextLocation,
@@ -212,10 +233,9 @@ class DiagnosticList {
 
     fun reportWrongArgumentCount(
         location: TextLocation,
-        name: String,
         count: Int,
         correctCount: Int
-    ) = report(location, "Wrong argument count in function \"$name\" (found $count, expected $correctCount)")
+    ) = report(location, "Wrong argument count (found $count, expected $correctCount)")
 
     fun reportWrongArgumentType(
         location: TextLocation,
@@ -302,8 +322,8 @@ class DiagnosticList {
 
     fun reportNotCallable(
         location: TextLocation,
-        symbol: Symbol
-    ) = report(location, "${symbol.name} can't be called")
+        type: TypeSymbol
+    ) = report(location, "Expressions of type ${type.name} can't be called")
 
     fun reportPointerOperationsAreUnsafe(
         location: TextLocation

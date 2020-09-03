@@ -11,26 +11,31 @@ interface LLVMType {
 
     companion object {
 
-        operator fun get(type: TypeSymbol.StructTypeSymbol) = Struct(type.name)
+        operator fun get(type: TypeSymbol.StructTypeSymbol) = Ptr(Struct(type.name))
         operator fun get(type: TypeSymbol): LLVMType {
-            return if (type.kind == Symbol.Kind.Struct) {
-                Struct(type.name)
-            } else when (type.name) {
-                TypeSymbol.Any.name -> Ptr(Void)
-                TypeSymbol.I8.name -> I8
-                //TypeSymbol.U8 -> U8
-                TypeSymbol.I16.name -> I16
-                //TypeSymbol.U16 -> U16
-                TypeSymbol.I32.name -> I32
-                //TypeSymbol.U32 -> U32
-                TypeSymbol.I64.name -> I64
-                //TypeSymbol.U64 -> U64
-                TypeSymbol.Float.name -> Float
-                TypeSymbol.Double.name -> Double
-                TypeSymbol.Bool.name -> Bool
-                TypeSymbol.Ptr.name -> Ptr(get(type.params[0]))
-                TypeSymbol.Unit.name -> Void
-                else -> throw EmitterError("internal error: type unknown to LLVM (${type.name})")
+            return when (type.kind) {
+                Symbol.Kind.Struct -> Ptr(Struct(type.name))
+                Symbol.Kind.FunctionType -> {
+                    type as TypeSymbol.Fn
+                    Fn(get(type.returnType), type.args.map { get(it) })
+                }
+                else -> when (type.name) {
+                    TypeSymbol.Any.name -> Ptr(Void)
+                    TypeSymbol.I8.name -> I8
+                    //TypeSymbol.U8 -> U8
+                    TypeSymbol.I16.name -> I16
+                    //TypeSymbol.U16 -> U16
+                    TypeSymbol.I32.name -> I32
+                    //TypeSymbol.U32 -> U32
+                    TypeSymbol.I64.name -> I64
+                    //TypeSymbol.U64 -> U64
+                    TypeSymbol.Float.name -> Float
+                    TypeSymbol.Double.name -> Double
+                    TypeSymbol.Bool.name -> Bool
+                    TypeSymbol.Ptr.name -> Ptr(get(type.params[0]))
+                    TypeSymbol.Unit.name -> Void
+                    else -> throw EmitterError("internal error: type unknown to LLVM (${type.name})")
+                }
             }
         }
     }
@@ -76,6 +81,6 @@ interface LLVMType {
         val returnType: LLVMType,
         args: Collection<LLVMType>
     ) : LLVMType {
-        override val code = "${returnType.code} (${args.joinToString(", ") { it.code }})*"
+        override val code = "${returnType.code}(${args.joinToString(", ") { it.code }})"
     }
 }

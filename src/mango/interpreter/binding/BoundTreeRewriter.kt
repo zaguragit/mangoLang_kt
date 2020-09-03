@@ -172,11 +172,11 @@ open class BoundTreeRewriter {
             }
             args?.add(newArgument)
         }
-
-        if (args == null) {
+        val expression = rewriteExpression(node.expression)
+        if (args == null && expression == node.expression) {
             return node
         }
-        return BoundCallExpression(node.symbol, args)
+        return BoundCallExpression(node.expression, args ?: node.arguments)
     }
 
     protected fun rewriteCastExpression(node: BoundCastExpression): BoundExpression {

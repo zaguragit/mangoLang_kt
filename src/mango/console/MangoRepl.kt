@@ -2,8 +2,10 @@ package mango.console
 
 import mango.interpreter.symbols.VariableSymbol
 import mango.compilation.Compilation
+import mango.compilation.EmissionType
 import mango.interpreter.symbols.FunctionSymbol
 import mango.interpreter.syntax.SyntaxTree
+import java.io.File
 
 class MangoRepl : Repl() {
 
@@ -13,6 +15,14 @@ class MangoRepl : Repl() {
     private var previous: Compilation? = null
 
     private val variables = HashMap<VariableSymbol, Any?>()
+
+    override fun init() {
+        val trees = SyntaxTree.loadLib("/usr/local/include/mangoLang/std/", "std")
+        val compilation = Compilation(null, trees)
+        compilation.evaluate()
+        compilation.globalScope.diagnostics.clear()
+        previous = compilation
+    }
 
     override fun isCompleteSubmission(string: String): Boolean {
         if (string.isEmpty()) {
@@ -32,12 +42,12 @@ class MangoRepl : Repl() {
 
     override fun evaluateSubmission(text: String) {
 
-        val syntaxTree = SyntaxTree.parse(text)
+        val tree = SyntaxTree.parse(text)
 
-        val compilation = Compilation(previous, listOf(syntaxTree))
+        val compilation = Compilation(previous, listOf(tree))
 
         if (showParseTree) {
-            syntaxTree.root.printTree()
+            tree.root.printTree()
         }
 
         if (showBindTree) {
@@ -52,13 +62,16 @@ class MangoRepl : Repl() {
             for (nonError in nonErrors) {
                 nonError.printAsSuggestion()
             }
+            val file = File.createTempFile("mangoLang", ".ll").apply {
+                deleteOnExit()
+            }
+            compilation.emit("_", file.path, "", EmissionType.Binary)
+            ProcessBuilder(file.path).run {
+                inheritIO()
+                start().waitFor()
+            }
             compilation.globalScope.diagnostics.clear()
             previous = compilation
-            /*if (result is EvaluationResult && result.value != null) {
-                print(Console.YELLOW_BOLD_BRIGHT)
-                println(result.value)
-                print(Console.RESET)
-            }*/
         } else {
             println()
             for (error in errors) {
@@ -103,18 +116,17 @@ class MangoRepl : Repl() {
                     for (i in 1 until args.size) {
                         var compilation = previous
                         while (compilation != null) {
-                            val result = compilation.globalScope.symbols.find { it.name == args[i] }
-                            if (result == null) {
-                                compilation = compilation.previous
-                                continue
+                            for (result in compilation.globalScope.symbols) {
+                                if (result.name == args[i]) {
+                                    if (result is FunctionSymbol) {
+                                        compilation.printTree(result)
+                                    } else {
+                                        result.printStructure()
+                                        println()
+                                    }
+                                }
                             }
-                            if (result is FunctionSymbol) {
-                                compilation.printTree(result)
-                            } else {
-                                result.printStructure()
-                                println()
-                            }
-                            break
+                            compilation = compilation.previous
                         }
                     }
                 }

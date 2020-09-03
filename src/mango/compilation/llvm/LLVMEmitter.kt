@@ -61,12 +61,12 @@ object LLVMEmitter : Emitter {
                             currentBlock.store(alloc, value)
                         } else {
                             val initializer = emitInstruction(currentBlock, statement.initializer)!!
-                            if (initializer.type is LLVMType.Ptr) {
+                            /*if (initializer.type is LLVMType.Ptr) {
                                 currentBlock.tmpVal(statement.variable.realName, initializer)
-                            } else {
+                            } else {*/
                                 val alloc = currentBlock.alloc(statement.variable.realName, initializer.type)
                                 currentBlock.store(alloc, currentBlock.tmpVal(initializer).ref)
-                            }
+                            //}
                         }
                     }
                     BoundNodeType.LabelStatement -> {
@@ -125,7 +125,9 @@ object LLVMEmitter : Emitter {
                     }
                 }
             }
-            builder.globalVariable((v.variable as VisibleSymbol).mangledName(), LLVMType[v.variable.type], value!!.code)
+            var type = LLVMType[v.variable.type]
+            if (type is LLVMType.Ptr) type = type.element
+            builder.globalVariable((v.variable as VisibleSymbol).mangledName(), value!!)
         }
         return builder.code()
     }
@@ -171,14 +173,15 @@ object LLVMEmitter : Emitter {
         expression: BoundLiteralExpression,
         isLocal: Boolean
     ): LLVMValue = when {
+        expression.value == null -> Null(LLVMType[expression.type])
         expression.type.isOfType(TypeSymbol.String) -> {
-            if (isLocal) {
+            if (true) {
                 block.stringConstForContent(expression.value as String).ref
             } else {
                 val content = expression.value as String
                 val chars = block.cStringConstForContent(content)
                 val length = Int(content.length, LLVMType.I32)
-                val type = LLVMType[TypeSymbol.String]
+                val type = LLVMType[TypeSymbol.String].element as LLVMType.Struct
                 Struct(type, arrayOf(length, chars.ref))
             }
         }
@@ -201,8 +204,13 @@ object LLVMEmitter : Emitter {
             block.functionBuilder.paramReference(i)
         }
         else -> {
-            val value = emitReference(block, expression)
-            if ((value.type as LLVMType.Ptr).element is LLVMType.Struct) { value } else block.load(value)
+            var value = emitReference(block, expression)
+            var type = value.type as LLVMType.Ptr
+            if (value is LocalRef && type.element is LLVMType.Fn) {
+                type = LLVMType.Ptr(type)
+                value = LocalRef(value.name, type)
+            }
+            if (type.element is LLVMType.Fn) { value } else block.load(value)
         }
     }
 
@@ -214,9 +222,8 @@ object LLVMEmitter : Emitter {
     private fun emitReference(
         block: BlockBuilder,
         expression: BoundVariableExpression
-    ) = if (expression.symbol.kind == Symbol.Kind.VisibleVariable) {
+    ) = if (expression.symbol is VisibleSymbol) {
         val variable = expression.symbol
-        variable as VisibleSymbol
         GlobalRef(variable.mangledName(), LLVMType[variable.type])
     } else {
         val variable = expression.symbol
@@ -229,8 +236,8 @@ object LLVMEmitter : Emitter {
     ): LLVMInstruction? = when (expression.kind) {
         BoundNodeType.CallExpression -> {
             expression as BoundCallExpression
-            val type = if (expression.type.kind == Symbol.Kind.Struct) LLVMType.Ptr(LLVMType[expression.type]) else LLVMType[expression.type]
-            val function = expression.symbol
+            val type = /*if (expression.type.kind == Symbol.Kind.Struct) LLVMType.Ptr(LLVMType[expression.type]) else*/ LLVMType[expression.type]
+            val function = emitValue(block, expression.expression)!!
             Call(type, function, *Array(expression.arguments.size) {
                 emitValue(block, expression.arguments.elementAt(it))!!
             })

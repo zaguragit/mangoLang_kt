@@ -180,6 +180,7 @@ private fun compile(
             }
         }
     } else {
+        println(Console.RED + "Compilation failed: ${Console.YELLOW_BOLD_BRIGHT + errors.size} ${Console.RESET + Console.RED + if (errors.size == 1) "error" else "errors"}")
         println()
         for (error in errors) {
             error.printAsError()

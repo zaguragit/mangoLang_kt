@@ -25,7 +25,7 @@ interface LLVMValue {
         val privType: LLVMType
     ) : LLVMValue {
         override val type get() = LLVMType.Ptr(privType)
-        override val code get() = "@$name"
+        override val code get() = "@\"$name\""
     }
 
     class Bool(

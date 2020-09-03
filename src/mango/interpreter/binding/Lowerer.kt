@@ -92,7 +92,7 @@ class Lowerer : BoundTreeRewriter() {
                 }
                 BoundNodeType.CallExpression -> {
                     expression as BoundCallExpression
-                    BoundCallExpression(expression.symbol, expression.arguments.map { flattenExpression(it, stack, variableNames) })
+                    BoundCallExpression(expression.expression, expression.arguments.map { flattenExpression(it, stack, variableNames) })
                 }
                 BoundNodeType.CastExpression -> {
                     expression as BoundCastExpression

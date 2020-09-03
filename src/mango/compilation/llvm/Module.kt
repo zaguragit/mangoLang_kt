@@ -26,20 +26,18 @@ open class StringConst(
 
 open class GlobalVar(
     val name: String,
-    val type: LLVMType,
-    val value: Any
+    val value: LLVMValue
 ) : Var {
-    open fun code() = "@$name = global ${type.code} $value"
-    override val ref get() = GlobalRef(name, type)
-    override fun allocCode() = "@$name = alloca ${type.code}"
+    open fun code() = "@$name = global ${value.type.code} ${value.code}"
+    override val ref get() = GlobalRef(name, value.type)
+    override fun allocCode() = "@$name = alloca ${value.type.code}"
 }
 
 class ConstVal(
     name: String,
-    type: LLVMType,
-    value: Any
-) : GlobalVar(name, type, value) {
-    override fun code() = "@$name = constant ${type.code} $value"
+    value: LLVMValue
+) : GlobalVar(name, value) {
+    override fun code() = "@$name = constant ${value.type.code} ${value.code}"
 }
 
 data class FunctionDeclaration(
@@ -76,9 +74,6 @@ class LLVMStruct(
     fun code() = "%.struct.$name = type { ${types.joinToString(", ") { it.code }} }"
 }
 
-private var UIDCount = 0
-fun newUID() = ".${UIDCount++}"
-
 class ModuleBuilder {
     private val stringConsts = HashMap<String, StringConst>()
     private val importedDeclarations = LinkedList<String>()
@@ -89,25 +84,25 @@ class ModuleBuilder {
     private val globalVariables = LinkedList<GlobalVar>()
 
     fun intGlobalVariable (name: String, type: LLVMType = LLVMType.I32, value: Int = 0): GlobalVar {
-        val gvar = GlobalVar(name, type, value)
+        val gvar = GlobalVar(name, LLVMValue.Int(value, type))
         globalVariables.add(gvar)
         return gvar
     }
 
     fun floatGlobalVariable (name: String, type: LLVMType = LLVMType.Float, value: Float = 0.0f): GlobalVar {
-        val gvar = GlobalVar(name, type, value)
+        val gvar = GlobalVar(name, LLVMValue.Float(value, type))
         globalVariables.add(gvar)
         return gvar
     }
 
-    fun globalVariable (name: String, type: LLVMType, value: Any): GlobalVar {
-        val g = GlobalVar(name, type, value)
+    fun globalVariable (name: String, value: LLVMValue): GlobalVar {
+        val g = GlobalVar(name, value)
         globalVariables.add(g)
         return g
     }
 
-    fun constantValue (name: String, type: LLVMType, value: Any): GlobalVar {
-        val g = ConstVal(name, type, value)
+    fun constantValue (name: String, value: LLVMValue): GlobalVar {
+        val g = ConstVal(name, value)
         globalVariables.add(g)
         return g
     }
@@ -123,8 +118,8 @@ class ModuleBuilder {
         val wasAlreadyDeclared = stringConsts.containsKey(content)
         val chars = cStringConstForContent(content)
         val length = LLVMValue.Int(content.length, LLVMType.I32)
-        val type = LLVMType[TypeSymbol.String]
-        val const = ConstVal(chars.id + ".struct", type, LLVMValue.Struct(type, arrayOf(length, chars.ref)).code)
+        val type = LLVMType[TypeSymbol.String].element as LLVMType.Struct
+        val const = ConstVal(chars.id + ".struct", LLVMValue.Struct(type, arrayOf(length, chars.ref)))
         if (!wasAlreadyDeclared) {
             globalVariables.add(const)
         }
@@ -140,14 +135,9 @@ class ModuleBuilder {
     }
 
     fun addImportedDeclaration (symbol: FunctionSymbol) {
-        val returnType = if (symbol.returnType.kind == Symbol.Kind.Struct) {
-            LLVMType.Ptr(LLVMType[symbol.returnType])
-        } else LLVMType[symbol.returnType]
+        val returnType = LLVMType[symbol.returnType]
         importedDeclarations.add("declare ${returnType.code} @\"${symbol.mangledName()}\"(${symbol.parameters.joinToString(", ") {
-            val type = LLVMType[it.type]
-            (if (it.type.kind == Symbol.Kind.Struct)
-                LLVMType.Ptr(type)
-            else type).code
+            LLVMType[it.type].code
         }})")
     }
 
@@ -157,10 +147,7 @@ class ModuleBuilder {
 
     fun createFunction (symbol: FunctionSymbol): FunctionBuilder {
         val function = FunctionBuilder(this, List(symbol.parameters.size) {
-            val type = LLVMType[symbol.parameters[it].type]
-            (if (symbol.parameters[it].type.kind == Symbol.Kind.Struct)
-                LLVMType.Ptr(type)
-            else type)
+            LLVMType[symbol.parameters[it].type]
         }, symbol)
         functions.add(function)
         return function

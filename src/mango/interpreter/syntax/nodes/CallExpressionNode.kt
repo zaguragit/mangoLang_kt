@@ -7,15 +7,15 @@ import mango.interpreter.syntax.SyntaxTree
 
 class CallExpressionNode(
     syntaxTree: SyntaxTree,
-    identifier: Token,
+    val function: Node,
     val leftBracket: Token,
     val arguments: SeparatedNodeList<Node>,
     val rightBracket: Token
-) : NameExpressionNode(syntaxTree, identifier) {
+) : Node(syntaxTree) {
 
     override val kind = SyntaxType.CallExpression
-    override val children: Collection<Node> get() = arrayListOf<Node>(
-            identifier, leftBracket
+    override val children get() = arrayListOf(
+            function, leftBracket
         ).apply {
             addAll(arguments.nodesAndSeparators)
             add(rightBracket)

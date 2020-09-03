@@ -1,11 +1,26 @@
 package mango.interpreter.symbols
 
-abstract class CallableSymbol : Symbol() {
+import mango.interpreter.syntax.nodes.FunctionDeclarationNode
 
-    inline val returnType get() = type.returnType
+abstract class CallableSymbol(
+    name: String,
+    val parameters: Array<VariableSymbol>,
+    returnType: TypeSymbol,
+    val path: String,
+    val declarationNode: FunctionDeclarationNode?,
+    override val meta: MetaData
+) : VariableSymbol(
+    name,
+    TypeSymbol.Fn(returnType, parameters.map { it.type }),
+    true,
+    null,
+    Kind.Function,
+    path
+) {
 
-    abstract override val type: TypeSymbol.Fn
-    abstract val parameters: Array<VariableSymbol>
+    override val kind = Kind.Function
+
+    inline val returnType get() = (type as TypeSymbol.Fn).returnType
 
     val suffix by lazy {
         generateSuffix(parameters.map { it.type }, meta.isExtension)

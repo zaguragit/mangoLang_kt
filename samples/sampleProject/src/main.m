@@ -23,7 +23,8 @@ fn test {
 
         return name
     }
-    val a = doit()
+    val theGoodTheAmazing_A = doit
+    val a = theGoodTheAmazing_A()
     io.print("name: ")
     io.println(a)
     io.print("length: ")

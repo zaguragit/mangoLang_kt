@@ -2,7 +2,7 @@ package mango.interpreter.symbols
 
 import mango.interpreter.binding.nodes.expressions.BoundConstant
 
-open class VariableSymbol private constructor(
+open class VariableSymbol internal constructor(
     override val name: String,
     override val type: TypeSymbol,
     val isReadOnly: Boolean,

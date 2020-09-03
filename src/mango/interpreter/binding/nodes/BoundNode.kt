@@ -90,7 +90,7 @@ abstract class BoundNode {
             }
             BoundNodeType.CallExpression -> {
                 this as BoundCallExpression
-                builder.append(symbol.name)
+                builder.append(expression.structureString(indent + 1, true))
                 builder.append('(')
                 var isFirst = true
                 for (arg in arguments) {

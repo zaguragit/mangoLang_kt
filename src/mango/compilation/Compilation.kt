@@ -58,8 +58,6 @@ class Compilation(
         }
 
         diagnostics.sortBySpan()
-        //if (isRepl) {
-        //}
         return CompilationResult(diagnostics.errorList, diagnostics.nonErrorList)
     }
 
