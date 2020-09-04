@@ -1,11 +1,11 @@
 package mango.interpreter.symbols
 
-import mango.interpreter.binding.BoundNamespace
+import mango.interpreter.binding.Namespace
 
 interface VisibleSymbol {
     val path: String
 
-    val namespace get() = BoundNamespace[path.substringBeforeLast('.')]
+    val namespace get() = Namespace[path.substringBeforeLast('.')]
 
     fun mangledName(): String {
         this as Symbol

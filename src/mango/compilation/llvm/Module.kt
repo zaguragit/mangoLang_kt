@@ -3,7 +3,6 @@ package mango.compilation.llvm
 import mango.compilation.llvm.LLVMValue.GlobalRef
 import mango.compilation.llvm.LLVMValue.StringRef
 import mango.interpreter.symbols.FunctionSymbol
-import mango.interpreter.symbols.Symbol
 import mango.interpreter.symbols.TypeSymbol
 import java.util.*
 import kotlin.collections.HashMap

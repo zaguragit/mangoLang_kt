@@ -14,8 +14,6 @@ class MangoRepl : Repl() {
 
     private var previous: Compilation? = null
 
-    private val variables = HashMap<VariableSymbol, Any?>()
-
     override fun init() {
         val trees = SyntaxTree.loadLib("/usr/local/include/mangoLang/std/", "std")
         val compilation = Compilation(null, trees)

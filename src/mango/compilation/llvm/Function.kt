@@ -2,7 +2,6 @@ package mango.compilation.llvm
 
 import mango.compilation.llvm.LLVMValue.LocalRef
 import mango.interpreter.symbols.FunctionSymbol
-import mango.interpreter.symbols.Symbol
 import mango.interpreter.symbols.TypeSymbol
 import mango.util.EmitterError
 import java.util.*
@@ -111,8 +110,6 @@ class FunctionBuilder(
 
 
     fun entryBlock (): BlockBuilder = blocks.first
-    fun addInstruction (instruction: LLVMInstruction) = entryBlock().addInstruction(instruction)
-    fun tempValue (value: LLVMInstruction) = entryBlock().tmpVal(value)
 
     fun createBlock (name: String?): BlockBuilder {
         val block = BlockBuilder(this, name)

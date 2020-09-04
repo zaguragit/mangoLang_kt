@@ -58,7 +58,12 @@ class SourceText internal constructor(
         }
     }
 
-    class Line(val sourceText: SourceText, val start: Int, val length: Int, val lengthIncludingLineBreak: Int) {
+    class Line(
+        val sourceText: SourceText,
+        val start: Int,
+        val length: Int,
+        val lengthIncludingLineBreak: Int
+    ) {
         val span get() = TextSpan(start, length)
 
         fun getTextRange(start: Int, end: Int) = getText().substring(start, end)

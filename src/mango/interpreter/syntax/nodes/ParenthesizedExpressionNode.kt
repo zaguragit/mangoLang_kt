@@ -5,10 +5,10 @@ import mango.interpreter.syntax.Token
 import mango.interpreter.syntax.SyntaxTree
 
 class ParenthesizedExpressionNode(
-        syntaxTree: SyntaxTree,
-        val open: Token,
-        val expression: Node,
-        val closed: Token
+    syntaxTree: SyntaxTree,
+    val open: Token,
+    val expression: Node,
+    val closed: Token
 ) : Node(syntaxTree) {
     override val kind = SyntaxType.ParenthesizedExpression
     override val children

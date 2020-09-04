@@ -1,8 +1,6 @@
 package mango.compilation.llvm
 
 import mango.compilation.llvm.LLVMValue.LocalRef
-import mango.interpreter.symbols.CallableSymbol
-import mango.interpreter.symbols.VisibleSymbol
 import java.util.*
 
 interface LLVMInstruction {

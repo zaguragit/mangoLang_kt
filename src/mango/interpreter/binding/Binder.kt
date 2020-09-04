@@ -21,15 +21,15 @@ import kotlin.collections.HashMap
 import kotlin.collections.HashSet
 
 class Binder(
-    var scope: BoundScope,
+    var scope: Scope,
     val function: FunctionSymbol?,
-    val functions: HashMap<FunctionSymbol, BoundBlockStatement?>,
-    val functionBodies: HashMap<FunctionSymbol, BoundBlockStatement?>?
+    val functions: HashMap<FunctionSymbol, BlockStatement?>,
+    val functionBodies: HashMap<FunctionSymbol, BlockStatement?>?
 ) {
 
     var isUnsafe = false
     val diagnostics = DiagnosticList()
-    private val loopStack = Stack<Pair<BoundLabel, BoundLabel>>()
+    private val loopStack = Stack<Pair<Label, Label>>()
     private var labelCount = 0
 
     init {
@@ -40,7 +40,7 @@ class Binder(
         }
     }
 
-    private fun bindStatement(node: Node): BoundStatement {
+    private fun bindStatement(node: Node): Statement {
         return when (node.kind) {
             SyntaxType.ExpressionStatement -> bindExpressionStatement(node as ExpressionStatementNode)
             SyntaxType.VariableDeclaration -> bindVariableDeclaration(node as VariableDeclarationNode)
@@ -54,19 +54,19 @@ class Binder(
         }
     }
 
-    private fun bindErrorStatement() = BoundExpressionStatement(BoundErrorExpression())
+    private fun bindErrorStatement() = ExpressionStatement(ErrorExpression())
 
-    private fun bindIfStatement(node: IfStatementNode): BoundIfStatement {
+    private fun bindIfStatement(node: IfStatementNode): IfStatement {
         val condition = bindExpression(node.condition, TypeSymbol.Bool)
-        val statement = bindBlock(node.thenStatement, false) as BoundBlockStatement
-        val elseStatement: BoundStatement?
+        val statement = bindBlock(node.thenStatement, false) as BlockStatement
+        val elseStatement: Statement?
         if (node.elseClause != null) {
             elseStatement = bindStatement(node.elseClause.statement)
-            if (elseStatement is BoundExpressionStatement) {
+            if (elseStatement is ExpressionStatement) {
                 val block = elseStatement.expression
-                if (block is BoundBlockExpression &&
+                if (block is BlockExpression &&
                     block.statements.size == 1 &&
-                    block.statements.elementAt(0) is BoundIfStatement) {
+                    block.statements.elementAt(0) is IfStatement) {
                     diagnostics.styleElseIfStatement(TextLocation(
                         node.location.text,
                         TextSpan.fromBounds(
@@ -78,58 +78,58 @@ class Binder(
         } else {
             elseStatement = null
         }
-        return BoundIfStatement(condition, statement, elseStatement)
+        return IfStatement(condition, statement, elseStatement)
     }
 
-    private fun bindWhileStatement(node: WhileStatementNode): BoundWhileStatement {
+    private fun bindWhileStatement(node: WhileStatementNode): WhileStatement {
         val condition = bindExpression(node.condition, TypeSymbol.Bool)
         val (body, breakLabel, continueLabel) = bindLoopBody(node.body)
-        return BoundWhileStatement(condition, body, breakLabel, continueLabel)
+        return WhileStatement(condition, body, breakLabel, continueLabel)
     }
 
-    private fun bindForStatement(node: ForStatementNode): BoundForStatement {
+    private fun bindForStatement(node: ForStatementNode): ForStatement {
         val lowerBound = bindExpression(node.lowerBound, TypeSymbol.Int)
         val upperBound = bindExpression(node.upperBound, TypeSymbol.Int)
 
         val previous = scope
-        scope = BoundScope(scope)
+        scope = Scope(scope)
         val variable = bindVariable(node.identifier, TypeSymbol.Int, true, null)
         val (body, breakLabel, continueLabel) = bindLoopBody(node.body)
         scope = previous
 
-        return BoundForStatement(variable, lowerBound, upperBound, body, breakLabel, continueLabel)
+        return ForStatement(variable, lowerBound, upperBound, body, breakLabel, continueLabel)
     }
 
-    private fun bindLoopBody(node: BlockNode): Triple<BoundBlockStatement, BoundLabel, BoundLabel> {
+    private fun bindLoopBody(node: BlockNode): Triple<BlockStatement, Label, Label> {
         val numStr = labelCount.toString(16)
-        val breakLabel = BoundLabel("B$numStr")
-        val continueLabel = BoundLabel("C$numStr")
+        val breakLabel = Label("B$numStr")
+        val continueLabel = Label("C$numStr")
         labelCount++
         loopStack.push(breakLabel to continueLabel)
-        val body = bindBlock(node, false) as BoundBlockStatement
+        val body = bindBlock(node, false) as BlockStatement
         loopStack.pop()
         return Triple(body, breakLabel, continueLabel)
     }
 
-    private fun bindBreakStatement(node: BreakStatementNode): BoundStatement {
+    private fun bindBreakStatement(node: BreakStatementNode): Statement {
         if (loopStack.count() == 0) {
             diagnostics.reportBreakContinueOutsideLoop(node.keyword.location, node.keyword.string!!)
             return bindErrorStatement()
         }
         val breakLabel = loopStack.peek().first
-        return BoundGotoStatement(breakLabel)
+        return GotoStatement(breakLabel)
     }
 
-    private fun bindContinueStatement(node: ContinueStatementNode): BoundStatement {
+    private fun bindContinueStatement(node: ContinueStatementNode): Statement {
         if (loopStack.count() == 0) {
             diagnostics.reportBreakContinueOutsideLoop(node.keyword.location, node.keyword.string!!)
             return bindErrorStatement()
         }
         val continueLabel = loopStack.peek().second
-        return BoundGotoStatement(continueLabel)
+        return GotoStatement(continueLabel)
     }
 
-    private fun bindReturnStatement(node: ReturnStatementNode): BoundStatement {
+    private fun bindReturnStatement(node: ReturnStatementNode): Statement {
         val expression = node.expression?.let { bindExpression(it) }
         if (function == null) {
             diagnostics.reportReturnOutsideFunction(node.keyword.location)
@@ -147,44 +147,44 @@ class Binder(
                 diagnostics.reportWrongType(node.expression.location, expression.type, function.returnType)
             }
         }
-        return BoundReturnStatement(expression)
+        return ReturnStatement(expression)
     }
 
-    private fun bindExpressionStatement(node: ExpressionStatementNode): BoundStatement {
+    private fun bindExpressionStatement(node: ExpressionStatementNode): Statement {
         when (node.expression.kind) {
             SyntaxType.Block -> {
                 return bindBlock(
                         node.expression as BlockNode,
                         isExpression = false,
                         isUnsafe = false
-                ) as BoundStatement
+                ) as Statement
             }
             SyntaxType.UnsafeBlock -> {
                 return bindBlock(
                     (node.expression as UnsafeBlockNode).block,
                     isExpression = false,
                     isUnsafe = true
-                ) as BoundStatement
+                ) as Statement
             }
             else -> {
                 val expression = bindExpression(node.expression, canBeUnit = true)
                 if (function != null && function.declarationNode?.lambdaArrow == null) {
                     val kind = expression.kind
                     val isAllowedExpression =
-                            kind == BoundNodeType.AssignmentExpression ||
-                            kind == BoundNodeType.CallExpression ||
-                            kind == BoundNodeType.ErrorExpression
+                            kind == BoundNode.Kind.AssignmentExpression ||
+                            kind == BoundNode.Kind.CallExpression ||
+                            kind == BoundNode.Kind.ErrorExpression
                     if (!isAllowedExpression) {
                         diagnostics.reportInvalidExpressionStatement(node.location)
                         return bindErrorStatement()
                     }
                 }
-                return BoundExpressionStatement(expression)
+                return ExpressionStatement(expression)
             }
         }
     }
 
-    private fun bindVariableDeclaration(node: VariableDeclarationNode): BoundVariableDeclaration {
+    private fun bindVariableDeclaration(node: VariableDeclarationNode): VariableDeclaration {
         val isReadOnly = node.keyword.kind == SyntaxType.Val
         val type = bindTypeClause(node.typeClauseNode)
         val initializer = bindExpression(node.initializer)
@@ -193,7 +193,7 @@ class Binder(
             diagnostics.reportWrongType(node.initializer.location, initializer.type, type!!)
         }
         val variable = bindVariable(node.identifier, actualType, isReadOnly, initializer.constantValue)
-        return BoundVariableDeclaration(variable, initializer)
+        return VariableDeclaration(variable, initializer)
     }
 
     private fun bindTypeClause(node: TypeClauseNode?): TypeSymbol? {
@@ -211,8 +211,8 @@ class Binder(
     private fun bindVariable(identifier: Token, type: TypeSymbol, isReadOnly: Boolean, constant: BoundConstant?): VariableSymbol {
         val name = identifier.string ?: "?"
         val variable: VariableSymbol
-        variable = if (function == null && scope is BoundNamespace) {
-            VariableSymbol.visible(name, type, isReadOnly, constant, (scope as BoundNamespace).path + '.' + name)
+        variable = if (function == null && scope is Namespace) {
+            VariableSymbol.visible(name, type, isReadOnly, constant, (scope as Namespace).path + '.' + name)
         } else {
             VariableSymbol.local(name, type, isReadOnly, constant)
         }
@@ -224,10 +224,10 @@ class Binder(
 
     fun bindUseStatement(node: UseStatementNode) {
         val path = node.directories.joinToString(separator = ".") { it.string!! }
-        if (BoundNamespace.namespaces[path] == null) {
+        if (Namespace.namespaces[path] == null) {
             diagnostics.reportIncorrectUseStatement(node.location)
         } else {
-            scope.use(BoundUse(path, node.isInclude))
+            scope.use(UseStatement(path, node.isInclude))
         }
     }
 
@@ -235,7 +235,7 @@ class Binder(
         val result = bindExpressionInternal(node, type)
         if (!canBeUnit && result.type == TypeSymbol.Unit) {
             diagnostics.reportExpressionMustHaveValue(node.location)
-            return BoundErrorExpression()
+            return ErrorExpression()
         }
         return result
     }
@@ -287,8 +287,8 @@ class Binder(
 
         for (a in node.arguments) {
             val arg = bindExpression(a, canBeUnit = true)
-            if (arg.kind == BoundNodeType.ErrorExpression) {
-                return BoundErrorExpression()
+            if (arg.kind == BoundNode.Kind.ErrorExpression) {
+                return ErrorExpression()
             }
             arguments.add(arg)
         }
@@ -299,15 +299,15 @@ class Binder(
             val symbol = scope.tryLookup(listOf(name.identifier.string!!), CallableSymbol.generateSuffix(types, false))
             if (symbol != null) {
                 symbol as VariableSymbol
-                BoundVariableExpression(symbol)
+                NameExpression(symbol)
             } else {
                 val stmbol2 = scope.tryLookup(listOf(name.identifier.string))
                 if (stmbol2 != null) {
                     stmbol2 as VariableSymbol
-                    BoundVariableExpression(stmbol2)
+                    NameExpression(stmbol2)
                 } else {
                     diagnostics.reportUndefinedFunction(name.location, name.identifier.string, types, false)
-                    return BoundErrorExpression()
+                    return ErrorExpression()
                 }
             }
         } else if (node.function.kind == SyntaxType.BinaryExpression && (node.function as BinaryExpressionNode).operator.kind == SyntaxType.Dot) {
@@ -319,11 +319,11 @@ class Binder(
             bindExpression(node.function)
         }
         if (function.type == TypeSymbol.err) {
-            return BoundErrorExpression()
+            return ErrorExpression()
         }
         if (function.type.kind != Symbol.Kind.FunctionType) {
             diagnostics.reportNotCallable(node.function.location, function.type)
-            return BoundErrorExpression()
+            return ErrorExpression()
         }
         val functionType = function.type as TypeSymbol.Fn
 
@@ -336,10 +336,10 @@ class Binder(
             val span = TextSpan.fromBounds(firstExceedingNode.span.start, node.arguments.last().span.end)
             val location = TextLocation(firstExceedingNode.syntaxTree.sourceText, span)
             diagnostics.reportWrongArgumentCount(location, node.arguments.nodeCount, functionType.args.size)
-            return BoundErrorExpression()
+            return ErrorExpression()
         } else if (arguments.size < functionType.args.size) {
             diagnostics.reportWrongArgumentCount(node.rightBracket.location, node.arguments.nodeCount, functionType.args.size)
-            return BoundErrorExpression()
+            return ErrorExpression()
         }
 
         for (i in arguments.indices) {
@@ -350,18 +350,18 @@ class Binder(
                 if (arg.type != TypeSymbol.err) {
                     diagnostics.reportWrongArgumentType(node.arguments[i].location, param.name, arg.type, param)
                 }
-                return BoundErrorExpression()
+                return ErrorExpression()
             }
         }
 
-        return BoundCallExpression(function, arguments)
+        return CallExpression(function, arguments)
     }
 
     private fun bindIndexExpression(node: IndexExpressionNode): BoundExpression {
         val expression = bindExpression(node.expression)
 
-        if (expression.kind == BoundNodeType.ErrorExpression) {
-            return BoundErrorExpression()
+        if (expression.kind == BoundNode.Kind.ErrorExpression) {
+            return ErrorExpression()
         }
 
         val list = ArrayList<BoundExpression>()
@@ -372,9 +372,9 @@ class Binder(
         if (expression.type.isOfType(TypeSymbol.Ptr) && list.size == 2 && list[1].type.isOfType(TypeSymbol.Integer)) {
             if (!isUnsafe) {
                 diagnostics.reportPointerOperationsAreUnsafe(node.location)
-                return BoundErrorExpression()
+                return ErrorExpression()
             }
-            return BoundPointerAccess(expression, list[1])
+            return PointerAccess(expression, list[1])
         }
         val operatorFunction = scope.tryLookup(
             listOf("get"),
@@ -382,17 +382,17 @@ class Binder(
         )
         if (operatorFunction != null && operatorFunction.meta.isOperator) {
             operatorFunction as CallableSymbol
-            return BoundCallExpression(BoundVariableExpression(operatorFunction), list)
+            return CallExpression(NameExpression(operatorFunction), list)
         }
 
         diagnostics.reportUndefinedFunction(node.location, "get", list.map { it.type }, true)
-        return BoundErrorExpression()
+        return ErrorExpression()
     }
 
     private fun bindBlock(node: BlockNode, isExpression: Boolean, isUnsafe: Boolean = false): BoundNode {
-        val statements = ArrayList<BoundStatement>()
+        val statements = ArrayList<Statement>()
         val previous = scope
-        scope = BoundScope(scope)
+        scope = Scope(scope)
         var type = TypeSymbol.Unit
         val isLastUnsafe = this.isUnsafe
         this.isUnsafe = this.isUnsafe || isUnsafe
@@ -411,7 +411,7 @@ class Binder(
                         s as ExpressionStatementNode
                         val expression = bindExpression(s.expression)
                         type = expression.type
-                        statements.add(BoundExpressionStatement(expression))
+                        statements.add(ExpressionStatement(expression))
                     } else {
                         val statement = bindStatement(s)
                         statements.add(statement)
@@ -422,14 +422,14 @@ class Binder(
         this.isUnsafe = isLastUnsafe
         scope = previous
         return if (isExpression) {
-            BoundBlockExpression(statements, type)
+            BlockExpression(statements, type)
         } else {
-            BoundBlockStatement(statements)
+            BlockStatement(statements)
         }
     }
 
     private fun bindAssignmentExpression(node: AssignmentExpressionNode): BoundExpression {
-        val name = node.identifierToken.string ?: return BoundErrorExpression()
+        val name = node.identifierToken.string ?: return ErrorExpression()
         val boundExpression = bindExpression(node.expression)
         val variable = scope.tryLookup(listOf(name))
         if (variable == null) {
@@ -448,21 +448,21 @@ class Binder(
             diagnostics.reportWrongType(node.identifierToken.location, variable.type, boundExpression.type)
             return boundExpression
         }
-        return BoundAssignmentExpression(variable, boundExpression)
+        return AssignmentExpression(variable, boundExpression)
     }
 
     private fun bindNameExpression(node: NameExpressionNode): BoundExpression {
-        val name = node.identifier.string ?: return BoundErrorExpression()
+        val name = node.identifier.string ?: return ErrorExpression()
         val variable = scope.tryLookup(listOf(name))
         if (variable == null) {
             diagnostics.reportUndefinedName(node.identifier.location, name)
-            return BoundErrorExpression()
+            return ErrorExpression()
         }
         if (variable !is VariableSymbol) {
             diagnostics.reportUndefinedName(node.identifier.location, name)
-            return BoundErrorExpression()
+            return ErrorExpression()
         }
-        return BoundVariableExpression(variable)
+        return NameExpression(variable)
     }
 
     private fun bindParenthesizedExpression(
@@ -472,7 +472,7 @@ class Binder(
     private fun bindLiteralExpression(
         node: LiteralExpressionNode,
         expectedType: TypeSymbol?
-    ): BoundLiteralExpression {
+    ): LiteralExpression {
         val type = when (node.value) {
             is Byte -> when (expectedType) {
                 TypeSymbol.I8 -> TypeSymbol.I8
@@ -496,7 +496,7 @@ class Binder(
             is String -> TypeSymbol.String
             else -> throw BinderError("Unexpected literal of type ${node.value?.javaClass}")
         }
-        return BoundLiteralExpression(when (type) {
+        return LiteralExpression(when (type) {
             TypeSymbol.I8 -> (node.value as Number).toByte()
             TypeSymbol.I16 -> (node.value as Number).toShort()
             TypeSymbol.I32 -> (node.value as Number).toInt()
@@ -509,37 +509,37 @@ class Binder(
     private fun bindUnaryExpression(node: UnaryExpressionNode): BoundExpression {
         val operand = bindExpression(node.operand)
         if (operand.type == TypeSymbol.err) {
-            return BoundErrorExpression()
+            return ErrorExpression()
         }
         if (node.operator.kind == SyntaxType.BitAnd) {
             if (!isUnsafe) {
                 diagnostics.reportPointerOperationsAreUnsafe(node.operator.location)
-                return BoundErrorExpression()
+                return ErrorExpression()
             }
-            if (operand.kind != BoundNodeType.VariableExpression) {
+            if (operand.kind != BoundNode.Kind.VariableExpression) {
                 diagnostics.reportReferenceRequiresMutableVar(node.operator.location)
-                return BoundErrorExpression()
+                return ErrorExpression()
             }
-            operand as BoundVariableExpression
+            operand as NameExpression
             if (operand.symbol.isReadOnly) {
                 diagnostics.reportReferenceRequiresMutableVar(node.operator.location)
-                return BoundErrorExpression()
+                return ErrorExpression()
             }
-            return BoundReference(operand)
+            return Reference(operand)
         }
-        val operator = BoundUnOperator.bind(node.operator.kind, operand.type)
+        val operator = UnOperator.bind(node.operator.kind, operand.type)
         if (operator == null) {
             val operatorFunction = scope.tryLookup(
                 listOf(Translator.unaryOperatorToString(node.operator.kind)),
                 CallableSymbol.generateSuffix(listOf(operand.type), true))
             if (operatorFunction != null && operatorFunction.meta.isOperator) {
                 operatorFunction as CallableSymbol
-                return BoundCallExpression(BoundVariableExpression(operatorFunction), listOf(operand))
+                return CallExpression(NameExpression(operatorFunction), listOf(operand))
             }
             diagnostics.reportUnaryOperator(node.operator.location, node.operator.kind, operand.type)
-            return BoundErrorExpression()
+            return ErrorExpression()
         }
-        return BoundUnaryExpression(operator, operand)
+        return UnaryExpression(operator, operand)
     }
 
     private fun bindBinaryExpression(node: BinaryExpressionNode): BoundExpression {
@@ -548,12 +548,12 @@ class Binder(
         val right = bindExpression(node.right)
 
         if (left.type == TypeSymbol.err || right.type == TypeSymbol.err) {
-            return BoundErrorExpression()
+            return ErrorExpression()
         }
 
-        val operator = BoundBiOperator.bind(node.operator.kind, left.type, right.type)
+        val operator = BiOperator.bind(node.operator.kind, left.type, right.type)
         if (operator != null) {
-            return BoundBinaryExpression(left, operator, right)
+            return BinaryExpression(left, operator, right)
         }
 
         if (node.operator.kind == SyntaxType.IsNotEqual) {
@@ -562,9 +562,9 @@ class Binder(
                 CallableSymbol.generateSuffix(listOf(left.type, right.type), true))
             if (operatorFunction != null && operatorFunction.meta.isOperator) {
                 operatorFunction as CallableSymbol
-                return BoundUnaryExpression(
-                    BoundUnOperator(SyntaxType.Bang, BoundUnOperator.Type.Not, TypeSymbol.Bool),
-                    BoundCallExpression(BoundVariableExpression(operatorFunction), listOf(left, right)))
+                return UnaryExpression(
+                    UnOperator(SyntaxType.Bang, UnOperator.Type.Not, TypeSymbol.Bool),
+                    CallExpression(NameExpression(operatorFunction), listOf(left, right)))
             }
         } else {
             val operatorFunction = scope.tryLookup(
@@ -572,18 +572,18 @@ class Binder(
                 CallableSymbol.generateSuffix(listOf(left.type, right.type), true))
             if (operatorFunction != null && operatorFunction.meta.isOperator) {
                 operatorFunction as CallableSymbol
-                return BoundCallExpression(BoundVariableExpression(operatorFunction), listOf(left, right))
+                return CallExpression(NameExpression(operatorFunction), listOf(left, right))
             }
         }
         diagnostics.reportBinaryOperator(node.operator.location, left.type, node.operator.kind, right.type)
-        return BoundErrorExpression()
+        return ErrorExpression()
     }
 
     private fun bindDotAccessExpression(node: BinaryExpressionNode, types: List<TypeSymbol>? = null): Pair<BoundExpression, BoundExpression?> {
 
         if (node.right.kind != SyntaxType.NameExpression) {
             diagnostics.reportCantBeAfterDot(node.right.location)
-            return BoundErrorExpression() to null
+            return ErrorExpression() to null
         }
 
         node.right as NameExpressionNode
@@ -592,33 +592,33 @@ class Binder(
             val symbol = scope.tryLookup(leftName.split('.').toMutableList().apply { add(rightName) }, types?.let { CallableSymbol.generateSuffix(it, false) })
             if (symbol != null) {
                 symbol as VariableSymbol
-                return BoundVariableExpression(symbol)
+                return NameExpression(symbol)
             }
-            val leftNamespace = BoundNamespace[leftName]
+            val leftNamespace = Namespace[leftName]
             if (leftNamespace == null) {
                 diagnostics.reportUndefinedName(node.left.location, leftName)
-                return BoundErrorExpression()
+                return ErrorExpression()
             }
-            val namespace = BoundNamespace["$leftName.$rightName"]
+            val namespace = Namespace["$leftName.$rightName"]
             if (namespace != null) {
-                return BoundNamespaceFieldAccess(namespace)
+                return NamespaceFieldAccess(namespace)
             }
             diagnostics.reportNotFoundInNamespace(node.right.location, rightName, leftNamespace)
-            return BoundErrorExpression()
+            return ErrorExpression()
         }
 
         if (node.left.kind == SyntaxType.NameExpression) {
             node.left as NameExpressionNode
-            val leftName = node.left.identifier.string ?: return BoundErrorExpression() to null
-            val rightName = node.right.identifier.string ?: return BoundErrorExpression() to null
+            val leftName = node.left.identifier.string ?: return ErrorExpression() to null
+            val rightName = node.right.identifier.string ?: return ErrorExpression() to null
             scope.tryLookup(listOf(leftName)) ?: return bindNamespaceAccess(leftName, rightName) to null
         }
 
         val left = bindExpression(node.left)
-        val name = node.right.identifier.string ?: return BoundErrorExpression() to null
+        val name = node.right.identifier.string ?: return ErrorExpression() to null
 
-        if (left.kind == BoundNodeType.NamespaceFieldAccess) {
-            left as BoundNamespaceFieldAccess
+        if (left.kind == BoundNode.Kind.NamespaceFieldAccess) {
+            left as NamespaceFieldAccess
             val leftName = left.namespace.path
             return bindNamespaceAccess(leftName, name) to null
         }
@@ -626,7 +626,7 @@ class Binder(
         if (left.type.kind == Symbol.Kind.Struct) {
             val i = (left.type as TypeSymbol.StructTypeSymbol).fields.indexOfFirst { it.name == name }
             if (i != -1) {
-                return BoundStructFieldAccess(left, i) to left
+                return StructFieldAccess(left, i) to left
             }
         }
         if (types != null) {
@@ -637,20 +637,20 @@ class Binder(
             val function = scope.tryLookup(listOf(name), CallableSymbol.generateSuffix(t, true))
             if (function != null) {
                 function as VariableSymbol
-                return BoundVariableExpression(function) to left
+                return NameExpression(function) to left
             }
             diagnostics.reportUndefinedFunction(node.right.location, name, t, true)
-            return BoundErrorExpression() to null
+            return ErrorExpression() to null
         }
         diagnostics.reportUndefinedName(node.right.location, name)
-        return BoundErrorExpression() to null
+        return ErrorExpression() to null
     }
 
     fun bindGlobalStatement(
-        statement: Node,
-        syntaxTree: SyntaxTree,
-        statementBuilder: ArrayList<BoundStatement>,
-        symbols: ArrayList<Symbol>
+            statement: Node,
+            syntaxTree: SyntaxTree,
+            statementBuilder: ArrayList<Statement>,
+            symbols: ArrayList<Symbol>
     ) {
         when (statement.kind) {
             SyntaxType.FunctionDeclaration -> {
@@ -675,7 +675,7 @@ class Binder(
             SyntaxType.NamespaceStatement -> {
                 statement as NamespaceStatementNode
                 val prev = scope
-                val namespace = BoundNamespace(syntaxTree.projectPath + '.' + statement.identifier.string, scope)
+                val namespace = Namespace(syntaxTree.projectPath + '.' + statement.identifier.string, scope)
                 scope = namespace
                 for (s in statement.members) {
                     bindGlobalStatement(s, syntaxTree, statementBuilder, symbols)
@@ -689,15 +689,15 @@ class Binder(
     companion object {
 
         fun bindGlobalScope(
-            previous: BoundGlobalScope?,
-            syntaxTrees: Collection<SyntaxTree>
-        ): BoundGlobalScope {
+                previous: GlobalScope?,
+                syntaxTrees: Collection<SyntaxTree>
+        ): GlobalScope {
 
             val parentScope = createParentScopes(previous)
             val binder = Binder(parentScope, null, HashMap(), null)
 
             val symbols = ArrayList<Symbol>()
-            val statementBuilder = ArrayList<BoundStatement>()
+            val statementBuilder = ArrayList<Statement>()
 
             for (syntaxTree in syntaxTrees) {
                 val strBuilder = StringBuilder()
@@ -705,13 +705,13 @@ class Binder(
                 syntaxTree.projectPath.split('.').forEachIndexed { i, s ->
                     val path = if (i == 0) { strBuilder.append(s).toString() }
                         else { strBuilder.append('.').append(s).toString() }
-                    parent = BoundNamespace.getOr(path) { BoundNamespace(path, parent) }
+                    parent = Namespace.getOr(path) { Namespace(path, parent) }
                 }
             }
             for (syntaxTree in syntaxTrees) {
                 binder.diagnostics.append(syntaxTree.diagnostics)
                 val prev = binder.scope
-                val namespace = BoundNamespace[syntaxTree.projectPath]!!
+                val namespace = Namespace[syntaxTree.projectPath]!!
                 binder.scope = namespace
                 for (s in syntaxTree.root.members) {
                     binder.bindGlobalStatement(s, syntaxTree, statementBuilder, symbols)
@@ -757,7 +757,7 @@ class Binder(
                 diagnostics.append(previous.diagnostics)
             }
 
-            return BoundGlobalScope(
+            return GlobalScope(
                 previous,
                 diagnostics,
                 symbols,
@@ -766,10 +766,10 @@ class Binder(
         }
 
         private fun createParentScopes(
-            previous: BoundGlobalScope?
-        ): BoundScope {
+            previous: GlobalScope?
+        ): Scope {
 
-            val stack = Stack<BoundGlobalScope>()
+            val stack = Stack<GlobalScope>()
             var prev = previous
 
             while (prev != null) {
@@ -777,11 +777,11 @@ class Binder(
                 prev = prev.previous
             }
 
-            var parent: BoundScope = createRootScope()
+            var parent: Scope = createRootScope()
 
             while (stack.count() > 0) {
                 val previous = stack.pop()
-                val scope = BoundScope(parent)
+                val scope = Scope(parent)
                 for (v in previous.symbols) {
                     v as VisibleSymbol
                     if (v.meta.isEntry) { //path.substringBeforeLast('.') == "main"
@@ -794,22 +794,22 @@ class Binder(
             return parent
         }
 
-        private fun createRootScope(): BoundScope {
-            return BoundScope(null)
+        private fun createRootScope(): Scope {
+            return Scope(null)
         }
 
         fun bindFunction(
-            parentScope: BoundScope,
-            functions: HashMap<FunctionSymbol, BoundBlockStatement?>,
-            symbol: FunctionSymbol,
-            diagnostics: DiagnosticList,
-            functionBodies: HashMap<FunctionSymbol, BoundBlockStatement?>?
+                parentScope: Scope,
+                functions: HashMap<FunctionSymbol, BlockStatement?>,
+                symbol: FunctionSymbol,
+                diagnostics: DiagnosticList,
+                functionBodies: HashMap<FunctionSymbol, BlockStatement?>?
         ) {
             val binder = Binder(parentScope, symbol, functions, functionBodies)
             when {
                 symbol.meta.isExtern -> functions[symbol] = null
                 symbol.declarationNode!!.lambdaArrow == null -> {
-                    val body = binder.bindBlock(symbol.declarationNode.body as BlockNode, false) as BoundBlockStatement
+                    val body = binder.bindBlock(symbol.declarationNode.body as BlockNode, false) as BlockStatement
                     val loweredBody = Lowerer.lower(body)
                     if (symbol.returnType != TypeSymbol.Unit && !ControlFlowGraph.allPathsReturn(loweredBody)) {
                         diagnostics.reportAllPathsMustReturn(symbol.declarationNode.identifier.location)
@@ -829,63 +829,62 @@ class Binder(
         }
 
         fun bindProgram(
-            previous: BoundProgram?,
-            globalScope: BoundGlobalScope
-        ): BoundProgram {
+                previous: Program?,
+                globalScope: GlobalScope
+        ): Program {
 
             val parentScope = createParentScopes(globalScope)
-            val functions = HashMap<FunctionSymbol, BoundBlockStatement?>()
+            val functions = HashMap<FunctionSymbol, BlockStatement?>()
             val diagnostics = DiagnosticList()
 
             val functionBodies = if (isSharedLib) {
-                val tmp = HashMap<FunctionSymbol, BoundBlockStatement?>()
+                val tmp = HashMap<FunctionSymbol, BlockStatement?>()
                 for (symbol in globalScope.symbols) {
                     if (symbol is FunctionSymbol) {
-                        bindFunction(BoundScope(symbol.namespace!!), functions, symbol, diagnostics, tmp)
+                        bindFunction(Scope(symbol.namespace!!), functions, symbol, diagnostics, tmp)
                     }
                 }
                 tmp
             } else {
                 for (symbol in globalScope.symbols) {
                     if (symbol is FunctionSymbol) {
-                        bindFunction(BoundScope(symbol.namespace!!), functions, symbol, diagnostics, null)
+                        bindFunction(Scope(symbol.namespace!!), functions, symbol, diagnostics, null)
                     }
                 }
                 null
             }
 
-            val statement: BoundBlockStatement
+            val statement: BlockStatement
             if (isRepl) {
                 val statements = globalScope.statements
                 if (statements.size == 1) {
                     val s = statements.last()
-                    if (s is BoundExpressionStatement && s.expression.type != TypeSymbol.Unit) {
+                    if (s is ExpressionStatement && s.expression.type != TypeSymbol.Unit) {
                         globalScope.symbols.find {
                             it is FunctionSymbol &&
                             it.path == "io.println" &&
                             it.parameters.size == 1 &&
                             it.parameters[0].type == s.expression.type
                         }?.let {
-                            statements[statements.lastIndex] = BoundExpressionStatement(BoundCallExpression(BoundVariableExpression(it as CallableSymbol), listOf(s.expression)))
+                            statements[statements.lastIndex] = ExpressionStatement(CallExpression(NameExpression(it as CallableSymbol), listOf(s.expression)))
                         }
                     }
                 }
-                val body = Lowerer.lower(BoundBlockStatement(
+                val body = Lowerer.lower(BlockStatement(
                     globalScope.statements
                 ))
                 functions[globalScope.mainFn] = body
-                statement = BoundBlockStatement(listOf())
+                statement = BlockStatement(listOf())
             }
             else {
-                statement = Lowerer.lower(BoundBlockStatement(
+                statement = Lowerer.lower(BlockStatement(
                     globalScope.statements
                 ))
             }
 
-            return BoundProgram(
+            return Program(
                 previous,
                 diagnostics,
-                globalScope.mainFn,
                 functions,
                 statement,
                 functionBodies)
@@ -923,8 +922,8 @@ class Binder(
             bindTypeClause(node.typeClause)!!
         }
 
-        val path = if (scope is BoundNamespace) {
-            (scope as BoundNamespace).path + '.' + node.identifier.string!!
+        val path = if (scope is Namespace) {
+            (scope as Namespace).path + '.' + node.identifier.string!!
         } else {
             function!!.mangledName().substringBeforeLast('.') + '.' + Symbol.genFnUID()
         }

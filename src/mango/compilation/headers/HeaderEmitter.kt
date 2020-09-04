@@ -1,20 +1,20 @@
 package mango.compilation.headers
 
 import mango.compilation.Emitter
-import mango.interpreter.binding.BoundNamespace
-import mango.interpreter.binding.BoundProgram
-import mango.interpreter.binding.nodes.statements.BoundBlockStatement
+import mango.interpreter.binding.Namespace
+import mango.interpreter.binding.Program
+import mango.interpreter.binding.nodes.statements.BlockStatement
 import mango.interpreter.symbols.FunctionSymbol
 import mango.interpreter.symbols.Symbol
 
 object HeaderEmitter : Emitter {
 
     override fun emit(
-        program: BoundProgram,
-        moduleName: String
+            program: Program,
+            moduleName: String
     ): String {
         val namespaceMap = HashMap<String, Header.Namespace>()
-        for (namespace in BoundNamespace.namespaces.values) {
+        for (namespace in Namespace.namespaces.values) {
             val namespaceRepresentation = Header.Namespace(namespace.path.substringAfterLast('.'))
             val parentPath = namespace.path.substringBeforeLast('.')
             if (namespaceMap.containsKey(parentPath)) {
@@ -62,7 +62,7 @@ object HeaderEmitter : Emitter {
             }} + ' ' + symbol.type.name
         }
 
-        class InlineableFunction (val symbol: FunctionSymbol, val body: BoundBlockStatement) : Header {
+        class InlineableFunction (val symbol: FunctionSymbol, val body: BlockStatement) : Header {
             override fun toString () = "\n[inline]\n" +
                     "fn " + if (symbol.meta.isExtension) {
                 symbol.parameters[0].type.name + '.' + symbol.name + " (" + symbol.parameters.joinToString(separator = ", ", postfix = ")") {

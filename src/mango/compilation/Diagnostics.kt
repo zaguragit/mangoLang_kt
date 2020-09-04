@@ -1,10 +1,9 @@
 package mango.compilation
 
 import mango.console.Console
-import mango.interpreter.binding.BoundNamespace
-import mango.interpreter.binding.nodes.BoundBiOperator
-import mango.interpreter.binding.nodes.BoundUnOperator
-import mango.interpreter.symbols.Symbol
+import mango.interpreter.binding.Namespace
+import mango.interpreter.binding.nodes.BiOperator
+import mango.interpreter.binding.nodes.UnOperator
 import mango.interpreter.symbols.TypeSymbol
 import mango.interpreter.syntax.SyntaxType
 import mango.interpreter.text.TextLocation
@@ -157,14 +156,14 @@ class DiagnosticList {
         location: TextLocation,
         operatorType: SyntaxType,
         operandType: TypeSymbol
-    ) = report(location, "\"${BoundUnOperator.getString(operatorType)}\" isn't compatible with $operandType")
+    ) = report(location, "\"${UnOperator.getString(operatorType)}\" isn't compatible with $operandType")
 
     fun reportBinaryOperator(
         location: TextLocation,
         leftType: TypeSymbol,
         operatorType: SyntaxType,
         rightType: TypeSymbol
-    ) = report(location, "\"${BoundBiOperator.getString(operatorType)}\" isn't compatible with $leftType and $rightType")
+    ) = report(location, "\"${BiOperator.getString(operatorType)}\" isn't compatible with $leftType and $rightType")
 
     fun reportUndefinedName(
         location: TextLocation,
@@ -174,7 +173,7 @@ class DiagnosticList {
     fun reportNotFoundInNamespace(
         location: TextLocation,
         name: String,
-        namespace: BoundNamespace
+        namespace: Namespace
     ) = report(location, "There's no \"$name\" in ${namespace.path}")
 
     fun reportUndefinedFunction(
@@ -183,9 +182,6 @@ class DiagnosticList {
         parameters: List<TypeSymbol>,
         isExtension: Boolean
     ) = report(location, "Undefined name ( ${if (isExtension) {
-        if (parameters.size == 0) {
-            println(name)
-        }
         parameters.elementAt(0).name + ".$name" + "(${parameters.subList(1, parameters.size) .joinToString(", ") { it.name }})"
     } else {
         name + "(${parameters.joinToString(", ") { it.name }})"

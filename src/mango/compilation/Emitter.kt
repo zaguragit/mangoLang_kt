@@ -1,11 +1,11 @@
 package mango.compilation
 
-import mango.interpreter.binding.BoundProgram
+import mango.interpreter.binding.Program
 
 interface Emitter {
 
     fun emit(
-        program: BoundProgram,
-        moduleName: String
+            program: Program,
+            moduleName: String
     ): String
 }

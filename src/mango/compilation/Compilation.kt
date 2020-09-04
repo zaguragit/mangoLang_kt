@@ -4,8 +4,8 @@ import mango.compilation.headers.HeaderEmitter
 import mango.compilation.llvm.LLVMEmitter
 import mango.console.Console
 import mango.interpreter.binding.Binder
-import mango.interpreter.binding.BoundGlobalScope
-import mango.interpreter.binding.BoundProgram
+import mango.interpreter.binding.GlobalScope
+import mango.interpreter.binding.Program
 import mango.interpreter.symbols.FunctionSymbol
 import mango.interpreter.syntax.SyntaxTree
 import mango.isProject
@@ -14,17 +14,16 @@ import mango.useStd
 import java.io.File
 import java.io.FileNotFoundException
 
-
 class Compilation(
     val previous: Compilation?,
     val syntaxTrees: Collection<SyntaxTree>
 ) {
 
-    val globalScope: BoundGlobalScope by lazy {
+    val globalScope: GlobalScope by lazy {
         Binder.bindGlobalScope(previous?.globalScope, syntaxTrees)
     }
 
-    private fun getProgram(): BoundProgram = Binder.bindProgram(previous?.getProgram(), globalScope)
+    private fun getProgram(): Program = Binder.bindProgram(previous?.getProgram(), globalScope)
 
     fun evaluate(): CompilationResult {
 
