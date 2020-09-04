@@ -1,7 +1,7 @@
 /*
 struct String {
 	val length Int
-	val chars I8*
+	val chars I16*
 }
 */
 
@@ -41,4 +41,4 @@ fn String.equals (other String) Bool {
 
 [inline]
 [operator]
-fn String.get(i Int) I8 -> unsafe { this.chars[i] }
+fn String.get(i Int) I16 -> unsafe { this.chars[i] }

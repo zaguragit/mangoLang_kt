@@ -5,11 +5,11 @@ interface LLVMValue {
     val code: String
     val type: LLVMType
 
-    class StringRef(
-        val stringConst: StringConst
+    class ArrayRef(
+        val arrayConst: ArrayConst
     ) : LLVMValue {
-        override val type get() = LLVMType.Ptr(LLVMType.I8)
-        override val code get() = "getelementptr inbounds ([${stringConst.lengthInBytes()} x i8], [${stringConst.lengthInBytes()} x i8]* @${stringConst.id}, i64 0, i32 0)"
+        override val type get() = LLVMType.Ptr(arrayConst.type)
+        override val code get() = "getelementptr inbounds ([${arrayConst.lengthInBytes()} x ${arrayConst.type.code}], [${arrayConst.lengthInBytes()} x ${arrayConst.type.code}]* @${arrayConst.id}, i64 0, i32 0)"
     }
 
     class LocalRef(

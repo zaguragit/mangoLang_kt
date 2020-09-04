@@ -111,7 +111,7 @@ object LLVMEmitter : Emitter {
             val value: LLVMValue? = when (expression.kind) {
                 BoundNode.Kind.AssignmentExpression -> emitAssignment(initBlock, expression as AssignmentExpression)
                 BoundNode.Kind.CastExpression -> emitValue(initBlock, (expression as CastExpression).expression)
-                BoundNode.Kind.LiteralExpression -> emitLiteral(initBlock, expression as LiteralExpression, false)
+                BoundNode.Kind.LiteralExpression -> emitLiteral(initBlock, expression as LiteralExpression)
                 BoundNode.Kind.VariableExpression -> emitVariableExpression(initBlock, expression as NameExpression)
                 else -> {
                     val instruction = emitInstruction(initBlock, expression)!!
@@ -138,7 +138,7 @@ object LLVMEmitter : Emitter {
     ): LLVMValue? = when (expression.kind) {
         BoundNode.Kind.AssignmentExpression -> emitAssignment(block, expression as AssignmentExpression)
         BoundNode.Kind.CastExpression -> emitValue(block, (expression as CastExpression).expression)
-        BoundNode.Kind.LiteralExpression -> emitLiteral(block, expression as LiteralExpression, true)
+        BoundNode.Kind.LiteralExpression -> emitLiteral(block, expression as LiteralExpression)
         BoundNode.Kind.VariableExpression -> emitVariableExpression(block, expression as NameExpression)
         BoundNode.Kind.ErrorExpression -> throw EmitterError("Error expression got to the emission stage")
         BoundNode.Kind.ReferenceExpression -> emitReference(block, (expression as Reference).expression)
@@ -170,8 +170,7 @@ object LLVMEmitter : Emitter {
 
     private fun emitLiteral(
         block: BlockBuilder,
-        expression: LiteralExpression,
-        isLocal: Boolean
+        expression: LiteralExpression
     ): LLVMValue = when {
         expression.value == null -> Null(LLVMType[expression.type])
         expression.type.isOfType(TypeSymbol.String) -> block.stringConstForContent(expression.value as String).ref

@@ -78,7 +78,7 @@ open class TypeSymbol private constructor(
 
         val Bool = TypeSymbol("Bool", Primitive, size = 1)
 
-        val String = StructTypeSymbol("String", arrayOf(StructTypeSymbol.Field("length", Int), StructTypeSymbol.Field("chars", Ptr(arrayOf(I8)))), Any)
+        val String = StructTypeSymbol("String", arrayOf(StructTypeSymbol.Field("length", Int), StructTypeSymbol.Field("chars", Ptr(arrayOf(I16)))), Any)
 
         val Unit = TypeSymbol("Unit", Any)
 

@@ -20,5 +20,5 @@ typedef void Unit;
 
 typedef struct {
 	U32 length;
-	I8* chars;
+	I16* chars;
 } String;

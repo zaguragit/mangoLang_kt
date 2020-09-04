@@ -16,11 +16,4 @@ fn smaller (a Int, b Int) Int -> if a < b { return a } else { return b }
 [inline]
 fn bigger  (a Int, b Int) Int -> if a > b { return a } else { return b }
 
-/*
-[inline]
-fn smaller (a Int, b Int) Int -> (a < b) ? a : b
-
-[inline]
-fn bigger  (a Int, b Int) Int -> (a > b) ? a : b
-*/
 */

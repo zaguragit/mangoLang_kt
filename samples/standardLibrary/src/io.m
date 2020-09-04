@@ -3,7 +3,7 @@ use string*
 
 [extern]
 [cname: "putchar"]
-fn print (char I8)
+fn print (char I16)
 
 fn print (string String) {
 	var i = 0
@@ -53,12 +53,12 @@ fn readln String
 
 [extern]
 [cname: "getchar"]
-fn readChar I8
+fn readChar I16
 
 fn readln String {
 	val string = new MutableString {
 	    length: 0
-	    chars: new I8[512]
+	    chars: new I16[512]
 	}
     var ch = readChar()
     while ch != '\n' && ch != '\0' && string.length < 512 {

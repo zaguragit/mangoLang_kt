@@ -1,7 +1,6 @@
 package mango.compilation.llvm
 
 import mango.compilation.llvm.LLVMValue.GlobalRef
-import mango.compilation.llvm.LLVMValue.StringRef
 import mango.interpreter.symbols.FunctionSymbol
 import mango.interpreter.symbols.TypeSymbol
 import java.util.*
@@ -14,13 +13,14 @@ private val String.IRCode get() = "c\"" + this
     .replace("\t", "\\09")
     .replace("\r", "\\0D") + "\\00\""
 
-open class StringConst(
+open class ArrayConst(
     val id: String,
-    val content: String
+    val type: LLVMType,
+    val content: List<LLVMValue>
 ) {
-    fun lengthInBytes() = content.length + 1
-    open fun code() = "@$id = unnamed_addr constant [${lengthInBytes()} x i8] ${content.IRCode}"
-    val ref get() = StringRef(this)
+    fun lengthInBytes() = content.size
+    open fun code() = "@$id = unnamed_addr constant [${lengthInBytes()} x ${type.code}] [${content.joinToString(", ") { it.type.code + " " + it.code }}]"
+    val ref get() = LLVMValue.ArrayRef(this)
 }
 
 open class GlobalVar(
@@ -74,7 +74,7 @@ class LLVMStruct(
 }
 
 class ModuleBuilder {
-    private val stringConsts = HashMap<String, StringConst>()
+    private val stringConsts = HashMap<String, ArrayConst>()
     private val importedDeclarations = LinkedList<String>()
     private val importedDefinitions = LinkedList<String>()
     private val declarations = LinkedList<FunctionDeclaration>()
@@ -106,9 +106,9 @@ class ModuleBuilder {
         return g
     }
 
-    fun cStringConstForContent (content: String): StringConst {
+    fun cStringConstForContent (content: String): ArrayConst {
         if (!stringConsts.containsKey(content)) {
-            stringConsts[content] = StringConst(".str.${stringConsts.size}", content)
+            stringConsts[content] = ArrayConst(".str.${stringConsts.size}", LLVMType.I16, content.map { LLVMValue.Int(it.toInt(), LLVMType.I16) })
         }
         return stringConsts[content]!!
     }

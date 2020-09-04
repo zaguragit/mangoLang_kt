@@ -154,9 +154,9 @@ class Binder(
         when (node.expression.kind) {
             SyntaxType.Block -> {
                 return bindBlock(
-                        node.expression as BlockNode,
-                        isExpression = false,
-                        isUnsafe = false
+                    node.expression as BlockNode,
+                    isExpression = false,
+                    isUnsafe = false
                 ) as Statement
             }
             SyntaxType.UnsafeBlock -> {
@@ -301,10 +301,10 @@ class Binder(
                 symbol as VariableSymbol
                 NameExpression(symbol)
             } else {
-                val stmbol2 = scope.tryLookup(listOf(name.identifier.string))
-                if (stmbol2 != null) {
-                    stmbol2 as VariableSymbol
-                    NameExpression(stmbol2)
+                val symbol2 = scope.tryLookup(listOf(name.identifier.string))
+                if (symbol2 != null) {
+                    symbol2 as VariableSymbol
+                    NameExpression(symbol2)
                 } else {
                     diagnostics.reportUndefinedFunction(name.location, name.identifier.string, types, false)
                     return ErrorExpression()
@@ -689,8 +689,8 @@ class Binder(
     companion object {
 
         fun bindGlobalScope(
-                previous: GlobalScope?,
-                syntaxTrees: Collection<SyntaxTree>
+            previous: GlobalScope?,
+            syntaxTrees: Collection<SyntaxTree>
         ): GlobalScope {
 
             val parentScope = createParentScopes(previous)
@@ -799,11 +799,11 @@ class Binder(
         }
 
         fun bindFunction(
-                parentScope: Scope,
-                functions: HashMap<FunctionSymbol, BlockStatement?>,
-                symbol: FunctionSymbol,
-                diagnostics: DiagnosticList,
-                functionBodies: HashMap<FunctionSymbol, BlockStatement?>?
+            parentScope: Scope,
+            functions: HashMap<FunctionSymbol, BlockStatement?>,
+            symbol: FunctionSymbol,
+            diagnostics: DiagnosticList,
+            functionBodies: HashMap<FunctionSymbol, BlockStatement?>?
         ) {
             val binder = Binder(parentScope, symbol, functions, functionBodies)
             when {
@@ -821,6 +821,9 @@ class Binder(
                     val body = symbol.declarationNode.body as ExpressionStatementNode
                     val expression = binder.bindExpression(body.expression, canBeUnit = true)
                     val loweredBody = Lowerer.lower(expression)
+                    if (!expression.type.isOfType(symbol.returnType)) {
+                        diagnostics.reportWrongType(body.expression.location, expression.type, symbol.returnType)
+                    }
                     functions[symbol] = loweredBody
                     functionBodies?.put(symbol, loweredBody)
                 }
@@ -829,11 +832,11 @@ class Binder(
         }
 
         fun bindProgram(
-                previous: Program?,
-                globalScope: GlobalScope
+            previous: Program?,
+            globalScope: GlobalScope
         ): Program {
 
-            val parentScope = createParentScopes(globalScope)
+            //val parentScope = createParentScopes(globalScope)
             val functions = HashMap<FunctionSymbol, BlockStatement?>()
             val diagnostics = DiagnosticList()
 
