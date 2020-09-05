@@ -13,7 +13,7 @@ interface VisibleSymbol {
         if (this is CallableSymbol) {
             if (meta.isEntry) return "main"
             if (parameters.isNotEmpty()) {
-                return path + suffix
+                return realName + suffix
             }
         }
         return path

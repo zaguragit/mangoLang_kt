@@ -35,7 +35,7 @@ open class TypeSymbol private constructor(
 
     class Fn(
         val returnType: TypeSymbol,
-        val args: Collection<TypeSymbol>
+        val args: List<TypeSymbol>
     ) : TypeSymbol("Fn", Any) {
 
         override val kind = Kind.FunctionType

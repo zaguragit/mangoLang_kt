@@ -1,7 +1,7 @@
 package mango.compilation.llvm
 
 import mango.compilation.llvm.LLVMValue.GlobalRef
-import mango.interpreter.symbols.FunctionSymbol
+import mango.interpreter.symbols.CallableSymbol
 import mango.interpreter.symbols.TypeSymbol
 import java.util.*
 import kotlin.collections.HashMap
@@ -133,7 +133,7 @@ class ModuleBuilder {
         structs.add(LLVMStruct(name, types))
     }
 
-    fun addImportedDeclaration (symbol: FunctionSymbol) {
+    fun addImportedDeclaration (symbol: CallableSymbol) {
         val returnType = LLVMType[symbol.returnType]
         importedDeclarations.add("declare ${returnType.code} @\"${symbol.mangledName()}\"(${symbol.parameters.joinToString(", ") {
             LLVMType[it.type].code
@@ -144,7 +144,7 @@ class ModuleBuilder {
         importedDefinitions.add(code)
     }
 
-    fun createFunction (symbol: FunctionSymbol): FunctionBuilder {
+    fun createFunction (symbol: CallableSymbol): FunctionBuilder {
         val function = FunctionBuilder(this, List(symbol.parameters.size) {
             LLVMType[symbol.parameters[it].type]
         }, symbol)

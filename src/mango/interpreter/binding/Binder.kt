@@ -1,10 +1,11 @@
 package mango.interpreter.binding
 
 import mango.compilation.DiagnosticList
-import mango.interpreter.binding.nodes.*
+import mango.interpreter.binding.nodes.BiOperator
+import mango.interpreter.binding.nodes.BoundNode
+import mango.interpreter.binding.nodes.UnOperator
 import mango.interpreter.binding.nodes.expressions.*
 import mango.interpreter.binding.nodes.statements.*
-import mango.interpreter.text.TextSpan
 import mango.interpreter.symbols.*
 import mango.interpreter.syntax.SyntaxTree
 import mango.interpreter.syntax.SyntaxType
@@ -12,6 +13,7 @@ import mango.interpreter.syntax.Token
 import mango.interpreter.syntax.Translator
 import mango.interpreter.syntax.nodes.*
 import mango.interpreter.text.TextLocation
+import mango.interpreter.text.TextSpan
 import mango.isRepl
 import mango.isSharedLib
 import mango.util.BinderError
@@ -22,9 +24,9 @@ import kotlin.collections.HashSet
 
 class Binder(
     var scope: Scope,
-    val function: FunctionSymbol?,
-    val functions: HashMap<FunctionSymbol, BlockStatement?>,
-    val functionBodies: HashMap<FunctionSymbol, BlockStatement?>?
+    val function: CallableSymbol?,
+    val functions: HashMap<CallableSymbol, BlockStatement?>,
+    val functionBodies: HashMap<CallableSymbol, BlockStatement?>?
 ) {
 
     var isUnsafe = false
@@ -721,28 +723,27 @@ class Binder(
 
             var entryFn = symbols.find {
                 it.kind == Symbol.Kind.Function &&
-                (it as FunctionSymbol).meta.isEntry &&
-                it.type == TypeSymbol.Fn.entry &&
-                it.parameters.isEmpty()
-            } as FunctionSymbol?
+                it.meta.isEntry &&
+                it.type == TypeSymbol.Fn.entry
+            } as CallableSymbol?
 
             val diagnostics = binder.diagnostics
 
             if (entryFn == null) {
                 if (isRepl) {
-                    entryFn = FunctionSymbol(
+                    entryFn = CallableSymbol(
                         "main",
                         arrayOf(),
-                        TypeSymbol.Unit,
+                        TypeSymbol.Fn(TypeSymbol.Unit, listOf()),
                         "main",
                         null,
                         Symbol.MetaData()
                     )
                 } else {
-                    entryFn = FunctionSymbol(
+                    entryFn = CallableSymbol(
                         "main",
                         arrayOf(),
-                        TypeSymbol.Unit,
+                        TypeSymbol.Fn(TypeSymbol.Unit, listOf()),
                         "main",
                         null,
                         Symbol.MetaData()
@@ -800,10 +801,10 @@ class Binder(
 
         fun bindFunction(
             parentScope: Scope,
-            functions: HashMap<FunctionSymbol, BlockStatement?>,
-            symbol: FunctionSymbol,
+            functions: HashMap<CallableSymbol, BlockStatement?>,
+            symbol: CallableSymbol,
             diagnostics: DiagnosticList,
-            functionBodies: HashMap<FunctionSymbol, BlockStatement?>?
+            functionBodies: HashMap<CallableSymbol, BlockStatement?>?
         ) {
             val binder = Binder(parentScope, symbol, functions, functionBodies)
             when {
@@ -837,20 +838,20 @@ class Binder(
         ): Program {
 
             //val parentScope = createParentScopes(globalScope)
-            val functions = HashMap<FunctionSymbol, BlockStatement?>()
+            val functions = HashMap<CallableSymbol, BlockStatement?>()
             val diagnostics = DiagnosticList()
 
             val functionBodies = if (isSharedLib) {
-                val tmp = HashMap<FunctionSymbol, BlockStatement?>()
+                val tmp = HashMap<CallableSymbol, BlockStatement?>()
                 for (symbol in globalScope.symbols) {
-                    if (symbol is FunctionSymbol) {
+                    if (symbol is CallableSymbol) {
                         bindFunction(Scope(symbol.namespace!!), functions, symbol, diagnostics, tmp)
                     }
                 }
                 tmp
             } else {
                 for (symbol in globalScope.symbols) {
-                    if (symbol is FunctionSymbol) {
+                    if (symbol is CallableSymbol) {
                         bindFunction(Scope(symbol.namespace!!), functions, symbol, diagnostics, null)
                     }
                 }
@@ -864,8 +865,8 @@ class Binder(
                     val s = statements.last()
                     if (s is ExpressionStatement && s.expression.type != TypeSymbol.Unit) {
                         globalScope.symbols.find {
-                            it is FunctionSymbol &&
-                            it.path == "io.println" &&
+                            it is CallableSymbol &&
+                            it.realName == "io.println" &&
                             it.parameters.size == 1 &&
                             it.parameters[0].type == s.expression.type
                         }?.let {
@@ -894,7 +895,7 @@ class Binder(
         }
     }
 
-    private fun bindFunctionDeclaration(node: FunctionDeclarationNode): FunctionSymbol {
+    private fun bindFunctionDeclaration(node: FunctionDeclarationNode): CallableSymbol {
 
         val meta = Symbol.MetaData()
         val params = ArrayList<VariableSymbol>()
@@ -930,7 +931,7 @@ class Binder(
         } else {
             function!!.mangledName().substringBeforeLast('.') + '.' + Symbol.genFnUID()
         }
-        val function = FunctionSymbol(node.identifier.string!!, params.toTypedArray(), type, path, node, meta)
+        val function = CallableSymbol(node.identifier.string!!, params.toTypedArray(), TypeSymbol.Fn(type, params.map { it.type }), path, node, meta)
         for (annotation in node.annotations) {
             when (annotation.identifier.string) {
                 "inline" -> meta.isInline = true

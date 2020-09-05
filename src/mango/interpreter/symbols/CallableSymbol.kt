@@ -2,32 +2,32 @@ package mango.interpreter.symbols
 
 import mango.interpreter.syntax.nodes.FunctionDeclarationNode
 
-abstract class CallableSymbol(
+open class CallableSymbol(
     name: String,
     val parameters: Array<VariableSymbol>,
-    returnType: TypeSymbol,
-    val path: String,
+    override val type: TypeSymbol.Fn,
+    path: String,
     val declarationNode: FunctionDeclarationNode?,
     override val meta: MetaData
 ) : VariableSymbol(
     name,
-    TypeSymbol.Fn(returnType, parameters.map { it.type }),
+    type,
     true,
     null,
     Kind.Function,
     path
-) {
+), VisibleSymbol {
 
-    override val kind = Kind.Function
+    override val path get() = realName
 
-    inline val returnType get() = (type as TypeSymbol.Fn).returnType
+    inline val returnType get() = type.returnType
 
     val suffix by lazy {
-        generateSuffix(parameters.map { it.type }, meta.isExtension)
+        generateSuffix(type.args, meta.isExtension)
     }
 
     companion object {
-        fun generateSuffix(parameters: List<TypeSymbol>, isExtension: Boolean) = buildString {
+        fun generateSuffix(parameters: Collection<TypeSymbol>, isExtension: Boolean) = buildString {
             for (p in parameters) {
                 append('[')
                 append(p.name)

@@ -1,7 +1,7 @@
 package mango.compilation.llvm
 
 import mango.compilation.llvm.LLVMValue.LocalRef
-import mango.interpreter.symbols.FunctionSymbol
+import mango.interpreter.symbols.CallableSymbol
 import mango.interpreter.symbols.TypeSymbol
 import mango.util.EmitterError
 import java.util.*
@@ -87,7 +87,7 @@ class BlockBuilder(
 class FunctionBuilder(
     val moduleBuilder: ModuleBuilder,
     val paramTypes: List<LLVMType>,
-    val symbol: FunctionSymbol
+    val symbol: CallableSymbol
 ) {
     val returnType = LLVMType[symbol.returnType]
 

@@ -177,14 +177,14 @@ open class Scope(
             }
         }
     }
-    fun tryLookupFunction(path: Collection<String>, isFromUse: Boolean): Pair<FunctionSymbol?, Boolean> {
+    fun tryLookupFunction(path: Collection<String>, isFromUse: Boolean): Pair<CallableSymbol?, Boolean> {
         return when {
             path.size == 1 -> {
                 val name = path.elementAt(0)
                 when {
                     map.containsKey(name) -> {
                         val symbol = map[name]
-                        if (symbol is FunctionSymbol) { symbol.apply { useCounter++ } to true } else null to false
+                        if (symbol is CallableSymbol) { symbol.apply { useCounter++ } to true } else null to false
                     }
                     parent == null -> return null to false
                     else -> {

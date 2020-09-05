@@ -6,7 +6,7 @@ import mango.console.Console
 import mango.interpreter.binding.Binder
 import mango.interpreter.binding.GlobalScope
 import mango.interpreter.binding.Program
-import mango.interpreter.symbols.FunctionSymbol
+import mango.interpreter.symbols.CallableSymbol
 import mango.interpreter.syntax.SyntaxTree
 import mango.isProject
 import mango.isSharedLib
@@ -62,7 +62,7 @@ class Compilation(
 
     fun printTree() = printTree(globalScope.mainFn)
 
-    fun printTree(symbol: FunctionSymbol) {
+    fun printTree(symbol: CallableSymbol) {
         val program = getProgram()
         symbol.printStructure()
         print(' ')

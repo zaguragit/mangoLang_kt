@@ -1,9 +1,8 @@
 package mango.console
 
-import mango.interpreter.symbols.VariableSymbol
 import mango.compilation.Compilation
 import mango.compilation.EmissionType
-import mango.interpreter.symbols.FunctionSymbol
+import mango.interpreter.symbols.CallableSymbol
 import mango.interpreter.syntax.SyntaxTree
 import java.io.File
 
@@ -116,7 +115,7 @@ class MangoRepl : Repl() {
                         while (compilation != null) {
                             for (result in compilation.globalScope.symbols) {
                                 if (result.name == args[i]) {
-                                    if (result is FunctionSymbol) {
+                                    if (result is CallableSymbol) {
                                         compilation.printTree(result)
                                     } else {
                                         result.printStructure()
