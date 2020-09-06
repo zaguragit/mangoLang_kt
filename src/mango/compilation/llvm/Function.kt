@@ -105,7 +105,6 @@ class FunctionBuilder(
 
     fun code() =
         "define ${returnType.code} @\"${symbol.mangledName()}\"(${paramTypes.map(LLVMType::code).joinToString(separator = ", ")}) ${attributes.joinToString(" ")} {\n" +
-        //"    ${variables.joinToString("\n    ") { it.allocCode() }}\n" +
         "    ${blocks.joinToString("\n    ") { it.code() }}\n}\n"
 
 

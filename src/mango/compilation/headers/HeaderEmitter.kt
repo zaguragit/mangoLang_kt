@@ -29,7 +29,7 @@ object HeaderEmitter : Emitter {
                         symbol as CallableSymbol
                         if (!symbol.meta.isInternal) {
                             if (symbol.meta.isInline) {
-                                val function = Header.InlineableFunction(symbol, program.functionBodies!![symbol]!!)
+                                val function = Header.InlineFunction(symbol, program.functionBodies!![symbol]!!)
                                 namespaceRepresentation.add(function)
                             } else {
                                 val function = Header.Function(symbol)
@@ -59,10 +59,10 @@ object HeaderEmitter : Emitter {
                 }.substringAfter(", ")
             } else { symbol.name + symbol.parameters.joinToString(separator = ", ", prefix = " (", postfix = ")") {
                 it.name + ' ' + it.type.name
-            }} + ' ' + symbol.type.name
+            }} + ' ' + symbol.returnType.name
         }
 
-        class InlineableFunction (val symbol: CallableSymbol, val body: BlockStatement) : Header {
+        class InlineFunction (val symbol: CallableSymbol, val body: BlockStatement) : Header {
             override fun toString () = "\n[inline]\n" +
                     "fn " + if (symbol.meta.isExtension) {
                 symbol.parameters[0].type.name + '.' + symbol.name + " (" + symbol.parameters.joinToString(separator = ", ", postfix = ")") {
@@ -70,7 +70,7 @@ object HeaderEmitter : Emitter {
                 }.substringAfter(", ")
             } else { symbol.name + symbol.parameters.joinToString(separator = ", ", prefix = " (", postfix = ")") {
                 it.name + ' ' + it.type.name
-            }} + ' ' + symbol.type.name + ' ' + body.structureString()
+            }} + ' ' + symbol.returnType.name + ' ' + body.structureString()
         }
 
         class Namespace (val name: String) : Header {

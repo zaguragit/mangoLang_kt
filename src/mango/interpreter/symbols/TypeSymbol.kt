@@ -15,8 +15,6 @@ open class TypeSymbol private constructor(
 
     override val kind = Kind.Type
 
-    //init { map[name] = this }
-
     class StructTypeSymbol(
         name: String,
         val fields: Array<Field>,

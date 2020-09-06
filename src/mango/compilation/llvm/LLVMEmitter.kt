@@ -18,8 +18,8 @@ import mango.util.EmitterError
 object LLVMEmitter : Emitter {
 
     override fun emit(
-            program: Program,
-            moduleName: String
+        program: Program,
+        moduleName: String
     ): String {
 
         val builder = ModuleBuilder()
@@ -64,12 +64,8 @@ object LLVMEmitter : Emitter {
                             currentBlock.store(alloc, value)
                         } else {
                             val initializer = emitInstruction(currentBlock, statement.initializer)!!
-                            /*if (initializer.type is LLVMType.Ptr) {
-                                currentBlock.tmpVal(statement.variable.realName, initializer)
-                            } else {*/
-                                val alloc = currentBlock.alloc(statement.variable.realName, initializer.type)
-                                currentBlock.store(alloc, currentBlock.tmpVal(initializer).ref)
-                            //}
+                            val alloc = currentBlock.alloc(statement.variable.realName, initializer.type)
+                            currentBlock.store(alloc, currentBlock.tmpVal(initializer).ref)
                         }
                     }
                     BoundNode.Kind.LabelStatement -> {

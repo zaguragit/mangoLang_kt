@@ -16,4 +16,8 @@ fn smaller (a Int, b Int) Int -> if a < b { return a } else { return b }
 [inline]
 fn bigger  (a Int, b Int) Int -> if a > b { return a } else { return b }
 
+
+namespace consts {
+    val PI = 3.14159
+}
 */

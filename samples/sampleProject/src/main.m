@@ -9,7 +9,7 @@ fn test {
         val name = getName()
         use std.string*
 
-        if name == badName { // string comparisons don't work yet, so this is always false
+        if name == badName {
             io.print("Go away, ")
             io.print(name)
             io.print("!")

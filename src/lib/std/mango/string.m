@@ -1,6 +1,6 @@
 
 struct String {
-	val length Int
+	val length I32
 	val chars Ptr<I16>
 }
 

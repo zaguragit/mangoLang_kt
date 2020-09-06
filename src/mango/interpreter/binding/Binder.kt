@@ -510,7 +510,7 @@ class Binder(
             is Float -> TypeSymbol.Float
             is Double -> TypeSymbol.Double
             is Boolean -> TypeSymbol.Bool
-            is String -> TypeSymbol["String"]!!//TypeSymbol.String
+            is String -> TypeSymbol["String"]!!
             else -> throw BinderError("Unexpected literal of type ${node.value?.javaClass}")
         }
         return LiteralExpression(when (type) {
@@ -831,7 +831,7 @@ class Binder(
                 val scope = Scope(parent)
                 for (v in previous.symbols) {
                     v as VisibleSymbol
-                    if (v.meta.isEntry) { //path.substringBeforeLast('.') == "main"
+                    if (v.meta.isEntry) {
                         scope.tryDeclare(v)
                     }
                 }
@@ -883,7 +883,6 @@ class Binder(
             globalScope: GlobalScope
         ): Program {
 
-            //val parentScope = createParentScopes(globalScope)
             val functions = HashMap<CallableSymbol, BlockStatement?>()
             val diagnostics = DiagnosticList()
 
@@ -1049,7 +1048,7 @@ class Binder(
                     Symbol.MetaData.entryExists = true
                 }
                 "cname" -> {
-                    val expression = bindLiteralExpression(annotation.value as LiteralExpressionNode, TypeSymbol["String"]!!/*TypeSymbol.String*/)
+                    val expression = bindLiteralExpression(annotation.value as LiteralExpressionNode, TypeSymbol["String"]!!)
                     meta.cname = expression.value as String
                 }
                 else -> {
