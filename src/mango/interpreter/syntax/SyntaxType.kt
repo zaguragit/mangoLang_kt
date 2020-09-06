@@ -43,6 +43,7 @@ enum class SyntaxType {
     ReturnStatement,
     VariableDeclaration,
     FunctionDeclaration,
+    StructDeclaration,
     UseStatement,
     NamespaceStatement,
 
@@ -106,6 +107,7 @@ enum class SyntaxType {
     Fn,
     NamespaceToken,
     Colon,
+    Struct,
 
     // Conditional keywords
     If,

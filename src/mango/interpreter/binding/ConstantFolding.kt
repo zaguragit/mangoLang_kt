@@ -35,7 +35,7 @@ object ConstantFolding {
         val rightVal = rightConst.value
         return BoundConstant(when (operator.type) {
             BiOperator.Type.Add -> {
-                if (left.type == TypeSymbol.String) {
+                if (left.type == TypeSymbol["String"]!!/*TypeSymbol.String*/) {
                     leftVal as String + rightVal as String
                 } else {
                     leftVal as Int + rightVal as Int

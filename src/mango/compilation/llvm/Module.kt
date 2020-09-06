@@ -117,7 +117,7 @@ class ModuleBuilder {
         val wasAlreadyDeclared = stringConsts.containsKey(content)
         val chars = cStringConstForContent(content)
         val length = LLVMValue.Int(content.length, LLVMType.I32)
-        val type = LLVMType[TypeSymbol.String].element as LLVMType.Struct
+        val type = (LLVMType[TypeSymbol["String"]!!/*TypeSymbol.String*/] as LLVMType.Ptr).element as LLVMType.Struct
         val const = ConstVal(chars.id + ".struct", LLVMValue.Struct(type, arrayOf(length, chars.ref)))
         if (!wasAlreadyDeclared) {
             globalVariables.add(const)

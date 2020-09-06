@@ -329,6 +329,14 @@ class DiagnosticList {
         location: TextLocation
     ) = report(location, "You can only get a reference from a mutable variable")
 
+    fun reportCantInferType(
+        location: TextLocation
+    ) = report(location, "Can't infer type")
+
+    fun reportHasToBeInitialized(
+        location: TextLocation
+    ) = report(location, "Can't infer type")
+
     /// CONF ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     fun reportConfError(

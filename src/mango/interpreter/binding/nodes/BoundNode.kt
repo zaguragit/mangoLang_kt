@@ -66,7 +66,7 @@ abstract class BoundNode {
             }
             Kind.LiteralExpression -> {
                 this as LiteralExpression
-                if (type == TypeSymbol.String) {
+                if (type == TypeSymbol["String"]!!/*TypeSymbol.String*/) {
                     val value = value as String
                     builder.append('"' + value
                             .replace("\\", "\\\\")

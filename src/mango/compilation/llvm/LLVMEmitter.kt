@@ -2,14 +2,17 @@ package mango.compilation.llvm
 
 import mango.compilation.Emitter
 import mango.compilation.llvm.LLVMValue.*
-import mango.interpreter.binding.*
+import mango.compilation.llvm.LLVMValue.Float
+import mango.compilation.llvm.LLVMValue.Int
+import mango.interpreter.binding.Program
 import mango.interpreter.binding.nodes.BiOperator
 import mango.interpreter.binding.nodes.BoundNode
-import mango.interpreter.binding.nodes.expressions.PointerAccess
 import mango.interpreter.binding.nodes.UnOperator
 import mango.interpreter.binding.nodes.expressions.*
 import mango.interpreter.binding.nodes.statements.*
-import mango.interpreter.symbols.*
+import mango.interpreter.symbols.Symbol
+import mango.interpreter.symbols.TypeSymbol
+import mango.interpreter.symbols.VisibleSymbol
 import mango.util.EmitterError
 
 object LLVMEmitter : Emitter {
@@ -173,7 +176,7 @@ object LLVMEmitter : Emitter {
         expression: LiteralExpression
     ): LLVMValue = when {
         expression.value == null -> Null(LLVMType[expression.type])
-        expression.type.isOfType(TypeSymbol.String) -> block.stringConstForContent(expression.value as String).ref
+        expression.type.isOfType(TypeSymbol["String"]!!/*TypeSymbol.String*/) -> block.stringConstForContent(expression.value as String).ref
         expression.type.isOfType(TypeSymbol.Integer) -> Int((expression.value as Number).toInt(), LLVMType[expression.type])
         expression.type.isOfType(TypeSymbol.UInteger) -> Int((expression.value as Number).toInt(), LLVMType[expression.type])
         expression.type.isOfType(TypeSymbol.Float) -> Float((expression.value as Number).toFloat(), LLVMType.Float)

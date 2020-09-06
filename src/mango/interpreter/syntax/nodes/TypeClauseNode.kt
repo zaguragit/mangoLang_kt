@@ -1,12 +1,16 @@
 package mango.interpreter.syntax.nodes
 
+import mango.interpreter.syntax.SeparatedNodeList
+import mango.interpreter.syntax.SyntaxTree
 import mango.interpreter.syntax.SyntaxType
 import mango.interpreter.syntax.Token
-import mango.interpreter.syntax.SyntaxTree
 
 class TypeClauseNode(
     syntaxTree: SyntaxTree,
-    val identifier: Token
+    val identifier: Token,
+    var start: Token?,
+    var types: SeparatedNodeList<TypeClauseNode>?,
+    var end: Token?
 ) : Node(syntaxTree) {
 
     override val kind = SyntaxType.TypeClause

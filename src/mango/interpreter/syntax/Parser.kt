@@ -234,10 +234,35 @@ class Parser(
         }
 
         return UseStatementNode(
-                syntaxTree,
-                keyword,
-                directories,
-                isInclude)
+            syntaxTree,
+            keyword,
+            directories,
+            isInclude)
+    }
+
+    private fun parseStructDeclaration(annotations: Collection<AnnotationNode>): Node {
+        val keyword = match(SyntaxType.Struct)
+        val identifier = match(SyntaxType.Identifier)
+        val openBrace = match(SyntaxType.OpenBrace)
+        val fields = ArrayList<VariableDeclarationNode>()
+        while (
+            current.kind != SyntaxType.EOF &&
+            current.kind != SyntaxType.ClosedBrace
+        ) {
+            skipSeparators()
+            val startToken = current
+
+            val statement = parseVariableDeclaration()
+            fields.add(statement)
+
+            skipSeparators()
+            if (startToken == current) {
+                skipSeparators()
+                next()
+            }
+        }
+        val closedBrace = match(SyntaxType.ClosedBrace)
+        return StructDeclarationNode(syntaxTree, keyword, identifier, openBrace, fields, closedBrace)
     }
 
     private fun parseNamespace(): NamespaceStatementNode {
@@ -282,14 +307,14 @@ class Parser(
             SyntaxType.Return -> parseReturnStatement()
             SyntaxType.Fn -> parseFunctionDeclaration(annotations)
             SyntaxType.Use -> parseUseStatement()
+            SyntaxType.Struct -> parseStructDeclaration(annotations)
             else -> parseExpressionStatement()
         }
     }
 
     private fun parseVariableDeclaration(): VariableDeclarationNode {
         skipSeparators()
-        val expected = if (current.kind == SyntaxType.Val) { SyntaxType.Val }
-            else { SyntaxType.Var }
+        val expected = if (current.kind == SyntaxType.Val) { SyntaxType.Val } else { SyntaxType.Var }
         val keyword = match(expected)
         val isError = current.kind == SyntaxType.LineSeparator
         val identifier = match(SyntaxType.Identifier)
@@ -297,8 +322,14 @@ class Parser(
             diagnostics.reportDeclarationAndNameOnSameLine(identifier.location)
         }
         val typeClause = parseOptionalValueTypeClause()
-        val equals = match(SyntaxType.Equals)
-        val initializer = parseExpression()
+        var equals: Token? = null
+        var initializer: Node? = null
+        if (current.kind == SyntaxType.Equals) {
+            equals = match(SyntaxType.Equals)
+            initializer = parseExpression()
+        } else if (typeClause == null) {
+            diagnostics.reportCantInferType(identifier.location)
+        }
         return VariableDeclarationNode(syntaxTree, keyword, identifier, typeClause, equals, initializer)
     }
 
@@ -311,7 +342,36 @@ class Parser(
 
     private fun parseTypeClause(): TypeClauseNode {
         val identifier = match(SyntaxType.Identifier)
-        return TypeClauseNode(syntaxTree, identifier)
+        var start: Token? = null
+        var types: SeparatedNodeList<TypeClauseNode>? = null
+        var end: Token? = null
+        if (current.kind == SyntaxType.LessThan) {
+            start = match(SyntaxType.LessThan)
+            types = parseTypeList()
+            end = match(SyntaxType.MoreThan)
+        }
+        return TypeClauseNode(syntaxTree, identifier, start, types, end)
+    }
+
+    private fun parseTypeList(): SeparatedNodeList<TypeClauseNode> {
+        val nodesNSeparators = ArrayList<Node>()
+
+        while (
+            current.kind != SyntaxType.ClosedParentheses &&
+            current.kind != SyntaxType.EOF
+        ) {
+            val param = parseTypeClause()
+            nodesNSeparators.add(param)
+
+            if (current.kind == SyntaxType.Comma) {
+                val comma = match(SyntaxType.Comma)
+                nodesNSeparators.add(comma)
+            } else {
+                break
+            }
+        }
+
+        return SeparatedNodeList(nodesNSeparators)
     }
 
     private fun parseExpressionStatement(): ExpressionStatementNode {

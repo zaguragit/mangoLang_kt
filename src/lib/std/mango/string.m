@@ -1,9 +1,8 @@
-/*
+
 struct String {
 	val length Int
-	val chars I16*
+	val chars Ptr<I16>
 }
-*/
 
 [extern]
 [cname: "stringToInt"]

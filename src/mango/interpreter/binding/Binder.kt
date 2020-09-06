@@ -188,7 +188,12 @@ class Binder(
 
     private fun bindVariableDeclaration(node: VariableDeclarationNode): VariableDeclaration {
         val isReadOnly = node.keyword.kind == SyntaxType.Val
-        val type = bindTypeClause(node.typeClauseNode)
+        val type = node.typeClauseNode?.let { bindTypeClause(it) }
+        if (node.initializer == null) {
+            val variable = bindVariable(node.identifier, type ?: TypeSymbol.Any, isReadOnly, null)
+            diagnostics.reportHasToBeInitialized(node.identifier.location)
+            return VariableDeclaration(variable, ErrorExpression())
+        }
         val initializer = bindExpression(node.initializer)
         val actualType = type ?: initializer.type
         if (!initializer.type.isOfType(actualType) && initializer.type != TypeSymbol.err) {
@@ -198,14 +203,24 @@ class Binder(
         return VariableDeclaration(variable, initializer)
     }
 
-    private fun bindTypeClause(node: TypeClauseNode?): TypeSymbol? {
-        if (node == null) {
-            return null
-        }
+    private fun bindTypeClause(node: TypeClauseNode): TypeSymbol {
         val type = TypeSymbol[node.identifier.string!!]
         if (type == null) {
             diagnostics.reportUndefinedType(node.identifier.location, node.identifier.string)
             return TypeSymbol.err
+        }
+        val types = node.types
+        if (types != null) {
+            if (type.paramCount != types.nodeCount) {
+                diagnostics.reportWrongArgumentCount(node.identifier.location, types.nodeCount, type.paramCount)
+            }
+            return type(Array(type.paramCount) {
+                val t = bindTypeClause(types[it])
+                if (!t.isOfType(type.params[it])) {
+                    diagnostics.reportWrongType(types[it].location, t, type.params[it])
+                }
+                t
+            })
         }
         return type
     }
@@ -495,7 +510,7 @@ class Binder(
             is Float -> TypeSymbol.Float
             is Double -> TypeSymbol.Double
             is Boolean -> TypeSymbol.Bool
-            is String -> TypeSymbol.String
+            is String -> TypeSymbol["String"]!!//TypeSymbol.String
             else -> throw BinderError("Unexpected literal of type ${node.value?.javaClass}")
         }
         return LiteralExpression(when (type) {
@@ -649,10 +664,10 @@ class Binder(
     }
 
     fun bindGlobalStatement(
-            statement: Node,
-            syntaxTree: SyntaxTree,
-            statementBuilder: ArrayList<Statement>,
-            symbols: ArrayList<Symbol>
+        statement: Node,
+        syntaxTree: SyntaxTree,
+        statementBuilder: ArrayList<Statement>,
+        symbols: ArrayList<Symbol>
     ) {
         when (statement.kind) {
             SyntaxType.FunctionDeclaration -> {
@@ -684,8 +699,23 @@ class Binder(
                 }
                 scope = prev
             }
+            SyntaxType.StructDeclaration -> {}
             else -> throw BinderError("Incorrect statement got to be global (${statement.kind})")
         }
+    }
+
+    private fun bindField(node: VariableDeclarationNode): TypeSymbol.StructTypeSymbol.Field {
+        val isReadOnly = node.keyword.kind == SyntaxType.Val
+        var type = node.typeClauseNode?.let { bindTypeClause(it) }
+        if (node.initializer != null) {
+            diagnostics.reportUnexpectedToken(node.equals!!.location, node.equals.kind, SyntaxType.LineSeparator)
+            val initializer = bindExpression(node.initializer)
+            type = type ?: initializer.type
+            if (!initializer.type.isOfType(type) && initializer.type != TypeSymbol.err) {
+                diagnostics.reportWrongType(node.initializer.location, initializer.type, type)
+            }
+        }
+        return TypeSymbol.StructTypeSymbol.Field(node.identifier.string!!, type!!, isReadOnly)
     }
 
     companion object {
@@ -709,6 +739,22 @@ class Binder(
                         else { strBuilder.append('.').append(s).toString() }
                     parent = Namespace.getOr(path) { Namespace(path, parent) }
                 }
+            }
+            for (syntaxTree in syntaxTrees) {
+                binder.diagnostics.append(syntaxTree.diagnostics)
+                val prev = binder.scope
+                val namespace = Namespace[syntaxTree.projectPath]!!
+                binder.scope = namespace
+                for (s in syntaxTree.root.members) {
+                    if (s.kind == SyntaxType.StructDeclaration) {
+                        s as StructDeclarationNode
+                        val path = s.identifier.string!!
+                        TypeSymbol.map[path] = TypeSymbol.StructTypeSymbol(path, Array(s.fields.size) {
+                            binder.bindField(s.fields[it])
+                        }, TypeSymbol.Any)
+                    }
+                }
+                binder.scope = prev
             }
             for (syntaxTree in syntaxTrees) {
                 binder.diagnostics.append(syntaxTree.diagnostics)
@@ -1003,7 +1049,7 @@ class Binder(
                     Symbol.MetaData.entryExists = true
                 }
                 "cname" -> {
-                    val expression = bindLiteralExpression(annotation.value as LiteralExpressionNode, TypeSymbol.String)
+                    val expression = bindLiteralExpression(annotation.value as LiteralExpressionNode, TypeSymbol["String"]!!/*TypeSymbol.String*/)
                     meta.cname = expression.value as String
                 }
                 else -> {

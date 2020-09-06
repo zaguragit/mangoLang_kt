@@ -15,9 +15,7 @@ open class TypeSymbol private constructor(
 
     override val kind = Kind.Type
 
-    init {
-        map[name] = this
-    }
+    //init { map[name] = this }
 
     class StructTypeSymbol(
         name: String,
@@ -29,7 +27,8 @@ open class TypeSymbol private constructor(
 
         class Field(
             val name: String,
-            val type: TypeSymbol
+            val type: TypeSymbol,
+            val isReadOnly: Boolean
         )
     }
 
@@ -59,32 +58,43 @@ open class TypeSymbol private constructor(
         val Ptr = TypeSymbol("Ptr", Primitive, 1, arrayOf(Any))
 
         val I8 = TypeSymbol("I8", Integer, size = 8)
-        //val U8 = TypeSymbol("U8", AnyU)
+        //val U8 = TypeSymbol("U8", UInteger, size = 8)
         val I16 = TypeSymbol("I16", Integer, size = 16)
-        //val U16 = TypeSymbol("U16", AnyU)
+        //val U16 = TypeSymbol("U16", UInteger, size = 16)
         val I32 = TypeSymbol("I32", Integer, size = 32)
-        //val U32 = TypeSymbol("U32", AnyU)
+        //val U32 = TypeSymbol("U32", UInteger, size = 32)
         val I64 = TypeSymbol("I64", Integer, size = 64)
-        //val U64 = TypeSymbol("U64", AnyU)
+        //val U64 = TypeSymbol("U64", UInteger, size = 64)
 
         val Int = I32
-
-        init {
-            map["Int"] = I32
-        }
 
         val Float = TypeSymbol("Float", Primitive)
         val Double = TypeSymbol("Double", Primitive)
 
         val Bool = TypeSymbol("Bool", Primitive, size = 1)
 
-        val String = StructTypeSymbol("String", arrayOf(StructTypeSymbol.Field("length", Int), StructTypeSymbol.Field("chars", Ptr(arrayOf(I16)))), Any)
+        //val String = StructTypeSymbol("String", arrayOf(StructTypeSymbol.Field("length", Int), StructTypeSymbol.Field("chars", Ptr(arrayOf(I16)))), Any)
 
         val Unit = TypeSymbol("Unit", Any)
 
         val err = TypeSymbol("!Err", null)
 
-        //val Array = StructTypeSymbol("String", arrayOf(StructTypeSymbol.Field("length", Int), StructTypeSymbol.Field("chars", Ptr(arrayOf(I8)))), Any)
+        init {
+            map["Any"] = Any
+            map["Ptr"] = Ptr
+
+            map["I8"] = I8
+            map["I16"] = I16
+            map["I32"] = I32
+            map["I64"] = I64
+
+            map["Int"] = I32
+
+            map["Float"] = Float
+            map["Double"] = Double
+            map["Bool"] = Bool
+            map["Unit"] = Unit
+        }
 
         operator fun get(name: String) = map[name]
     }
