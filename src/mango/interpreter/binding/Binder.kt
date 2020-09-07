@@ -158,14 +158,7 @@ class Binder(
                 return bindBlock(
                     node.expression as BlockNode,
                     isExpression = false,
-                    isUnsafe = false
-                ) as Statement
-            }
-            SyntaxType.UnsafeBlock -> {
-                return bindBlock(
-                    (node.expression as UnsafeBlockNode).block,
-                    isExpression = false,
-                    isUnsafe = true
+                    isUnsafe = node.expression.isUnsafe
                 ) as Statement
             }
             else -> {
@@ -274,15 +267,10 @@ class Binder(
             SyntaxType.AssignmentExpression -> bindAssignmentExpression(node as AssignmentExpressionNode)
             SyntaxType.CallExpression -> bindCallExpression(node as CallExpressionNode)
             SyntaxType.IndexExpression -> bindIndexExpression(node as IndexExpressionNode)
-            SyntaxType.UnsafeBlock -> bindBlock(
-                (node as UnsafeBlockNode).block,
-                isExpression = true,
-                isUnsafe = true
-            ) as BoundExpression
             SyntaxType.Block -> bindBlock(
                 node as BlockNode,
                 isExpression = true,
-                isUnsafe = false
+                isUnsafe = node.isUnsafe
             ) as BoundExpression
             else -> throw BinderError("Unexpected node: ${node.kind}, ${node.location}")
         }

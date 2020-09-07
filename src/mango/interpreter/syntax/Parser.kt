@@ -380,10 +380,10 @@ class Parser(
     }
 
     private fun parseBlock(): BlockNode {
-        val statements = ArrayList<Node>()
         val openBrace = match(SyntaxType.OpenBrace)
 
         skipSeparators()
+        val statements = ArrayList<Node>()
         while (
             current.kind != SyntaxType.EOF &&
             current.kind != SyntaxType.ClosedBrace
@@ -402,7 +402,7 @@ class Parser(
         }
 
         val closedBrace = match(SyntaxType.ClosedBrace)
-        return BlockNode(syntaxTree, openBrace, statements, closedBrace)
+        return BlockNode(syntaxTree, null, openBrace, statements, closedBrace, false)
     }
 
     private fun parseIfStatement(): IfStatementNode {
@@ -568,8 +568,29 @@ class Parser(
 
     private fun parseUnsafeExpression(): Node {
         val keyword = match(SyntaxType.Unsafe)
-        val block = parseBlock()
-        return UnsafeBlockNode(syntaxTree, keyword, block)
+        val openBrace = match(SyntaxType.OpenBrace)
+
+        skipSeparators()
+        val statements = ArrayList<Node>()
+        while (
+            current.kind != SyntaxType.EOF &&
+            current.kind != SyntaxType.ClosedBrace
+        ) {
+            skipSeparators()
+            val startToken = current
+
+            val statement = parseStatement()
+            statements.add(statement)
+
+            skipSeparators()
+            if (startToken == current) {
+                skipSeparators()
+                next()
+            }
+        }
+
+        val closedBrace = match(SyntaxType.ClosedBrace)
+        return BlockNode(syntaxTree, keyword, openBrace, statements, closedBrace, true)
     }
 
     private fun parseFloatLiteral(): Node {

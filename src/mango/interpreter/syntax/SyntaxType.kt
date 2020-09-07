@@ -22,7 +22,6 @@ enum class SyntaxType {
     AssignmentExpression,
     CallExpression,
     IndexExpression,
-    UnsafeBlock,
 
     // Literals
     I8,
