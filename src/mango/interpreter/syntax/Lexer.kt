@@ -1,9 +1,9 @@
 package mango.interpreter.syntax
 
 import mango.compilation.DiagnosticList
-import mango.interpreter.text.TextSpan
 import mango.interpreter.symbols.TypeSymbol
 import mango.interpreter.text.TextLocation
+import mango.interpreter.text.TextSpan
 
 class Lexer(
     private val syntaxTree: SyntaxTree
@@ -107,6 +107,7 @@ class Lexer(
             }
             ',' -> Token(syntaxTree, SyntaxType.Comma, position++, string = ",")
             ':' -> Token(syntaxTree, SyntaxType.Colon, position++, string = ":")
+            '\'' -> readChar()
             '"' -> readString()
             '\n', '\r', ';', ';' -> Token(syntaxTree, SyntaxType.LineSeparator, position++)
             '\u0000' -> Token(syntaxTree, SyntaxType.EOF, sourceText.lastIndex)
@@ -238,6 +239,13 @@ class Lexer(
         return Token(syntaxTree, type, start, string = text)
     }
 
+    fun readChar(): Token {
+        val start = position++
+        val char = current
+        position += 2
+        return Token(syntaxTree, SyntaxType.Char, start, char, "'$char'")
+    }
+
     fun readString(): Token {
         val start = ++position
         val builder = StringBuilder()
@@ -267,8 +275,8 @@ class Lexer(
                         }
                         else -> {
                             diagnostics.reportInvalidCharacterEscape(
-                                    TextLocation(sourceText, TextSpan(position, 1)),
-                                    current.toString())
+                                TextLocation(sourceText, TextSpan(position, 1)),
+                                current.toString())
                             position++
                         }
                     }

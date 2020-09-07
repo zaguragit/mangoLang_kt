@@ -532,6 +532,7 @@ class Parser(
         SyntaxType.Float,
         SyntaxType.Double-> parseFloatLiteral()
         SyntaxType.String -> parseStringLiteral()
+        SyntaxType.Char -> parseCharLiteral()
         SyntaxType.In -> parseIntLiteral()
         SyntaxType.Unsafe -> parseUnsafeExpression()
         SyntaxType.OpenBrace -> parseBlock()
@@ -584,6 +585,8 @@ class Parser(
     }
 
     private fun parseStringLiteral() = LiteralExpressionNode(syntaxTree, match(SyntaxType.String))
+
+    private fun parseCharLiteral() = LiteralExpressionNode(syntaxTree, match(SyntaxType.Char))
 
     private fun parseNameExpression(): Node {
         val identifier = match(SyntaxType.Identifier)

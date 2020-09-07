@@ -56,13 +56,10 @@ fn readln String
 fn readChar I16
 
 fn readln String {
-	val string = new MutableString {
-	    length: 0
-	    chars: new I16[512]
-	}
+	val builder = StringBuilder {}
     var ch = readChar()
-    while ch != '\n' && ch != '\0' && string.length < 512 {
-        string.chars[string.length++] = ch
+    while ch != '\n' && ch != '\0' {
+        builder.append(ch)
         ch = readChar()
     }
     return string

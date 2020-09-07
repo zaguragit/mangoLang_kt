@@ -8,6 +8,7 @@ interface LLVMType {
     val code: String
     val isFloatingPoint: Boolean get() = false
     val isInteger: Boolean get() = false
+    val bits: Int
 
     companion object {
 
@@ -40,7 +41,7 @@ interface LLVMType {
         }
     }
 
-    open class I(bits: Int) : LLVMType {
+    open class I(final override val bits: Int) : LLVMType {
         override val isInteger = true
         override val code = "i$bits"
     }
@@ -53,28 +54,33 @@ interface LLVMType {
 
     object Float : LLVMType {
         override val isFloatingPoint = true
+        override val bits = 32
         override val code = "float"
     }
 
     object Double : LLVMType {
         override val isFloatingPoint = true
+        override val bits = 64
         override val code = "double"
     }
 
     object Void : LLVMType {
         override val code = "void"
+        override val bits = 0
     }
 
     data class Ptr(
         val element: LLVMType
     ) : LLVMType {
         override val code = "${element.code}*"
+        override val bits = element.bits
     }
 
     class Struct(
         val name: String
     ) : LLVMType {
         override val code = "%.struct.$name"
+        override val bits = 0
     }
 
     class Fn(
@@ -82,5 +88,8 @@ interface LLVMType {
         args: Collection<LLVMType>
     ) : LLVMType {
         override val code = "${returnType.code}(${args.joinToString(", ") { it.code }})"
+        override val bits = 0
     }
 }
+
+fun max(t0: LLVMType, t1: LLVMType) = if (t0.bits > t1.bits) t0 else t1

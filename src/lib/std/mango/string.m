@@ -4,9 +4,19 @@ struct String {
 	val chars Ptr<I16>
 }
 
-[extern]
 [cname: "stringToInt"]
-fn String.toInt (radix Int) Int
+fn String.toInt (radix Int) Int {
+	var n = 0
+	var p = 1
+	val length = this.length
+	var i = length - 1
+	while i >= 0 {
+		n = n + unsafe { this.chars[i] - '0' } * p
+		p = p * radix
+		i = i - 1
+	}
+	return n
+}
 
 [inline]
 fn String.toInt Int -> this.toInt(10)

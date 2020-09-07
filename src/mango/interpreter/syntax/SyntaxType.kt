@@ -32,6 +32,7 @@ enum class SyntaxType {
     Float,
     Double,
     String,
+    Char,
 
     // Statements
     ExpressionStatement,

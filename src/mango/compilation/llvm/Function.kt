@@ -25,6 +25,13 @@ class BlockBuilder(
         instructions.add(instruction)
     }
 
+    inline fun extendIfNecessary(value: LLVMValue, type: LLVMType) = if (value.type == type) value else extend(value, type)
+    inline fun extend(value: LLVMValue, type: LLVMType) = when (type) {
+        is LLVMType.I -> tmpVal(Conversion(Conversion.Kind.ZeroExt, value, type)).ref
+        is LLVMType.Float -> tmpVal(Conversion(Conversion.Kind.FloatExt, value, type)).ref
+        else -> throw EmitterError("type ${type.code} can't be extended")
+    }
+
     inline fun tmpVal(value: LLVMInstruction): TmpVal {
         val tempValue = TmpVal(".tmp${functionBuilder.tmpIndex()}", value)
         addInstruction(tempValue)

@@ -125,67 +125,44 @@ class CallWithBitCast(val declaration: FunctionDeclaration, private vararg val p
     override val type get() = declaration.returnType
 }
 
-class IntDiv(val left: LLVMValue, val right: LLVMValue) : LLVMInstruction {
-    override val code get() = "sdiv ${type.code} ${left.code}, ${right.code}"
+class Operation(
+    val kind: Kind,
+    val left: LLVMValue,
+    val right: LLVMValue
+) : LLVMInstruction {
+
+    override val code get() = "${kind.code} ${type.code} ${left.code}, ${right.code}"
     override val type = left.type
+
+    enum class Kind (val code: String) {
+        IntDiv("sdiv"),
+        UIntDiv("udiv"),
+        FloatDiv("fdiv"),
+        IntMul("mul"),
+        FloatMul("fmul"),
+        IntAdd("add"),
+        FloatAdd("fadd"),
+        IntSub("sub"),
+        FloatSub("fsub")
+    }
 }
 
-class UIntDiv(val left: LLVMValue, val right: LLVMValue) : LLVMInstruction {
-    override val code get() = "udiv ${type.code} ${left.code}, ${right.code}"
-    override val type = left.type
-}
+class Conversion(
+    val kind: Kind,
+    val value: LLVMValue,
+    val targetType: LLVMType
+) : LLVMInstruction {
 
-class FloatDiv(val left: LLVMValue, val right: LLVMValue) : LLVMInstruction {
-    override val code get() = "fdiv ${type.code} ${left.code}, ${right.code}"
-    override val type = left.type
-}
-
-class IntMul(val left: LLVMValue, val right: LLVMValue) : LLVMInstruction {
-    override val code get() = "mul ${type.code} ${left.code}, ${right.code}"
-    override val type = left.type
-}
-
-class FloatMul(val left: LLVMValue, val right: LLVMValue) : LLVMInstruction {
-    override val code get() = "fmul ${type.code} ${left.code}, ${right.code}"
-    override val type = left.type
-}
-
-class IntAdd(val left: LLVMValue, val right: LLVMValue) : LLVMInstruction {
-    override val code get() = "add ${type.code} ${left.code}, ${right.code}"
-    override val type = left.type
-}
-
-class FloatAdd(val left: LLVMValue, val right: LLVMValue) : LLVMInstruction {
-    override val code get() = "fadd ${type.code} ${left.code}, ${right.code}"
-    override val type = left.type
-}
-
-class IntSub(val left: LLVMValue, val right: LLVMValue) : LLVMInstruction {
-    override val code get() = "sub ${type.code} ${left.code}, ${right.code}"
-    override val type = left.type
-}
-
-class FloatSub(val left: LLVMValue, val right: LLVMValue) : LLVMInstruction {
-    override val code get() = "fsub ${type.code} ${left.code}, ${right.code}"
-    override val type = left.type
-}
-
-class FloatToInt(val value: LLVMValue, val targetType: LLVMType) : LLVMInstruction {
-    override val code get() = "fptosi ${value.type.code} ${value.code} to ${targetType.code}"
+    override val code get() = "${kind.code} ${value.type.code} ${value.code} to ${targetType.code}"
     override val type = targetType
-}
 
-class FloatToUInt(val value: LLVMValue, val targetType: LLVMType) : LLVMInstruction {
-    override val code get() = "fptoui ${value.type.code} ${value.code} to ${targetType.code}"
-    override val type = targetType
-}
-
-class IntToFloat(val value: LLVMValue, val targetType: LLVMType) : LLVMInstruction {
-    override val code get() = "sitofp ${value.type.code} ${value.code} to ${targetType.code}"
-    override val type = targetType
-}
-
-class UIntToFloat(val value: LLVMValue, val targetType: LLVMType) : LLVMInstruction {
-    override val code get() = "uitofp ${value.type.code} ${value.code} to ${targetType.code}"
-    override val type = targetType
+    enum class Kind (val code: String) {
+        FloatToInt("fptosi"),
+        FloatToUInt("fptoui"),
+        IntToFloat("sitofp"),
+        UIntToFloat("uitofp"),
+        ZeroExt("zext"),
+        SignExt("sext"),
+        FloatExt("fpext")
+    }
 }

@@ -245,9 +245,9 @@ object LLVMEmitter : Emitter {
     ): LLVMInstruction {
         val operand = emitValue(block, expression.operand)!!
         return when (expression.operator.type) {
-            UnOperator.Type.Identity -> IntAdd(Int(0, operand.type), operand)
-            UnOperator.Type.Negation -> IntSub(Int(0, operand.type), operand)
-            UnOperator.Type.Not -> IntSub(Int(1, LLVMType.Bool), operand)
+            UnOperator.Type.Identity -> Operation(Operation.Kind.IntAdd, Int(0, operand.type), operand)
+            UnOperator.Type.Negation -> Operation(Operation.Kind.IntSub, Int(0, operand.type), operand)
+            UnOperator.Type.Not -> Operation(Operation.Kind.IntSub, Int(1, LLVMType.Bool), operand)
         }
     }
 
@@ -259,17 +259,36 @@ object LLVMEmitter : Emitter {
         val right = emitValue(block, expression.right)!!
         return when (expression.operator.type) {
             BiOperator.Type.Add -> if (expression.right.type.isOfType(TypeSymbol.Integer)) {
-                IntAdd(left, right)
+                val max = max(left.type, right.type)
+                Operation(Operation.Kind.IntAdd,
+                    block.extendIfNecessary(left, max),
+                    block.extendIfNecessary(right, max))
             } else null
             BiOperator.Type.Sub -> if (expression.right.type.isOfType(TypeSymbol.Integer)) {
-                IntSub(left, right)
+                val max = max(left.type, right.type)
+                Operation(Operation.Kind.IntSub,
+                    block.extendIfNecessary(left, max),
+                    block.extendIfNecessary(right, max))
             } else null
             BiOperator.Type.Mul -> if (expression.right.type.isOfType(TypeSymbol.Integer)) {
-                IntMul(left, right)
+                val max = max(left.type, right.type)
+                Operation(Operation.Kind.IntMul,
+                    block.extendIfNecessary(left, max),
+                    block.extendIfNecessary(right, max))
             } else null
             BiOperator.Type.Div -> when {
-                expression.right.type.isOfType(TypeSymbol.Integer) -> IntDiv(left, right)
-                expression.right.type.isOfType(TypeSymbol.UInteger) -> UIntDiv(left, right)
+                expression.right.type.isOfType(TypeSymbol.Integer) -> {
+                    val max = max(left.type, right.type)
+                    Operation(Operation.Kind.IntDiv,
+                        block.extendIfNecessary(left, max),
+                        block.extendIfNecessary(right, max))
+                }
+                expression.right.type.isOfType(TypeSymbol.UInteger) -> {
+                    val max = max(left.type, right.type)
+                    Operation(Operation.Kind.UIntDiv,
+                        block.extendIfNecessary(left, max),
+                        block.extendIfNecessary(right, max))
+                }
                 else -> null
             }
             BiOperator.Type.Rem -> null

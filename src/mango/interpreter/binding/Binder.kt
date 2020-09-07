@@ -511,11 +511,12 @@ class Binder(
             is Double -> TypeSymbol.Double
             is Boolean -> TypeSymbol.Bool
             is String -> TypeSymbol["String"]!!
+            is Char -> TypeSymbol.I16
             else -> throw BinderError("Unexpected literal of type ${node.value?.javaClass}")
         }
         return LiteralExpression(when (type) {
             TypeSymbol.I8 -> (node.value as Number).toByte()
-            TypeSymbol.I16 -> (node.value as Number).toShort()
+            TypeSymbol.I16 -> if (node.value is Char) node.value.toShort() else (node.value as Number).toShort()
             TypeSymbol.I32 -> (node.value as Number).toInt()
             TypeSymbol.I64 -> (node.value as Number).toLong()
             TypeSymbol.Float -> (node.value as Number).toFloat()

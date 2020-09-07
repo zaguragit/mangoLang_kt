@@ -10,8 +10,8 @@ import mango.interpreter.symbols.Symbol
 object HeaderEmitter : Emitter {
 
     override fun emit(
-            program: Program,
-            moduleName: String
+        program: Program,
+        moduleName: String
     ): String {
         val namespaceMap = HashMap<String, Header.Namespace>()
         for (namespace in Namespace.namespaces.values) {
