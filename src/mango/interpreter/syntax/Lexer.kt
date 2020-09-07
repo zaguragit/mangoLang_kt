@@ -31,34 +31,40 @@ class Lexer(
 
         return when (current) {
             '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '.' -> readNumberToken()
-            '+' -> Token(syntaxTree, SyntaxType.Plus, position++, string = "+")
-            '-' -> {
-                if (lookAhead() == '>') {
-                    Token(syntaxTree, SyntaxType.LambdaArrow, position, string = "->").also { position += 2 }
-                } else {
-                    Token(syntaxTree, SyntaxType.Minus, position++, string = "-")
-                }
+            '+' -> when (lookAhead()) {
+                '=' -> Token(syntaxTree, SyntaxType.PlusEquals, position, string = "+=").also { position += 2 }
+                '+' -> Token(syntaxTree, SyntaxType.PlusPlus, position, string = "++").also { position += 2 }
+                else -> Token(syntaxTree, SyntaxType.Plus, position++, string = "+")
             }
-            '*' -> Token(syntaxTree, SyntaxType.Star, position++, string = "*")
+            '-' -> when (lookAhead()) {
+                '=' -> Token(syntaxTree, SyntaxType.MinusEquals, position, string = "-=").also { position += 2 }
+                '>' -> Token(syntaxTree, SyntaxType.LambdaArrow, position, string = "->").also { position += 2 }
+                '-' -> Token(syntaxTree, SyntaxType.MinusMinus, position, string = "--").also { position += 2 }
+                else -> Token(syntaxTree, SyntaxType.Minus, position++, string = "-")
+            }
+            '*' -> when (lookAhead()) {
+                '=' -> Token(syntaxTree, SyntaxType.TimesEquals, position, string = "*=").also { position += 2 }
+                else -> Token(syntaxTree, SyntaxType.Star, position++, string = "*")
+            }
             '/' -> when (lookAhead()) {
+                '=' -> Token(syntaxTree, SyntaxType.DivEquals, position, string = "/=").also { position += 2 }
                 '/' -> readSingleLineComment()
                 '*' -> readMultilineComment()
                 else -> Token(syntaxTree, SyntaxType.Div, position++, string = "/")
             }
-            '%' -> Token(syntaxTree, SyntaxType.Rem, position++, string = "%")
-            '&' -> {
-                if (lookAhead() == '&') {
-                    Token(syntaxTree, SyntaxType.LogicAnd, position, string = "&&").also { position += 2 }
-                } else {
-                    Token(syntaxTree, SyntaxType.BitAnd, position++, string = "&")
-                }
+            '%' -> when (lookAhead()) {
+                '=' -> Token(syntaxTree, SyntaxType.RemEquals, position, string = "%=").also { position += 2 }
+                else -> Token(syntaxTree, SyntaxType.Rem, position++, string = "%")
             }
-            '|' -> {
-                if (lookAhead() == '|') {
-                    Token(syntaxTree, SyntaxType.LogicOr, position, string = "||").also { position += 2 }
-                } else {
-                    Token(syntaxTree, SyntaxType.BitOr, position++, string = "|")
-                }
+            '&' -> when (lookAhead()) {
+                '=' -> Token(syntaxTree, SyntaxType.AndEquals, position, string = "&=").also { position += 2 }
+                '&' -> Token(syntaxTree, SyntaxType.LogicAnd, position, string = "&&").also { position += 2 }
+                else -> Token(syntaxTree, SyntaxType.BitAnd, position++, string = "&")
+            }
+            '|' -> when (lookAhead()) {
+                '=' -> Token(syntaxTree, SyntaxType.OrEquals, position, string = "|=").also { position += 2 }
+                '|' -> Token(syntaxTree, SyntaxType.LogicOr, position, string = "||").also { position += 2 }
+                else -> Token(syntaxTree, SyntaxType.BitOr, position++, string = "|")
             }
             '(' -> Token(syntaxTree, SyntaxType.OpenParentheses, position++, string = "(")
             ')' -> Token(syntaxTree, SyntaxType.ClosedParentheses, position++, string = ")")
@@ -66,44 +72,29 @@ class Lexer(
             '}' -> Token(syntaxTree, SyntaxType.ClosedBrace, position++, string = "}")
             '[' -> Token(syntaxTree, SyntaxType.OpenBracket, position++, string = "[")
             ']' -> Token(syntaxTree, SyntaxType.ClosedBracket, position++, string = "]")
-            '!' -> {
-                if (lookAhead() == '=') {
-                    if (peek(2) == '=') {
-                        Token(syntaxTree, SyntaxType.IsNotIdentityEqual, position, string = "!==").also { position += 3 }
-                    } else {
-                        Token(syntaxTree, SyntaxType.IsNotEqual, position, string = "!=").also { position += 2 }
-                    }
-                } else if (lookAhead() == '!') {
-                    Token(syntaxTree, SyntaxType.DoubleBang, position, string = "!!").also { position += 2 }
-                } else {
-                    Token(syntaxTree, SyntaxType.Bang, position++, string = "!")
+            '!' -> when (lookAhead()) {
+                '=' -> when {
+                    peek(2) == '=' -> Token(syntaxTree, SyntaxType.IsNotIdentityEqual, position, string = "!==").also { position += 3 }
+                    else -> Token(syntaxTree, SyntaxType.IsNotEqual, position, string = "!=").also { position += 2 }
                 }
+                '!' -> Token(syntaxTree, SyntaxType.DoubleBang, position, string = "!!").also { position += 2 }
+                else -> Token(syntaxTree, SyntaxType.Bang, position++, string = "!")
             }
             '?' -> Token(syntaxTree, SyntaxType.QuestionMark, position++, string = "?")
-            '=' -> {
-                if (lookAhead() == '=') {
-                    if (peek(2) == '=') {
-                        Token(syntaxTree, SyntaxType.IsIdentityEqual, position, string = "===").also { position += 3 }
-                    } else {
-                        Token(syntaxTree, SyntaxType.IsEqual, position, string = "==").also { position += 2 }
-                    }
-                } else {
-                    Token(syntaxTree, SyntaxType.Equals, position++, string = "=")
+            '=' -> when (lookAhead()) {
+                '=' -> when {
+                    peek(2) == '=' -> Token(syntaxTree, SyntaxType.IsIdentityEqual, position, string = "===").also { position += 3 }
+                    else -> Token(syntaxTree, SyntaxType.IsEqual, position, string = "==").also { position += 2 }
                 }
+                else -> Token(syntaxTree, SyntaxType.Equals, position++, string = "=")
             }
-            '>' -> {
-                if (lookAhead() == '=') {
-                    Token(syntaxTree, SyntaxType.IsEqualOrMore, position, string = ">=").also { position += 2 }
-                } else {
-                    Token(syntaxTree, SyntaxType.MoreThan, position++, string = ">")
-                }
+            '>' -> when (lookAhead()) {
+                '=' -> Token(syntaxTree, SyntaxType.IsEqualOrMore, position, string = ">=").also { position += 2 }
+                else -> Token(syntaxTree, SyntaxType.MoreThan, position++, string = ">")
             }
-            '<' -> {
-                if (lookAhead() == '=') {
-                    Token(syntaxTree, SyntaxType.IsEqualOrLess, position, string = ">=").also { position += 2 }
-                } else {
-                    Token(syntaxTree, SyntaxType.LessThan, position++, string = ">")
-                }
+            '<' -> when (lookAhead()) {
+                '=' -> Token(syntaxTree, SyntaxType.IsEqualOrLess, position, string = ">=").also { position += 2 }
+                else -> Token(syntaxTree, SyntaxType.LessThan, position++, string = ">")
             }
             ',' -> Token(syntaxTree, SyntaxType.Comma, position++, string = ",")
             ':' -> Token(syntaxTree, SyntaxType.Colon, position++, string = ":")
@@ -150,14 +141,12 @@ class Lexer(
             }
             if (!current.isDigit()) {
                 when (current) {
-                    '.' -> {
-                        if (isFloat) {
-                            diagnostics.reportBadCharacter(TextLocation(sourceText, TextSpan(position, 1)), current)
-                        } else {
-                            isFloat = true
-                            stringBuilder.append('.')
-                            position++
-                        }
+                    '.' -> if (isFloat) {
+                        diagnostics.reportBadCharacter(TextLocation(sourceText, TextSpan(position, 1)), current)
+                    } else {
+                        isFloat = true
+                        stringBuilder.append('.')
+                        position++
                     }
                     'f' -> {
                         isDouble = false
@@ -165,14 +154,12 @@ class Lexer(
                         position++
                         break@loop
                     }
-                    'l' -> {
-                        if (isFloat) {
-                            diagnostics.reportBadCharacter(TextLocation(sourceText, TextSpan(position, 1)), current)
-                        } else {
-                            isLong = true
-                            position++
-                            break@loop
-                        }
+                    'l' -> if (isFloat) {
+                        diagnostics.reportBadCharacter(TextLocation(sourceText, TextSpan(position, 1)), current)
+                    } else {
+                        isLong = true
+                        position++
+                        break@loop
                     }
                     else -> if (current.isLetter()) {
                         diagnostics.reportBadCharacter(TextLocation(sourceText, TextSpan(position, 1)), current)
@@ -242,7 +229,11 @@ class Lexer(
     fun readChar(): Token {
         val start = position++
         val char = current
-        position += 2
+        position++
+        if (current != '\'') {
+            diagnostics.reportBadCharacter(TextLocation(sourceText, TextSpan(position, 1)), current)
+        }
+        position++
         return Token(syntaxTree, SyntaxType.Char, start, char, "'$char'")
     }
 
@@ -251,34 +242,32 @@ class Lexer(
         val builder = StringBuilder()
         loop@ while (current != '"') {
             when (current) {
-                '\\' -> {
-                    when (lookAhead()) {
-                        '"' -> {
-                            builder.append('"')
-                            position += 2
-                        }
-                        'n' -> {
-                            builder.append('\n')
-                            position += 2
-                        }
-                        't' -> {
-                            builder.append('\t')
-                            position += 2
-                        }
-                        '\\' -> {
-                            builder.append('\\')
-                            position += 2
-                        }
-                        'r' -> {
-                            builder.append('\r')
-                            position += 2
-                        }
-                        else -> {
-                            diagnostics.reportInvalidCharacterEscape(
-                                TextLocation(sourceText, TextSpan(position, 1)),
-                                current.toString())
-                            position++
-                        }
+                '\\' -> when (lookAhead()) {
+                    '"' -> {
+                        builder.append('"')
+                        position += 2
+                    }
+                    'n' -> {
+                        builder.append('\n')
+                        position += 2
+                    }
+                    't' -> {
+                        builder.append('\t')
+                        position += 2
+                    }
+                    '\\' -> {
+                        builder.append('\\')
+                        position += 2
+                    }
+                    'r' -> {
+                        builder.append('\r')
+                        position += 2
+                    }
+                    else -> {
+                        diagnostics.reportInvalidCharacterEscape(
+                            TextLocation(sourceText, TextSpan(position, 1)),
+                            current.toString())
+                        position++
                     }
                 }
                 '\u0000' -> {
@@ -301,13 +290,11 @@ class Lexer(
         position += 2
         var reading = true
         val builder = StringBuilder()
-        while (reading) {
-            when (current) {
-                '\u0000', '\n', '\r' -> reading = false
-                else -> {
-                    builder.append(current)
-                    position++
-                }
+        while (reading) when (current) {
+            '\u0000', '\n', '\r' -> reading = false
+            else -> {
+                builder.append(current)
+                position++
             }
         }
         val text = builder.toString()
@@ -319,24 +306,25 @@ class Lexer(
         position += 2
         var nestedCommentDepth = 0
         val builder = StringBuilder()
-        while (true) {
-            if (current == '*' && lookAhead() == '/') {
-                if (nestedCommentDepth == 0) {
-                    position += 2
-                    break
-                } else {
-                    nestedCommentDepth--
-                    builder.append(current)
-                    position++
-                }
-            } else if (current == '/' && lookAhead() == '*') {
+        loop@ while (true) when {
+            current == '*' && lookAhead() == '/' -> if (nestedCommentDepth == 0) {
+                position += 2
+                break@loop
+            } else {
+                nestedCommentDepth--
+                builder.append(current)
+                position++
+            }
+            current == '/' && lookAhead() == '*' -> {
                 nestedCommentDepth++
                 builder.append(current)
                 position++
-            } else if (current == '\u0000') {
+            }
+            current == '\u0000' -> {
                 diagnostics.reportUnterminatedMultilineComment(TextLocation(sourceText, TextSpan.fromBounds(start, position)))
-                break
-            } else {
+                break@loop
+            }
+            else -> {
                 builder.append(current)
                 position++
             }

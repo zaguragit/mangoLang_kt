@@ -6,6 +6,7 @@ object Translator {
 
         "false" -> SyntaxType.False
         "true" -> SyntaxType.True
+        "null" -> SyntaxType.Null
 
         "val" -> SyntaxType.Val
         "var" -> SyntaxType.Var

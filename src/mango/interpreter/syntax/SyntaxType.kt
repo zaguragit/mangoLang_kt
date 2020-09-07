@@ -84,6 +84,8 @@ enum class SyntaxType {
     Range,
     DoubleBang,
     QuestionMark,
+    PlusPlus,
+    MinusMinus,
 
     // Assignment operators
     Equals,
