@@ -3,15 +3,15 @@ package mango.interpreter.binding
 import mango.interpreter.binding.nodes.BiOperator
 import mango.interpreter.binding.nodes.UnOperator
 import mango.interpreter.binding.nodes.expressions.BoundConstant
-import mango.interpreter.binding.nodes.expressions.BoundExpression
+import mango.interpreter.binding.nodes.expressions.Expression
 import mango.interpreter.symbols.TypeSymbol
 
 object ConstantFolding {
 
     fun computeConstant(
-            left: BoundExpression,
+            left: Expression,
             operator: BiOperator,
-            right: BoundExpression
+            right: Expression
     ): BoundConstant? {
         val leftConst = left.constantValue
         val rightConst = right.constantValue
@@ -74,7 +74,7 @@ object ConstantFolding {
 
     fun computeConstant(
             operator: UnOperator,
-            operand: BoundExpression
+            operand: Expression
     ): BoundConstant? {
         if (operand.constantValue != null) {
             val value = operand.constantValue!!.value

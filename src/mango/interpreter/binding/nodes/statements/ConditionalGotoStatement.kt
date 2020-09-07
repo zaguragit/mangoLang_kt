@@ -1,11 +1,11 @@
 package mango.interpreter.binding.nodes.statements
 
-import mango.interpreter.binding.nodes.expressions.BoundExpression
 import mango.interpreter.binding.Label
+import mango.interpreter.binding.nodes.expressions.Expression
 
 class ConditionalGotoStatement(
         val label: Label,
-        val condition: BoundExpression,
+        val condition: Expression,
         val jumpIfTrue: Boolean
 ) : Statement() {
 

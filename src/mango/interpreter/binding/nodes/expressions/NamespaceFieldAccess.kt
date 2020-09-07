@@ -5,7 +5,7 @@ import mango.interpreter.symbols.TypeSymbol
 
 class NamespaceFieldAccess(
     val namespace: Namespace
-) : BoundExpression() {
+) : Expression() {
 
     override val type get() = TypeSymbol.err
     override val kind = Kind.NamespaceFieldAccess

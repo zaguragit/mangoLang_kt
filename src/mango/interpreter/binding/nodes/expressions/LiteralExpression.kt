@@ -5,7 +5,7 @@ import mango.interpreter.symbols.TypeSymbol
 class LiteralExpression(
     value: Any?,
     override val type: TypeSymbol
-) : BoundExpression() {
+) : Expression() {
 
     override val kind = Kind.LiteralExpression
     override fun toString() =

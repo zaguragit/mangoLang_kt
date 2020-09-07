@@ -4,7 +4,7 @@ import mango.interpreter.symbols.VariableSymbol
 
 class NameExpression(
     val symbol: VariableSymbol
-) : BoundExpression() {
+) : Expression() {
 
     override val type = symbol.type
     override val kind = Kind.VariableExpression

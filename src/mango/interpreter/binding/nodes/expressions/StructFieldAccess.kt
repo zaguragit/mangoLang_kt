@@ -3,9 +3,9 @@ package mango.interpreter.binding.nodes.expressions
 import mango.interpreter.symbols.TypeSymbol
 
 class StructFieldAccess(
-    val struct: BoundExpression,
+    val struct: Expression,
     val i: Int
-) : BoundExpression() {
+) : Expression() {
 
     inline val field get() = (struct.type as TypeSymbol.StructTypeSymbol).fields[i]
 

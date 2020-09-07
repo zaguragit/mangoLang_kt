@@ -308,8 +308,32 @@ class Parser(
             SyntaxType.Fn -> parseFunctionDeclaration(annotations)
             SyntaxType.Use -> parseUseStatement()
             SyntaxType.Struct -> parseStructDeclaration(annotations)
-            else -> parseExpressionStatement()
+            else -> parseAssignmentStatement()
         }
+    }
+
+    private fun parseAssignmentStatement(): Node {
+        val k = peek(1).kind
+        if (peek(0).kind == SyntaxType.Identifier && (
+            k == SyntaxType.Equals ||
+            k == SyntaxType.PlusEquals ||
+            k == SyntaxType.MinusEquals ||
+            k == SyntaxType.DivEquals ||
+            k == SyntaxType.TimesEquals ||
+            k == SyntaxType.RemEquals ||
+            k == SyntaxType.OrEquals ||
+            k == SyntaxType.AndEquals
+        )) {
+            val assignee = parseAssignee()
+            val operatorToken = next()
+            val right = parseExpression()
+            return AssignmentNode(syntaxTree, assignee, operatorToken, right)
+        }
+        return parseExpressionStatement()
+    }
+
+    private fun parseAssignee(): Node {
+        return parseNameExpression()
     }
 
     private fun parseVariableDeclaration(): VariableDeclarationNode {
@@ -466,31 +490,7 @@ class Parser(
         return ReturnStatementNode(syntaxTree, keyword, expression)
     }
 
-    private fun parseExpression() = parseAssignmentExpression()
-
-    private fun parseAssignmentExpression(): Node {
-        val k = peek(1).kind
-        if (peek(0).kind == SyntaxType.Identifier && (
-            k == SyntaxType.Equals ||
-            k == SyntaxType.PlusEquals ||
-            k == SyntaxType.MinusEquals ||
-            k == SyntaxType.DivEquals ||
-            k == SyntaxType.TimesEquals ||
-            k == SyntaxType.RemEquals ||
-            k == SyntaxType.OrEquals ||
-            k == SyntaxType.AndEquals
-        )) {
-            val assignee = parseAssignee()
-            val operatorToken = next()
-            val right = parseAssignmentExpression()
-            return AssignmentExpressionNode(syntaxTree, assignee, operatorToken, right)
-        }
-        return parseBinaryExpression()
-    }
-
-    private fun parseAssignee(): Node {
-        return parseNameExpression()
-    }
+    private fun parseExpression() = parseBinaryExpression()
 
     private fun parsePostUnaryExpression(pre: Node, parentPrecedence: Int): Node {
         if (parentPrecedence != SyntaxType.Dot.getBinaryOperatorPrecedence()) {

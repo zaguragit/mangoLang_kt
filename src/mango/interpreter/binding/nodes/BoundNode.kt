@@ -8,7 +8,7 @@ abstract class BoundNode {
 
     abstract val kind: Kind
 
-    private fun writeNestedExpression(builder: StringBuilder, indent: Int, parentPrecedence: Int, expression: BoundExpression) {
+    private fun writeNestedExpression(builder: StringBuilder, indent: Int, parentPrecedence: Int, expression: Expression) {
         when (expression) {
             is UnaryExpression -> {
                 writeNestedExpression(builder, indent + 1, parentPrecedence, expression.operator.syntaxType.getUnaryOperatorPrecedence(), expression)
@@ -22,7 +22,7 @@ abstract class BoundNode {
         }
     }
 
-    private fun writeNestedExpression(builder: StringBuilder, indent: Int, parentPrecedence: Int, currentPrecedence: Int, expression: BoundExpression) {
+    private fun writeNestedExpression(builder: StringBuilder, indent: Int, parentPrecedence: Int, currentPrecedence: Int, expression: Expression) {
         val needsParentheses = parentPrecedence >= currentPrecedence
         if (needsParentheses) { builder.append('(') }
         builder.append(expression.structureString(indent, true))
@@ -82,8 +82,8 @@ abstract class BoundNode {
                 this as NameExpression
                 builder.append(symbol.name)
             }
-            Kind.AssignmentExpression -> {
-                this as AssignmentExpression
+            Kind.AssignmentStatement -> {
+                this as Assignment
                 builder.append(variable.name)
                 builder.append(" = ")
                 builder.append(expression.structureString(indent + 1, true))
@@ -233,7 +233,6 @@ abstract class BoundNode {
         BinaryExpression,
         LiteralExpression,
         VariableExpression,
-        AssignmentExpression,
         CallExpression,
         ErrorExpression,
         CastExpression,
@@ -253,6 +252,7 @@ abstract class BoundNode {
         GotoStatement,
         ConditionalGotoStatement,
         ReturnStatement,
+        AssignmentStatement,
         NopStatement
     }
 }

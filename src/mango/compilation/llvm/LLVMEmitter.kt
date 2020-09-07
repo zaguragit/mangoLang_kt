@@ -96,6 +96,16 @@ object LLVMEmitter : Emitter {
                             currentBlock.ret(emitValue(currentBlock, statement.expression)!!)
                         }
                     }
+                    BoundNode.Kind.AssignmentStatement -> {
+                        statement as Assignment
+                        val value = emitValue(currentBlock, statement.expression)!!
+                        val variable = statement.variable
+                        currentBlock.store(if (variable is VisibleSymbol) {
+                            GlobalRef(statement.variable.realName, LLVMType.Ptr(LLVMType[statement.variable.type]))
+                        } else {
+                            LocalRef(statement.variable.realName, LLVMType.Ptr(LLVMType[statement.variable.type]))
+                        }, value)
+                    }
                     BoundNode.Kind.NopStatement -> {}
                     else -> throw EmitterError("internal error: Unknown statement to LLVM")
                 }
@@ -108,7 +118,6 @@ object LLVMEmitter : Emitter {
             v as VariableDeclaration
             val expression = v.initializer
             val value: LLVMValue? = when (expression.kind) {
-                BoundNode.Kind.AssignmentExpression -> emitAssignment(initBlock, expression as AssignmentExpression)
                 BoundNode.Kind.CastExpression -> emitValue(initBlock, (expression as CastExpression).expression)
                 BoundNode.Kind.LiteralExpression -> emitLiteral(initBlock, expression as LiteralExpression)
                 BoundNode.Kind.VariableExpression -> emitVariableExpression(initBlock, expression as NameExpression)
@@ -133,9 +142,8 @@ object LLVMEmitter : Emitter {
 
     private fun emitValue(
         block: BlockBuilder,
-        expression: BoundExpression
+        expression: Expression
     ): LLVMValue? = when (expression.kind) {
-        BoundNode.Kind.AssignmentExpression -> emitAssignment(block, expression as AssignmentExpression)
         BoundNode.Kind.CastExpression -> emitValue(block, (expression as CastExpression).expression)
         BoundNode.Kind.LiteralExpression -> emitLiteral(block, expression as LiteralExpression)
         BoundNode.Kind.VariableExpression -> emitVariableExpression(block, expression as NameExpression)
@@ -151,20 +159,6 @@ object LLVMEmitter : Emitter {
                 block.tmpVal(instruction).ref
             }
         }
-    }
-
-    private fun emitAssignment(
-        block: BlockBuilder,
-        expression: AssignmentExpression
-    ): LLVMValue {
-        val value = emitValue(block, expression.expression)!!
-        val variable = expression.variable
-        block.store(if (variable is VisibleSymbol) {
-            GlobalRef(expression.variable.realName, LLVMType.Ptr(LLVMType[expression.variable.type]))
-        } else {
-            LocalRef(expression.variable.realName, LLVMType.Ptr(LLVMType[expression.variable.type]))
-        }, value)
-        return value
     }
 
     private fun emitLiteral(
@@ -220,7 +214,7 @@ object LLVMEmitter : Emitter {
 
     private fun emitInstruction(
         block: BlockBuilder,
-        expression: BoundExpression
+        expression: Expression
     ): LLVMInstruction? = when (expression.kind) {
         BoundNode.Kind.CallExpression -> {
             expression as CallExpression

@@ -14,7 +14,7 @@ import kotlin.collections.HashSet
 class Lowerer : TreeRewriter() {
 
     companion object {
-        fun lower(expression: BoundExpression): BlockStatement {
+        fun lower(expression: Expression): BlockStatement {
             val lowerer = Lowerer()
             val block = if (expression.type == TypeSymbol.Unit) {
                 BlockStatement(listOf(ExpressionStatement(expression)))
@@ -66,6 +66,10 @@ class Lowerer : TreeRewriter() {
                                 s as ReturnStatement
                                 s = ReturnStatement(s.expression?.let { flattenExpression(it, stack, variableNames) })
                             }
+                            BoundNode.Kind.AssignmentStatement -> {
+                                s as Assignment
+                                s = Assignment(s.variable, flattenExpression(s.expression, stack, variableNames))
+                            }
                         }
                         stack.push(s)
                     }
@@ -76,7 +80,7 @@ class Lowerer : TreeRewriter() {
             return BlockStatement(arrayList)
         }
 
-        private fun flattenExpression(expression: BoundExpression, stack: Stack<Statement>, variableNames: HashSet<String>): BoundExpression {
+        private fun flattenExpression(expression: Expression, stack: Stack<Statement>, variableNames: HashSet<String>): Expression {
             return when (expression.kind) {
                 BoundNode.Kind.UnaryExpression -> {
                     expression as UnaryExpression
@@ -85,10 +89,6 @@ class Lowerer : TreeRewriter() {
                 BoundNode.Kind.BinaryExpression -> {
                     expression as BinaryExpression
                     BinaryExpression(flattenExpression(expression.left, stack, variableNames), expression.operator, flattenExpression(expression.right, stack, variableNames))
-                }
-                BoundNode.Kind.AssignmentExpression -> {
-                    expression as AssignmentExpression
-                    AssignmentExpression(expression.variable, flattenExpression(expression.expression, stack, variableNames))
                 }
                 BoundNode.Kind.CallExpression -> {
                     expression as CallExpression
@@ -168,14 +168,14 @@ class Lowerer : TreeRewriter() {
             NameExpression(upperBoundSymbol)
         )
         val continueLabelStatement = LabelStatement(node.continueLabel)
-        val increment = ExpressionStatement(AssignmentExpression(
+        val increment = Assignment(
             node.variable,
             BinaryExpression(
                 variableExpression,
                 BiOperator.bind(SyntaxType.Plus, TypeSymbol.Int, TypeSymbol.Int)!!,
                 LiteralExpression(1, TypeSymbol.I32)
             )
-        ))
+        )
         val body = BlockStatement(listOf(
             node.body,
             continueLabelStatement,

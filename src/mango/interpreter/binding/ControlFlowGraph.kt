@@ -2,7 +2,7 @@ package mango.interpreter.binding
 
 import mango.interpreter.binding.nodes.BoundNode
 import mango.interpreter.binding.nodes.UnOperator
-import mango.interpreter.binding.nodes.expressions.BoundExpression
+import mango.interpreter.binding.nodes.expressions.Expression
 import mango.interpreter.binding.nodes.expressions.LiteralExpression
 import mango.interpreter.binding.nodes.expressions.UnaryExpression
 import mango.interpreter.binding.nodes.statements.*
@@ -45,7 +45,7 @@ class ControlFlowGraph private constructor(
     class BasicBlockBranch(
         val from: BasicBlock,
         val to: BasicBlock,
-        val condition: BoundExpression?
+        val condition: Expression?
     ) {
         override fun toString() = "_" + hashCode() + '_'
     }
@@ -69,6 +69,7 @@ class ControlFlowGraph private constructor(
                         startBlock()
                     }
                     BoundNode.Kind.ExpressionStatement,
+                    BoundNode.Kind.AssignmentStatement,
                     BoundNode.Kind.VariableDeclaration -> {
                         statements.add(statement)
                     }
@@ -143,6 +144,7 @@ class ControlFlowGraph private constructor(
                         }
                         BoundNode.Kind.LabelStatement,
                         BoundNode.Kind.ExpressionStatement,
+                        BoundNode.Kind.AssignmentStatement,
                         BoundNode.Kind.VariableDeclaration -> {
                             if (statement == block.statements.last()) {
                                 connect(block, next)
@@ -187,7 +189,7 @@ class ControlFlowGraph private constructor(
             iter.remove()
         }
 
-        private fun negate(condition: BoundExpression): BoundExpression {
+        private fun negate(condition: Expression): Expression {
             if (condition is LiteralExpression) {
                 val value = condition.value as Boolean
                 return LiteralExpression(!value, TypeSymbol.Bool)
@@ -196,7 +198,7 @@ class ControlFlowGraph private constructor(
             return UnaryExpression(unaryOperator, condition)
         }
 
-        private fun connect(from: BasicBlock, to: BasicBlock, condition: BoundExpression? = null) {
+        private fun connect(from: BasicBlock, to: BasicBlock, condition: Expression? = null) {
             var condition = condition
             if (condition is LiteralExpression) {
                 val value = condition.value as Boolean

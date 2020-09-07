@@ -19,7 +19,6 @@ enum class SyntaxType {
     UnaryExpression,
     ParenthesizedExpression,
     NameExpression,
-    AssignmentExpression,
     CallExpression,
     IndexExpression,
 
@@ -46,6 +45,7 @@ enum class SyntaxType {
     StructDeclaration,
     UseStatement,
     NamespaceStatement,
+    AssignmentStatement,
 
     ReplStatement,
 

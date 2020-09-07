@@ -1,12 +1,12 @@
 package mango.interpreter.binding.nodes.expressions
 
-import mango.interpreter.binding.nodes.UnOperator
 import mango.interpreter.binding.ConstantFolding
+import mango.interpreter.binding.nodes.UnOperator
 
 class UnaryExpression(
         val operator: UnOperator,
-        val operand: BoundExpression
-) : BoundExpression() {
+        val operand: Expression
+) : Expression() {
 
     override val type = operator.resultType
     override val kind = Kind.UnaryExpression

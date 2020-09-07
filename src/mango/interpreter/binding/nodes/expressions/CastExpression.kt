@@ -4,7 +4,7 @@ import mango.interpreter.symbols.TypeSymbol
 
 class CastExpression(
     override val type: TypeSymbol,
-    val expression: BoundExpression
-) : BoundExpression() {
+    val expression: Expression
+) : Expression() {
     override val kind = Kind.CastExpression
 }
