@@ -434,26 +434,36 @@ class Binder(
     }
 
     private fun bindAssignmentExpression(node: AssignmentExpressionNode): BoundExpression {
-        val name = node.identifierToken.string ?: return ErrorExpression()
-        val boundExpression = bindExpression(node.expression)
-        val variable = scope.tryLookup(listOf(name))
-        if (variable == null) {
-            diagnostics.reportUndefinedName(node.identifierToken.location, name)
-            return boundExpression
+        val assignee = bindExpression(node.assignee)
+        val boundExpression = let {
+            val e = bindExpression(node.expression)
+            if (node.equalsToken.kind == SyntaxType.Equals) e
+            else bindBinaryOperation(node.equalsToken.location, assignee, when (node.equalsToken.kind) {
+                SyntaxType.PlusEquals -> SyntaxType.Plus
+                SyntaxType.MinusEquals -> SyntaxType.Minus
+                SyntaxType.DivEquals -> SyntaxType.Div
+                SyntaxType.TimesEquals -> SyntaxType.Star
+                SyntaxType.RemEquals -> SyntaxType.Rem
+                SyntaxType.OrEquals -> SyntaxType.BitOr
+                SyntaxType.AndEquals -> SyntaxType.BitAnd
+                else -> throw BinderError("Invalid token used for assignment")
+            }, e)
         }
-        if (variable !is VariableSymbol) {
-            diagnostics.reportVarIsConstant(node.equalsToken.location, name)
-            return boundExpression
+        when (assignee) {
+            is NameExpression -> {
+                val variable = assignee.symbol
+                if (variable.isReadOnly) {
+                    diagnostics.reportVarIsImmutable(node.equalsToken.location, variable)
+                    return boundExpression
+                }
+                if (!boundExpression.type.isOfType(variable.type)) {
+                    diagnostics.reportWrongType(node.assignee.location, variable.type, boundExpression.type)
+                    return boundExpression
+                }
+                return AssignmentExpression(variable, boundExpression)
+            }
+            else -> throw BinderError("${node.kind} isn't a valid assignee")
         }
-        if (variable.isReadOnly) {
-            diagnostics.reportVarIsImmutable(node.equalsToken.location, name)
-            return boundExpression
-        }
-        if (!boundExpression.type.isOfType(variable.type)) {
-            diagnostics.reportWrongType(node.identifierToken.location, variable.type, boundExpression.type)
-            return boundExpression
-        }
-        return AssignmentExpression(variable, boundExpression)
     }
 
     private fun bindNameExpression(node: NameExpressionNode): BoundExpression {
@@ -548,21 +558,19 @@ class Binder(
         return UnaryExpression(operator, operand)
     }
 
-    private fun bindBinaryExpression(node: BinaryExpressionNode): BoundExpression {
-
-        val left = bindExpression(node.left)
-        val right = bindExpression(node.right)
+    private fun bindBinaryExpression(node: BinaryExpressionNode) = bindBinaryOperation(node.operator.location, bindExpression(node.left), node.operator.kind, bindExpression(node.right))
+    private fun bindBinaryOperation(location: TextLocation, left: BoundExpression, operatorKind: SyntaxType, right: BoundExpression): BoundExpression {
 
         if (left.type == TypeSymbol.err || right.type == TypeSymbol.err) {
             return ErrorExpression()
         }
 
-        val operator = BiOperator.bind(node.operator.kind, left.type, right.type)
+        val operator = BiOperator.bind(operatorKind, left.type, right.type)
         if (operator != null) {
             return BinaryExpression(left, operator, right)
         }
 
-        if (node.operator.kind == SyntaxType.IsNotEqual) {
+        if (operatorKind == SyntaxType.IsNotEqual) {
             val operatorFunction = scope.tryLookup(
                 listOf(Translator.binaryOperatorToString(SyntaxType.IsEqual)),
                 CallableSymbol.generateSuffix(listOf(left.type, right.type), true))
@@ -574,14 +582,14 @@ class Binder(
             }
         } else {
             val operatorFunction = scope.tryLookup(
-                listOf(Translator.binaryOperatorToString(node.operator.kind)),
+                listOf(Translator.binaryOperatorToString(operatorKind)),
                 CallableSymbol.generateSuffix(listOf(left.type, right.type), true))
             if (operatorFunction != null && operatorFunction.meta.isOperator) {
                 operatorFunction as CallableSymbol
                 return CallExpression(NameExpression(operatorFunction), listOf(left, right))
             }
         }
-        diagnostics.reportBinaryOperator(node.operator.location, left.type, node.operator.kind, right.type)
+        diagnostics.reportBinaryOperator(location, left.type, operatorKind, right.type)
         return ErrorExpression()
     }
 

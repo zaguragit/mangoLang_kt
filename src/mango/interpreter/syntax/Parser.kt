@@ -469,14 +469,27 @@ class Parser(
     private fun parseExpression() = parseAssignmentExpression()
 
     private fun parseAssignmentExpression(): Node {
-        if (peek(0).kind == SyntaxType.Identifier &&
-            peek(1).kind == SyntaxType.Equals) {
-            val identifierToken = next()
+        val k = peek(1).kind
+        if (peek(0).kind == SyntaxType.Identifier && (
+            k == SyntaxType.Equals ||
+            k == SyntaxType.PlusEquals ||
+            k == SyntaxType.MinusEquals ||
+            k == SyntaxType.DivEquals ||
+            k == SyntaxType.TimesEquals ||
+            k == SyntaxType.RemEquals ||
+            k == SyntaxType.OrEquals ||
+            k == SyntaxType.AndEquals
+        )) {
+            val assignee = parseAssignee()
             val operatorToken = next()
             val right = parseAssignmentExpression()
-            return AssignmentExpressionNode(syntaxTree, identifierToken, operatorToken, right)
+            return AssignmentExpressionNode(syntaxTree, assignee, operatorToken, right)
         }
         return parseBinaryExpression()
+    }
+
+    private fun parseAssignee(): Node {
+        return parseNameExpression()
     }
 
     private fun parsePostUnaryExpression(pre: Node, parentPrecedence: Int): Node {

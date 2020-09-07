@@ -11,9 +11,9 @@ fn String.toInt (radix Int) Int {
 	val length = this.length
 	var i = length - 1
 	while i >= 0 {
-		n = n + unsafe { this.chars[i] - '0' } * p
-		p = p * radix
-		i = i - 1
+		n += unsafe { this.chars[i] - '0' } * p
+		p *= radix
+		i -= 1
 	}
 	return n
 }
@@ -43,7 +43,7 @@ fn String.equals (other String) Bool {
         if this[i] != other[i] {
             return false
         }
-        i = i + 1
+        i += 1
     }
 	return true
 }

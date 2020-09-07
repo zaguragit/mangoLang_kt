@@ -9,7 +9,7 @@ fn print (string String) {
 	var i = 0
 	while i < string.length {
 		print(string[i])
-		i = i + 1
+		i += 1
 	}
 
     [extern]

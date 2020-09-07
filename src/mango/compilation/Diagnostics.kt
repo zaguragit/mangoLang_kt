@@ -4,6 +4,7 @@ import mango.console.Console
 import mango.interpreter.binding.Namespace
 import mango.interpreter.binding.nodes.BiOperator
 import mango.interpreter.binding.nodes.UnOperator
+import mango.interpreter.symbols.Symbol
 import mango.interpreter.symbols.TypeSymbol
 import mango.interpreter.syntax.SyntaxType
 import mango.interpreter.text.TextLocation
@@ -210,13 +211,13 @@ class DiagnosticList {
 
     fun reportVarIsImmutable(
         location: TextLocation,
-        name: String
-    ) = report(location, "\"$name\" is immutable")
+        symbol: Symbol
+    ) = report(location, "\"${symbol.name}\" is immutable")
 
     fun reportVarIsConstant(
         location: TextLocation,
-        name: String
-    ) = report(location, "\"$name\" is constant")
+        symbol: Symbol
+    ) = report(location, "\"${symbol.name}\" is constant")
 
     fun reportInvalidCharacterEscape(
         location: TextLocation,
