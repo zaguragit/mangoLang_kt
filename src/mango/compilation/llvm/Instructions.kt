@@ -92,9 +92,9 @@ class GetPtr(
     val privType: LLVMType,
     val pointer: LLVMValue,
     val pointerI: LLVMValue,
-    val fieldI: LLVMValue? = null
+    val fieldI: LLVMValue? = null,
+    override val type: LLVMType = LLVMType.Ptr(privType)
 ) : LLVMInstruction {
-    override val type = LLVMType.Ptr(privType)
     override val code get() = "getelementptr inbounds ${privType.code}, ${pointer.type.code} ${pointer.code}, ${pointerI.type.code} ${pointerI.code}".let {
         if (fieldI == null) it else {
             it + ", ${fieldI.type.code} ${fieldI.code}"

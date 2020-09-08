@@ -44,5 +44,11 @@ open class VariableSymbol internal constructor(
             isReadOnly: Boolean,
             constant: BoundConstant?
         ) = VariableSymbol(name, type, isReadOnly, constant, Kind.Variable, name)
+
+        fun field(
+            name: String,
+            type: TypeSymbol,
+            isReadOnly: Boolean
+        ) = VariableSymbol(name, type, isReadOnly, null, Kind.Variable, ".field_$name")
     }
 }

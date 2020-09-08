@@ -15,7 +15,7 @@ interface LLVMType {
         operator fun get(type: TypeSymbol.StructTypeSymbol) = Ptr(Struct(type.name))
         operator fun get(type: TypeSymbol): LLVMType {
             return when (type.kind) {
-                Symbol.Kind.Struct -> Ptr(Struct(type.name))
+                Symbol.Kind.StructType -> Ptr(Struct(type.name))
                 Symbol.Kind.FunctionType -> {
                     type as TypeSymbol.Fn
                     Fn(get(type.returnType), type.args.map { get(it) })

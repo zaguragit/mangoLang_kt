@@ -70,6 +70,7 @@ class ControlFlowGraph private constructor(
                     }
                     BoundNode.Kind.ExpressionStatement,
                     BoundNode.Kind.AssignmentStatement,
+                    BoundNode.Kind.PointerAccessAssignment,
                     BoundNode.Kind.VariableDeclaration -> {
                         statements.add(statement)
                     }
@@ -145,6 +146,7 @@ class ControlFlowGraph private constructor(
                         BoundNode.Kind.LabelStatement,
                         BoundNode.Kind.ExpressionStatement,
                         BoundNode.Kind.AssignmentStatement,
+                        BoundNode.Kind.PointerAccessAssignment,
                         BoundNode.Kind.VariableDeclaration -> {
                             if (statement == block.statements.last()) {
                                 connect(block, next)

@@ -78,13 +78,13 @@ abstract class BoundNode {
                     builder.append(value.toString())
                 }
             }
-            Kind.VariableExpression -> {
+            Kind.NameExpression -> {
                 this as NameExpression
                 builder.append(symbol.name)
             }
             Kind.AssignmentStatement -> {
                 this as Assignment
-                builder.append(variable.name)
+                builder.append(assignee.structureString(indent + 1, true))
                 builder.append(" = ")
                 builder.append(expression.structureString(indent + 1, true))
             }
@@ -130,7 +130,7 @@ abstract class BoundNode {
                 builder.append('&')
                 builder.append(expression.structureString(indent + 1, true))
             }
-            Kind.PointerAccessExpression -> {
+            Kind.PointerAccessAssignment -> {
                 this as PointerAccess
                 builder.append(expression.structureString(indent + 1, true))
                 builder.append('[')
@@ -232,7 +232,7 @@ abstract class BoundNode {
         UnaryExpression,
         BinaryExpression,
         LiteralExpression,
-        VariableExpression,
+        NameExpression,
         CallExpression,
         ErrorExpression,
         CastExpression,
@@ -253,6 +253,7 @@ abstract class BoundNode {
         ConditionalGotoStatement,
         ReturnStatement,
         AssignmentStatement,
+        PointerAccessAssignment,
         NopStatement
     }
 }

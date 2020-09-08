@@ -19,7 +19,7 @@ enum class Cast(
             return when {
                 from == to -> Identity
                 from.isOfType(to) -> Implicit
-                from.kind == Symbol.Kind.Struct && to.kind == Symbol.Kind.Struct -> Explicit
+                from.kind == Symbol.Kind.StructType && to.kind == Symbol.Kind.StructType -> Explicit
                 else -> None
             }
         }

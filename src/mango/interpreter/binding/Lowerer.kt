@@ -68,7 +68,7 @@ class Lowerer : TreeRewriter() {
                             }
                             BoundNode.Kind.AssignmentStatement -> {
                                 s as Assignment
-                                s = Assignment(s.variable, flattenExpression(s.expression, stack, variableNames))
+                                s = Assignment(flattenExpression(s.assignee, stack, variableNames), flattenExpression(s.expression, stack, variableNames))
                             }
                         }
                         stack.push(s)
@@ -169,7 +169,7 @@ class Lowerer : TreeRewriter() {
         )
         val continueLabelStatement = LabelStatement(node.continueLabel)
         val increment = Assignment(
-            node.variable,
+            NameExpression(node.variable),
             BinaryExpression(
                 variableExpression,
                 BiOperator.bind(SyntaxType.Plus, TypeSymbol.Int, TypeSymbol.Int)!!,

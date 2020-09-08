@@ -44,10 +44,23 @@ class BlockBuilder(
         return tempValue
     }
 
+    private fun getFieldPointer(struct: LLVMValue, i: Int, type: LLVMType) = tmpVal(GetPtr(
+        (struct.type as LLVMType.Ptr).element,
+        struct,
+        LLVMValue.Int(0, LLVMType.I64),
+        LLVMValue.Int(i, LLVMType.I32),
+        type = LLVMType.Ptr(type)
+    )).ref
+
     fun getStructField(struct: LLVMValue, i: Int, field: TypeSymbol.StructTypeSymbol.Field): LLVMInstruction {
-        val loadedStruct = tmpVal(GetPtr((struct.type as LLVMType.Ptr).element, struct, LLVMValue.Int(0, LLVMType.I64), LLVMValue.Int(i, LLVMType.I32))).ref
         val type = LLVMType[field.type]
-        return Load(loadedStruct, type)
+        val ptr = getFieldPointer(struct, i, type)
+        return Load(ptr, type)
+    }
+
+    fun setStructField(struct: LLVMValue, i: Int, field: TypeSymbol.StructTypeSymbol.Field, value: LLVMValue) {
+        val ptr = getFieldPointer(struct, i, LLVMType[field.type])
+        store(ptr, value)
     }
 
     inline fun ret() = addInstruction(RetVoid())

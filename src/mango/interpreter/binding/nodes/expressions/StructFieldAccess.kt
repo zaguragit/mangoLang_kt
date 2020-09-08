@@ -7,7 +7,7 @@ class StructFieldAccess(
     val i: Int
 ) : Expression() {
 
-    inline val field get() = (struct.type as TypeSymbol.StructTypeSymbol).fields[i]
+    inline val field: TypeSymbol.StructTypeSymbol.Field get() = (struct.type as TypeSymbol.StructTypeSymbol).fields[i]
 
     override val type = field.type
     override val kind = Kind.StructFieldAccess

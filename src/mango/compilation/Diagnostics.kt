@@ -188,6 +188,12 @@ class DiagnosticList {
         name + "(${parameters.joinToString(", ") { it.name }})"
     }} )")
 
+    fun reportNoSuchField(
+        location: TextLocation,
+        type: TypeSymbol.StructTypeSymbol,
+        name: String
+    ) = report(location, "The \"$type\" type doesn't have a field called \"$name\"")
+
     fun reportSymbolAlreadyDeclared(
         location: TextLocation,
         name: String
@@ -213,6 +219,11 @@ class DiagnosticList {
         location: TextLocation,
         symbol: Symbol
     ) = report(location, "\"${symbol.name}\" is immutable")
+
+    fun reportFieldIsImmutable(
+        location: TextLocation,
+        field: TypeSymbol.StructTypeSymbol.Field
+    ) = report(location, "\"${field.name}\" is immutable")
 
     fun reportVarIsConstant(
         location: TextLocation,

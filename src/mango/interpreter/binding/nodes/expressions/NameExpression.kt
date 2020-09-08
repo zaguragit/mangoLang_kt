@@ -7,7 +7,7 @@ class NameExpression(
 ) : Expression() {
 
     override val type = symbol.type
-    override val kind = Kind.VariableExpression
+    override val kind = Kind.NameExpression
 
     override fun toString() = symbol.name
 

@@ -128,11 +128,14 @@ class Parser(
             diagnostics.reportDeclarationAndNameOnSameLine(keyword.location)
         }
         val extensionType: TypeClauseNode?
-        if (peek(1).kind == SyntaxType.Dot) {
+        if (peek(1).kind == SyntaxType.Dot ||
+            peek(1).kind == SyntaxType.LessThan) {
             extensionType = parseTypeClause()
             next()
         } else { extensionType = null }
         val identifier = match(SyntaxType.Identifier)
+
+        //println("${identifier.string} \t\t -> \t\t ${extensionType?.identifier?.string}")
 
         var params: SeparatedNodeList<ParameterNode>? = null
         if (current.kind == SyntaxType.OpenParentheses) {
@@ -313,8 +316,9 @@ class Parser(
     }
 
     private fun parseAssignmentStatement(): Node {
-        val k = peek(1).kind
-        if (peek(0).kind == SyntaxType.Identifier && (
+        val left = parseExpression()
+        val k = peek(0).kind
+        if (isAssignee(left) && (
             k == SyntaxType.Equals ||
             k == SyntaxType.PlusEquals ||
             k == SyntaxType.MinusEquals ||
@@ -324,17 +328,17 @@ class Parser(
             k == SyntaxType.OrEquals ||
             k == SyntaxType.AndEquals
         )) {
-            val assignee = parseAssignee()
             val operatorToken = next()
             val right = parseExpression()
-            return AssignmentNode(syntaxTree, assignee, operatorToken, right)
+            return AssignmentNode(syntaxTree, left, operatorToken, right)
         }
-        return parseExpressionStatement()
+        return ExpressionStatementNode(syntaxTree, left)
     }
 
-    private fun parseAssignee(): Node {
-        return parseNameExpression()
-    }
+    private fun isAssignee(node: Node) =
+        node.kind == SyntaxType.NameExpression ||
+        node.kind == SyntaxType.IndexExpression ||
+        node.kind == SyntaxType.BinaryExpression && (node as BinaryExpressionNode).operator.kind == SyntaxType.Dot
 
     private fun parseVariableDeclaration(): VariableDeclarationNode {
         skipSeparators()

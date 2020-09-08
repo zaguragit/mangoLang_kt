@@ -1,10 +1,9 @@
 package mango.interpreter.binding.nodes.statements
 
 import mango.interpreter.binding.nodes.expressions.Expression
-import mango.interpreter.symbols.VariableSymbol
 
 class Assignment(
-    val variable: VariableSymbol,
+    val assignee: Expression,
     val expression: Expression
 ) : Statement() {
 

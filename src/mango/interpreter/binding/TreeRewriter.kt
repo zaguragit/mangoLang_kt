@@ -20,6 +20,7 @@ open class TreeRewriter {
             BoundNode.Kind.ConditionalGotoStatement -> rewriteConditionalGotoStatement(node as ConditionalGotoStatement)
             BoundNode.Kind.ReturnStatement -> rewriteReturnStatement(node as ReturnStatement)
             BoundNode.Kind.AssignmentStatement -> rewriteAssignmentStatement(node as Assignment)
+            BoundNode.Kind.PointerAccessAssignment -> rewritePointerAccessAssignment(node as PointerAccessAssignment)
             BoundNode.Kind.NopStatement -> rewriteNopStatement(node as NopStatement)
             else -> throw BinderError("Unexpected node: ${node.kind}")
         }
@@ -117,7 +118,7 @@ open class TreeRewriter {
         BoundNode.Kind.UnaryExpression -> rewriteUnaryExpression(node as UnaryExpression)
         BoundNode.Kind.BinaryExpression -> rewriteBinaryExpression(node as BinaryExpression)
         BoundNode.Kind.LiteralExpression -> rewriteLiteralExpression(node as LiteralExpression)
-        BoundNode.Kind.VariableExpression -> rewriteVariableExpression(node as NameExpression)
+        BoundNode.Kind.NameExpression -> rewriteVariableExpression(node as NameExpression)
         BoundNode.Kind.CallExpression -> rewriteCallExpression(node as CallExpression)
         BoundNode.Kind.CastExpression -> rewriteCastExpression(node as CastExpression)
         BoundNode.Kind.ErrorExpression -> node
@@ -150,10 +151,21 @@ open class TreeRewriter {
 
     protected open fun rewriteAssignmentStatement(node: Assignment): Statement {
         val expression = rewriteExpression(node.expression)
-        if (expression == node.expression) {
+        val assignee = rewriteExpression(node.assignee)
+        if (expression == node.expression && assignee == node.assignee) {
             return node
         }
-        return Assignment(node.variable, expression)
+        return Assignment(assignee, expression)
+    }
+
+    private fun rewritePointerAccessAssignment(node: PointerAccessAssignment): Statement {
+        val expression = rewriteExpression(node.expression)
+        val i = rewriteExpression(node.i)
+        val value = rewriteExpression(node.value)
+        if (expression == node.expression && i == node.i && value == node.value) {
+            return node
+        }
+        return PointerAccessAssignment(expression, i, value)
     }
 
     protected fun rewriteCallExpression(node: CallExpression): Expression {

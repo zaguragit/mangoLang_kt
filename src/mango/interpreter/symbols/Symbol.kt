@@ -11,22 +11,23 @@ abstract class Symbol {
 
     enum class Kind {
         Variable,
+        Field,
         VisibleVariable,
         Parameter,
         Function,
         Type,
-        Struct,
+        StructType,
         FunctionType
     }
 
     override fun toString() = name
 
     fun printStructure() = when (kind) {
-        Kind.Variable, Kind.VisibleVariable -> printVariable()
+        Kind.Variable, Kind.VisibleVariable, Kind.Field -> printVariable()
         Kind.Parameter -> printParameter()
         Kind.Function -> printFunction()
         Kind.Type -> printType()
-        Kind.Struct -> printStruct()
+        Kind.StructType -> printStruct()
         Kind.FunctionType -> printFnType()
     }
 

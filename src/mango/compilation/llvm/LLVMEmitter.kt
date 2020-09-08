@@ -13,6 +13,7 @@ import mango.interpreter.binding.nodes.statements.*
 import mango.interpreter.symbols.Symbol
 import mango.interpreter.symbols.TypeSymbol
 import mango.interpreter.symbols.VisibleSymbol
+import mango.util.BinderError
 import mango.util.EmitterError
 
 object LLVMEmitter : Emitter {
@@ -57,7 +58,7 @@ object LLVMEmitter : Emitter {
                     BoundNode.Kind.VariableDeclaration -> {
                         statement as VariableDeclaration
                         if (statement.initializer.kind == BoundNode.Kind.LiteralExpression ||
-                            statement.initializer.kind == BoundNode.Kind.VariableExpression ||
+                            statement.initializer.kind == BoundNode.Kind.NameExpression ||
                             statement.initializer.kind == BoundNode.Kind.ReferenceExpression) {
                             val value = emitValue(currentBlock, statement.initializer)!!
                             val alloc = currentBlock.alloc(statement.variable.realName, value.type)
@@ -99,12 +100,30 @@ object LLVMEmitter : Emitter {
                     BoundNode.Kind.AssignmentStatement -> {
                         statement as Assignment
                         val value = emitValue(currentBlock, statement.expression)!!
-                        val variable = statement.variable
-                        currentBlock.store(if (variable is VisibleSymbol) {
-                            GlobalRef(statement.variable.realName, LLVMType.Ptr(LLVMType[statement.variable.type]))
-                        } else {
-                            LocalRef(statement.variable.realName, LLVMType.Ptr(LLVMType[statement.variable.type]))
-                        }, value)
+                        when (statement.assignee.kind) {
+                            BoundNode.Kind.NameExpression -> {
+                                val assignee = statement.assignee as NameExpression
+                                val variable = assignee.symbol
+                                currentBlock.store(if (variable is VisibleSymbol) {
+                                    GlobalRef(assignee.symbol.realName, LLVMType.Ptr(LLVMType[assignee.symbol.type]))
+                                } else {
+                                    LocalRef(assignee.symbol.realName, LLVMType.Ptr(LLVMType[assignee.symbol.type]))
+                                }, value)
+                            }
+                            BoundNode.Kind.StructFieldAccess -> {
+                                val assignee = statement.assignee as StructFieldAccess
+                                currentBlock.setStructField(emitValue(currentBlock, assignee.struct)!!, assignee.i, assignee.field, value)
+                            }
+                            else -> throw BinderError("${statement.assignee.kind} isn't a valid assignee")
+                        }
+                    }
+                    BoundNode.Kind.PointerAccessAssignment -> {
+                        statement as PointerAccessAssignment
+                        val pointer = emitValue(currentBlock, statement.expression)!!
+                        val i = emitValue(currentBlock, statement.i)!!
+                        val ptr = currentBlock.tmpVal(GetPtr((pointer.type as LLVMType.Ptr).element, pointer, i))
+                        val value = emitValue(currentBlock, statement.value)!!
+                        currentBlock.store(ptr.ref, value)
                     }
                     BoundNode.Kind.NopStatement -> {}
                     else -> throw EmitterError("internal error: Unknown statement to LLVM")
@@ -120,7 +139,7 @@ object LLVMEmitter : Emitter {
             val value: LLVMValue? = when (expression.kind) {
                 BoundNode.Kind.CastExpression -> emitValue(initBlock, (expression as CastExpression).expression)
                 BoundNode.Kind.LiteralExpression -> emitLiteral(initBlock, expression as LiteralExpression)
-                BoundNode.Kind.VariableExpression -> emitVariableExpression(initBlock, expression as NameExpression)
+                BoundNode.Kind.NameExpression -> emitVariableExpression(initBlock, expression as NameExpression)
                 else -> {
                     val instruction = emitInstruction(initBlock, expression)!!
                     val type = instruction.type
@@ -133,8 +152,6 @@ object LLVMEmitter : Emitter {
                     }
                 }
             }
-            var type = LLVMType[v.variable.type]
-            if (type is LLVMType.Ptr) type = type.element
             builder.globalVariable((v.variable as VisibleSymbol).mangledName(), value!!)
         }
         return builder.code()
@@ -146,7 +163,7 @@ object LLVMEmitter : Emitter {
     ): LLVMValue? = when (expression.kind) {
         BoundNode.Kind.CastExpression -> emitValue(block, (expression as CastExpression).expression)
         BoundNode.Kind.LiteralExpression -> emitLiteral(block, expression as LiteralExpression)
-        BoundNode.Kind.VariableExpression -> emitVariableExpression(block, expression as NameExpression)
+        BoundNode.Kind.NameExpression -> emitVariableExpression(block, expression as NameExpression)
         BoundNode.Kind.ErrorExpression -> throw EmitterError("Error expression got to the emission stage")
         BoundNode.Kind.ReferenceExpression -> emitReference(block, (expression as Reference).expression)
         else -> {
@@ -166,7 +183,7 @@ object LLVMEmitter : Emitter {
         expression: LiteralExpression
     ): LLVMValue = when {
         expression.value == null -> Null(LLVMType[expression.type])
-        expression.type.isOfType(TypeSymbol["String"]!!/*TypeSymbol.String*/) -> block.stringConstForContent(expression.value as String).ref
+        expression.type.isOfType(TypeSymbol["String"]!!) -> block.stringConstForContent(expression.value as String).ref
         expression.type.isOfType(TypeSymbol.Integer) -> Int((expression.value as Number).toInt(), LLVMType[expression.type])
         expression.type.isOfType(TypeSymbol.UInteger) -> Int((expression.value as Number).toInt(), LLVMType[expression.type])
         expression.type.isOfType(TypeSymbol.Float) -> Float((expression.value as Number).toFloat(), LLVMType.Float)
@@ -218,7 +235,7 @@ object LLVMEmitter : Emitter {
     ): LLVMInstruction? = when (expression.kind) {
         BoundNode.Kind.CallExpression -> {
             expression as CallExpression
-            val type = /*if (expression.type.kind == Symbol.Kind.Struct) LLVMType.Ptr(LLVMType[expression.type]) else*/ LLVMType[expression.type]
+            val type = LLVMType[expression.type]
             val function = emitValue(block, expression.expression)!!
             Call(type, function, *Array(expression.arguments.size) {
                 emitValue(block, expression.arguments.elementAt(it))!!

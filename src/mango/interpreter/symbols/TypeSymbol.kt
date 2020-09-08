@@ -2,7 +2,6 @@ package mango.interpreter.symbols
 
 import mango.util.BinderError
 
-
 open class TypeSymbol private constructor(
     override val name: String,
     val parentType: TypeSymbol?,
@@ -21,7 +20,7 @@ open class TypeSymbol private constructor(
         parentType: TypeSymbol
     ) : TypeSymbol(name, parentType) {
 
-        override val kind = Kind.Struct
+        override val kind = Kind.StructType
 
         class Field(
             val name: String,
