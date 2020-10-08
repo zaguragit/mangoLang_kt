@@ -1,6 +1,5 @@
 use primitives*
 use string*
-use text.builder*
 
 [extern]
 [cname: "putchar"]
@@ -55,6 +54,18 @@ fn println (i Bool) -> println(i.toString())
 [cname: "getchar"]
 fn readChar I16
 
-[extern]
-[cname: "readln"]
-fn readln String
+fn readln String {
+    use text.builder*
+
+	val builder = StringBuilder {
+	    length: 0
+	    chars: Ptr<I16> { length: 512 }
+	    capacity: 512
+	}
+    var ch = readChar()
+    while ch != '\n' && ch != '\0' {
+        builder.appendChar(ch)
+        ch = readChar()
+    }
+    return builder.toString()
+}

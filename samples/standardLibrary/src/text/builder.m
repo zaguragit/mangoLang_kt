@@ -10,8 +10,8 @@ struct StringBuilder {
 fn StringBuilder.appendChar (i16 I16) StringBuilder {
     if this.length < this.capacity {
         unsafe {
-            this.length += 1
             this.chars[this.length] = i16
+            this.length += 1
         }
     } else {
 

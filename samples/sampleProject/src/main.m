@@ -8,36 +8,6 @@ fn malloc (bytes I32) Ptr<I16>*/
 
 [entry]
 fn main {
-
-    io.println(
-        unsafe {
-            val s = String {
-                length: 3
-                chars: Ptr { ' ', ' ', ' ' }
-            }
-
-            s.chars[0] = '_'
-            s.chars[1] = 'q'
-            s.chars[2] = '4'
-            s
-        }
-    )
-
-    io.println("aa")
-
-    io.println(
-        unsafe {
-            val s = String {
-                length: 3
-                chars: Ptr<I16> { length: 3 }
-            }
-
-            s.chars[0] = 'n'
-            s.chars[1] = '_'
-            s.chars[2] = '3'
-            s
-        }
-    )
 /*
     use secondFile*
     fn doit String {
@@ -87,21 +57,10 @@ fn main {
     io.println(10f)
     io.println(10.)*/
 
-    val testReading = read()
+    val testReading = io.readln()
     io.print("-> ")
     io.println(testReading)
     io.println()
-    io.println(read())
-
-    use std.text.builder*
-
-	val builder = StringBuilder {
-	    length: 0
-	    chars: Ptr<I16> { length: 4 }
-	    capacity: 4
-	}
-	builder.appendChar('L')
-    io.println(builder.toString())
 }
 
 namespace thing {
@@ -122,21 +81,3 @@ while (((ch = getchar()) != '\n') && (ch != EOF) && (string->length < 512)) {
 }
 return string;
 */
-
-fn read String {
-    use std.text.builder*
-
-	val builder = StringBuilder {
-	    length: 0
-	    chars: Ptr<I16> { length: 512 }
-	    capacity: 512
-	}
-	builder.appendChar('9')
-	/*
-    var ch = io.readChar()
-    while ch != '\n' && ch != '\0' {
-        builder.appendChar(ch)
-        ch = io.readChar()
-    }*/
-    return builder.toString()
-}
