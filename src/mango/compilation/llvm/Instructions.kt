@@ -1,6 +1,7 @@
 package mango.compilation.llvm
 
 import mango.compilation.llvm.LLVMValue.LocalRef
+import mango.interpreter.binding.nodes.BiOperator
 import java.util.*
 
 interface LLVMInstruction {
@@ -31,7 +32,7 @@ class RetVoid : LLVMInstruction {
     override val type = LLVMType.Void
 }
 
-class Load(val value: LLVMValue, override val type: LLVMType) : LLVMInstruction {
+class Load(val value: LLVMValue, override val type: LLVMType = (value.type as LLVMType.Ptr).element) : LLVMInstruction {
     override val code get() = "load ${type.code}, ${LLVMType.Ptr(type).code} ${value.code}"
 }
 
@@ -67,6 +68,21 @@ data class Icmp(
         IsEqualOrMore("sge"),
         IsEqualOrLess("sle"),
         IsNotEqual("ne")
+    }
+
+    companion object {
+
+        operator fun get(left: LLVMType, op: BiOperator.Type, right: LLVMType) = when (op) {
+            BiOperator.Type.LessThan -> Type.LessThan
+            BiOperator.Type.MoreThan -> Type.MoreThan
+            BiOperator.Type.IsEqual -> Type.IsEqual
+            BiOperator.Type.IsEqualOrMore -> Type.IsEqualOrMore
+            BiOperator.Type.IsEqualOrLess -> Type.IsEqualOrLess
+            BiOperator.Type.IsNotEqual -> Type.IsNotEqual
+            BiOperator.Type.IsIdentityEqual -> Type.IsEqual
+            BiOperator.Type.IsNotIdentityEqual -> Type.IsNotEqual
+            else -> null
+        }
     }
 }
 
@@ -143,7 +159,56 @@ class Operation(
         IntAdd("add"),
         FloatAdd("fadd"),
         IntSub("sub"),
-        FloatSub("fsub")
+        FloatSub("fsub"),
+
+        Rem("srem"),
+        URem("urem"),
+        FloatRem("frem"),
+
+        ShiftLeft("shl"),
+        ZeroShiftRight("lshr"),
+        ShiftRight("ashr"),
+
+        And("and"),
+        Or("or"),
+        Xor("xor")
+    }
+
+    companion object {
+        operator fun get(left: LLVMType, op: BiOperator.Type, right: LLVMType) = when (op) {
+            BiOperator.Type.Add -> when {
+                left.isInteger -> Kind.IntAdd
+                left.isFloatingPoint -> Kind.FloatAdd
+                else -> null
+            }
+            BiOperator.Type.Sub -> when {
+                left.isInteger -> Kind.IntSub
+                left.isFloatingPoint -> Kind.FloatSub
+                else -> null
+            }
+            BiOperator.Type.Mul -> when {
+                left.isInteger -> Kind.IntMul
+                left.isFloatingPoint -> Kind.FloatMul
+                else -> null
+            }
+            BiOperator.Type.Div -> when {
+                left is LLVMType.I -> Kind.IntDiv
+                left is LLVMType.U -> Kind.UIntDiv
+                left.isFloatingPoint -> Kind.FloatDiv
+                else -> null
+            }
+            BiOperator.Type.Rem -> when {
+                left is LLVMType.I -> Kind.Rem
+                left is LLVMType.U -> Kind.URem
+                left.isFloatingPoint -> Kind.FloatRem
+                else -> null
+            }
+            BiOperator.Type.BitAnd -> Kind.And
+            BiOperator.Type.BitOr -> Kind.Or
+            BiOperator.Type.LogicAnd -> Kind.And
+            BiOperator.Type.LogicOr -> Kind.Or
+            else -> null
+        }
     }
 }
 
@@ -157,6 +222,7 @@ class Conversion(
     override val type = targetType
 
     enum class Kind (val code: String) {
+        BitCast("bitcast"),
         FloatToInt("fptosi"),
         FloatToUInt("fptoui"),
         IntToFloat("sitofp"),

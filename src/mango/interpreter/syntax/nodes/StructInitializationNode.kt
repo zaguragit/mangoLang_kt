@@ -4,22 +4,19 @@ import mango.interpreter.syntax.SyntaxTree
 import mango.interpreter.syntax.SyntaxType
 import mango.interpreter.syntax.Token
 
-class BlockNode(
+class StructInitializationNode(
     syntaxTree: SyntaxTree,
-    val keyword: Token?,
+    val type: TypeClauseNode,
     val openBrace: Token,
-    val statements: Collection<Node>,
-    val closedBrace: Token,
-    val isUnsafe: Boolean
+    val params: ArrayList<AssignmentNode>,
+    val closedBrace: Token
 ) : Node(syntaxTree) {
 
-    override val kind = SyntaxType.Block
-
+    override val kind = SyntaxType.StructInitialization
     override val children: Collection<Node>
-        get() = ArrayList<Node>().apply {
-            keyword?.let { add(it) }
-            add(openBrace)
-            addAll(statements)
+        get() = arrayListOf(type, openBrace).apply {
+            addAll(params)
             add(closedBrace)
         }
+
 }

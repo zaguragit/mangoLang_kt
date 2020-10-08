@@ -2,8 +2,43 @@ use std*
 
 val badName = "semicolon"
 
+/*[extern]
+[cname: "malloc"]
+fn malloc (bytes I32) Ptr<I16>*/
+
 [entry]
-fn test {
+fn main {
+
+    io.println(
+        unsafe {
+            val s = String {
+                length: 3
+                chars: Ptr { ' ', ' ', ' ' }
+            }
+
+            s.chars[0] = '_'
+            s.chars[1] = 'q'
+            s.chars[2] = '4'
+            s
+        }
+    )
+
+    io.println("aa")
+
+    io.println(
+        unsafe {
+            val s = String {
+                length: 3
+                chars: Ptr<I16> { length: 3 }
+            }
+
+            s.chars[0] = 'n'
+            s.chars[1] = '_'
+            s.chars[2] = '3'
+            s
+        }
+    )
+/*
     use secondFile*
     fn doit String {
         val name = getName()
@@ -42,7 +77,7 @@ fn test {
     io.println(0x10) // 16
     io.println(0b10) // 2
     io.println(0s10) // 6
-
+*/
     /*
     io.println(10l)
     io.println(10.1)
@@ -52,27 +87,21 @@ fn test {
     io.println(10f)
     io.println(10.)*/
 
-    unsafe {
-        var a Int = 1 + 3
-        val dd22 = &a
-        val theNewA = dd22[0]
-        val aa Int = 1
-        io.println("blablabla67")
-    }
+    val testReading = read()
+    io.print("-> ")
+    io.println(testReading)
+    io.println()
+    io.println(read())
 
-    val b = unsafe {
-        io.println("blablabla26")
-        0
-    }
+    use std.text.builder*
 
-    val dddd = {
-        5
-    }
-    io.println(b)
-    io.println({
-        io.println(4)
-        5
-    })
+	val builder = StringBuilder {
+	    length: 0
+	    chars: Ptr<I16> { length: 4 }
+	    capacity: 4
+	}
+	builder.appendChar('L')
+    io.println(builder.toString())
 }
 
 namespace thing {
@@ -81,4 +110,33 @@ namespace thing {
     fn something {
         io.println(someRandomString)
     }
+}
+
+/*
+String* string = malloc(sizeof(String));
+string->length = 0;
+Int ch;
+string->chars = malloc(512);
+while (((ch = getchar()) != '\n') && (ch != EOF) && (string->length < 512)) {
+    string->chars[string->length++] = ch;
+}
+return string;
+*/
+
+fn read String {
+    use std.text.builder*
+
+	val builder = StringBuilder {
+	    length: 0
+	    chars: Ptr<I16> { length: 512 }
+	    capacity: 512
+	}
+	builder.appendChar('9')
+	/*
+    var ch = io.readChar()
+    while ch != '\n' && ch != '\0' {
+        builder.appendChar(ch)
+        ch = io.readChar()
+    }*/
+    return builder.toString()
 }

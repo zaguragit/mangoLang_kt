@@ -3,6 +3,7 @@ package mango.interpreter.binding
 import mango.interpreter.binding.nodes.BoundNode
 import mango.interpreter.binding.nodes.expressions.*
 import mango.interpreter.binding.nodes.statements.*
+import mango.interpreter.symbols.TypeSymbol
 import mango.util.BinderError
 
 open class TreeRewriter {
@@ -126,6 +127,8 @@ open class TreeRewriter {
         BoundNode.Kind.BlockExpression -> rewriteBlockExpression(node as BlockExpression)
         BoundNode.Kind.ReferenceExpression -> rewriteReferenceExpression(node as Reference)
         BoundNode.Kind.PointerAccessExpression -> rewritePointerAccessExpression(node as PointerAccess)
+        BoundNode.Kind.StructInitialization -> rewriteStructInitialization(node as StructInitialization)
+        BoundNode.Kind.PointerArrayInitialization -> rewritePointerArrayInitialization(node as PointerArrayInitialization)
         else -> throw BinderError("Unexpected node: ${node.kind}")
     }
 
@@ -243,5 +246,41 @@ open class TreeRewriter {
             return node
         }
         return PointerAccess(expression, i)
+    }
+
+    protected fun rewriteStructInitialization(node: StructInitialization): Expression {
+        val map = HashMap<TypeSymbol.StructTypeSymbol.Field, Expression>()
+        var wasChanged = false
+        for (entry in node.fields) {
+            val e = rewriteExpression(entry.value)
+            map[entry.key] = e
+            if (e != entry.value) {
+                wasChanged = true
+            }
+        }
+        return if (wasChanged) StructInitialization(node.type, map) else node
+    }
+
+    protected fun rewritePointerArrayInitialization(node: PointerArrayInitialization): Expression {
+        var list: ArrayList<Expression>? = null
+        var wasChanged = false
+        if (node.expressions != null) {
+            list = ArrayList()
+            for (e in node.expressions) {
+                val expression = rewriteExpression(e)
+                list.add(expression)
+                if (e != expression) {
+                    wasChanged = true
+                }
+            }
+        }
+        var length: Expression? = null
+        if (node.length != null) {
+            length = rewriteExpression(node.length)
+            if (length != node.length) {
+                wasChanged = true
+            }
+        }
+        return if (wasChanged) return PointerArrayInitialization(node.type, length, list) else node
     }
 }

@@ -21,6 +21,8 @@ enum class SyntaxType {
     NameExpression,
     CallExpression,
     IndexExpression,
+    StructInitialization,
+    CollectionInitialization,
 
     // Literals
     I8,

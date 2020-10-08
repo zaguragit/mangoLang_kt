@@ -82,12 +82,6 @@ abstract class BoundNode {
                 this as NameExpression
                 builder.append(symbol.name)
             }
-            Kind.AssignmentStatement -> {
-                this as Assignment
-                builder.append(assignee.structureString(indent + 1, true))
-                builder.append(" = ")
-                builder.append(expression.structureString(indent + 1, true))
-            }
             Kind.CallExpression -> {
                 this as CallExpression
                 builder.append(expression.structureString(indent + 1, true))
@@ -130,7 +124,7 @@ abstract class BoundNode {
                 builder.append('&')
                 builder.append(expression.structureString(indent + 1, true))
             }
-            Kind.PointerAccessAssignment -> {
+            Kind.PointerAccessExpression -> {
                 this as PointerAccess
                 builder.append(expression.structureString(indent + 1, true))
                 builder.append('[')
@@ -220,6 +214,23 @@ abstract class BoundNode {
                 builder.append(expression?.structureString(indent + 1, true))
                 builder.append('\n')
             }
+            Kind.AssignmentStatement -> {
+                this as Assignment
+                builder.append(assignee.structureString(indent + 1, true))
+                builder.append(" = ")
+                builder.append(expression.structureString(indent + 1, true))
+                builder.append('\n')
+            }
+            Kind.PointerAccessAssignment -> {
+                this as PointerAccessAssignment
+                builder.append(expression.structureString(indent + 1, true))
+                builder.append('[')
+                builder.append(i.structureString(indent + 1, true))
+                builder.append(']')
+                builder.append(" = ")
+                builder.append(value.structureString(indent + 1, true))
+                builder.append('\n')
+            }
             Kind.NopStatement -> {
                 builder.append("nop")
                 builder.append('\n')
@@ -241,6 +252,8 @@ abstract class BoundNode {
         BlockExpression,
         ReferenceExpression,
         PointerAccessExpression,
+        StructInitialization,
+        PointerArrayInitialization,
 
         BlockStatement,
         ExpressionStatement,

@@ -5,9 +5,9 @@ import mango.util.BinderError
 open class TypeSymbol private constructor(
     override val name: String,
     val parentType: TypeSymbol?,
+    val size: Int = -1,
     val paramCount: Int = 0,
-    val params: Array<TypeSymbol> = arrayOf(),
-    val size: Int = -1
+    val params: Array<TypeSymbol> = arrayOf()
 ) : Symbol() {
 
     override val type get() = null!!
@@ -18,7 +18,7 @@ open class TypeSymbol private constructor(
         name: String,
         val fields: Array<Field>,
         parentType: TypeSymbol
-    ) : TypeSymbol(name, parentType) {
+    ) : TypeSymbol(name, parentType, fields.sumBy { it.type.size }) {
 
         override val kind = Kind.StructType
 
@@ -32,7 +32,7 @@ open class TypeSymbol private constructor(
     class Fn(
         val returnType: TypeSymbol,
         val args: List<TypeSymbol>
-    ) : TypeSymbol("Fn", Any) {
+    ) : TypeSymbol("Fn", Any, ptrSize) {
 
         override val kind = Kind.FunctionType
         override fun isOfType(other: TypeSymbol): Boolean = other is Fn || Any.isOfType(other)
@@ -44,6 +44,8 @@ open class TypeSymbol private constructor(
 
     companion object {
 
+        const val ptrSize = 64
+
         val map = HashMap<String, TypeSymbol>()
 
         val Any = TypeSymbol("Any", null)
@@ -52,7 +54,7 @@ open class TypeSymbol private constructor(
         val Integer = TypeSymbol("!I", Primitive)
         val UInteger = TypeSymbol("!U", Primitive)
 
-        val Ptr = TypeSymbol("Ptr", Primitive, 1, arrayOf(Any))
+        val Ptr = TypeSymbol("Ptr", Primitive, ptrSize, 1, arrayOf(Any))
 
         val I8 = TypeSymbol("I8", Integer, size = 8)
         //val U8 = TypeSymbol("U8", UInteger, size = 8)
@@ -65,16 +67,16 @@ open class TypeSymbol private constructor(
 
         val Int = I32
 
-        val Float = TypeSymbol("Float", Primitive)
-        val Double = TypeSymbol("Double", Primitive)
+        val Float = TypeSymbol("Float", Primitive, 32)
+        val Double = TypeSymbol("Double", Primitive, 64)
 
         val Bool = TypeSymbol("Bool", Primitive, size = 1)
 
         //val String = StructTypeSymbol("String", arrayOf(StructTypeSymbol.Field("length", Int), StructTypeSymbol.Field("chars", Ptr(arrayOf(I16)))), Any)
 
-        val Unit = TypeSymbol("Unit", Any)
+        val Unit = TypeSymbol("Unit", Any, 0)
 
-        val err = TypeSymbol("!Err", null)
+        val err = TypeSymbol("!Err", null, 0)
 
         init {
             map["Any"] = Any
@@ -96,7 +98,17 @@ open class TypeSymbol private constructor(
         operator fun get(name: String) = map[name]
     }
 
-    open fun isOfType(other: TypeSymbol): Boolean = this.name == other.name || parentType?.isOfType(other) ?: false
+    open fun isOfType(other: TypeSymbol): Boolean {
+        if (this.name != other.name && parentType?.isOfType(other) != true) return false
+        for (i in params.indices) {
+            if (!params[i].isOfType(other.params[i])) return false
+        }
+        return true
+    }
+
+    fun commonType(other: TypeSymbol): TypeSymbol {
+        return if (name == other.name) this else other.parentType?.commonType(this) ?: Any
+    }
 
     operator fun invoke(params: Array<TypeSymbol>): TypeSymbol {
         if (params.size != paramCount) {
@@ -107,7 +119,7 @@ open class TypeSymbol private constructor(
                 throw BinderError("Parameters at position $i don't match!")
             }
         }
-        return TypeSymbol(name, parentType, paramCount, params)
+        return TypeSymbol(name, parentType, size, paramCount, params)
     }
 
     override fun equals(other: Any?): Boolean {
@@ -121,6 +133,10 @@ open class TypeSymbol private constructor(
         if (!params.contentEquals(other.params)) return false
 
         return true
+    }
+
+    override fun toString(): String {
+        return if (paramCount == 0) name else name + '<' + params.joinToString(", ") { it.toString() } + '>'
     }
 
     override fun hashCode(): Int {

@@ -194,6 +194,11 @@ class DiagnosticList {
         name: String
     ) = report(location, "The \"$type\" type doesn't have a field called \"$name\"")
 
+    fun reportNotValidField(
+        location: TextLocation,
+        name: String
+    ) = report(location, "\"$name\" isn't a valid field")
+
     fun reportSymbolAlreadyDeclared(
         location: TextLocation,
         name: String
@@ -209,6 +214,16 @@ class DiagnosticList {
     } else {
         name + "(${parameters.joinToString(", ") { it.name }})"
     }} is already declared")
+
+    fun reportFunctionPathAlreadyDeclared(
+        location: TextLocation,
+        path: String
+    ) = report(location, "Function with cname \"$path\" is already declared")
+
+    fun reportReservedFunctionPath(
+        location: TextLocation,
+        cname: String
+    ) = report(location, "The cname \"$cname\" is reserved for internal stuff")
 
     fun reportParamAlreadyExists(
         location: TextLocation,
@@ -260,6 +275,11 @@ class DiagnosticList {
         location: TextLocation,
         name: String
     ) = report(location, "Type \"$name\" doesn't exist")
+
+    fun reportTypeNotStruct(
+        location: TextLocation,
+        name: String
+    ) = report(location, "Type \"$name\" isn't a struct")
 
     fun reportBadCharacter(
         location: TextLocation,

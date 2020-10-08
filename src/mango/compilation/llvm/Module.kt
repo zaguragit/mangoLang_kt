@@ -39,7 +39,7 @@ class ConstVal(
     override fun code() = "@$name = constant ${value.type.code} ${value.code}"
 }
 
-data class FunctionDeclaration(
+class FunctionDeclaration(
     val name: String,
     val returnType: LLVMType,
     val paramTypes: List<LLVMType>,
@@ -76,7 +76,6 @@ class LLVMStruct(
 class ModuleBuilder {
     private val stringConsts = HashMap<String, ArrayConst>()
     private val importedDeclarations = LinkedList<String>()
-    private val importedDefinitions = LinkedList<String>()
     private val declarations = LinkedList<FunctionDeclaration>()
     private val functions = LinkedList<FunctionBuilder>()
     private val structs = LinkedList<LLVMStruct>()
@@ -125,13 +124,23 @@ class ModuleBuilder {
         return const
     }
 
+    fun declareStruct (name: String, types: Array<LLVMType>) {
+        structs.add(LLVMStruct(name, types))
+    }
+
     fun addDeclaration (declaration: FunctionDeclaration) {
         declarations.add(declaration)
     }
 
-    fun declareStruct (name: String, types: Array<LLVMType>) {
-        structs.add(LLVMStruct(name, types))
+    fun addDeclaration (symbol: CallableSymbol) {
+        declarations.add(FunctionDeclaration(
+            symbol.mangledName(),
+            LLVMType[symbol.returnType],
+            symbol.type.args.map { LLVMType[it] }
+        ))
     }
+
+    fun hasFunctionName (name: String) = declarations.find { it.name == name } != null
 
     fun addImportedDeclaration (symbol: CallableSymbol) {
         val returnType = LLVMType[symbol.returnType]
@@ -140,14 +149,8 @@ class ModuleBuilder {
         }})")
     }
 
-    fun addImportedDefinition (code: String) {
-        importedDefinitions.add(code)
-    }
-
     fun createFunction (symbol: CallableSymbol): FunctionBuilder {
-        val function = FunctionBuilder(this, List(symbol.parameters.size) {
-            LLVMType[symbol.parameters[it].type]
-        }, symbol)
+        val function = FunctionBuilder(this, symbol)
         functions.add(function)
         return function
     }
@@ -156,7 +159,6 @@ class ModuleBuilder {
         "${structs.joinToString("\n") { it.code() }}\n" +
         "${stringConsts.values.joinToString("\n") { it.code() }}\n" +
         "${globalVariables.joinToString("\n") { it.code() }}\n" +
-        "${importedDefinitions.joinToString("\n")}\n" +
         "${declarations.joinToString("\n") { it.code() }}\n" +
         "${functions.joinToString("\n") { it.code() }}\n" +
         "${importedDeclarations.joinToString("\n")}\n"

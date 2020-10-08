@@ -12,7 +12,7 @@ case $1 in
         sudo cp out/* /usr/local/lib/mangoLang/
 
         sudo mkdir /usr/local/include/mangoLang/std
-        sudo cp std/mango/* /usr/local/include/mangoLang/std/
+        sudo cp -r std/mango/* /usr/local/include/mangoLang/std/
     ;;
     *)
         echo $1

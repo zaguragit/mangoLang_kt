@@ -35,5 +35,10 @@ fn StringBuilder.append (string String) StringBuilder {
     return this
 }
 
-[inline]
-fn StringBuilder.append (i32 I32) StringBuilder -> this.append(i32.toString())
+//[inline]
+//fn StringBuilder.append (i32 I32) StringBuilder -> this.append(i32.toString())
+
+fn StringBuilder.toString String -> String {
+    length: this.length
+    chars: this.chars
+}

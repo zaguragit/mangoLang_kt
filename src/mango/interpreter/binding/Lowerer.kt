@@ -52,26 +52,41 @@ class Lowerer : TreeRewriter() {
                                     }
                                     s.variable.realName = string
                                 }
-                                s = VariableDeclaration(s.variable, flattenExpression(s.initializer, stack, variableNames))
+                                val tmpStack = Stack<Statement>()
+                                s = VariableDeclaration(s.variable, flattenExpression(s.initializer, tmpStack, variableNames))
+                                stack.push(s)
+                                tmpStack.forEach { stack.push(it) }
                             }
                             BoundNode.Kind.ExpressionStatement -> {
                                 s as ExpressionStatement
-                                s = ExpressionStatement(flattenExpression(s.expression, stack, variableNames))
+                                val tmpStack = Stack<Statement>()
+                                s = ExpressionStatement(flattenExpression(s.expression, tmpStack, variableNames))
+                                stack.push(s)
+                                tmpStack.forEach { stack.push(it) }
                             }
                             BoundNode.Kind.ConditionalGotoStatement -> {
                                 s as ConditionalGotoStatement
-                                s = ConditionalGotoStatement(s.label, flattenExpression(s.condition, stack, variableNames), s.jumpIfTrue)
+                                val tmpStack = Stack<Statement>()
+                                s = ConditionalGotoStatement(s.label, flattenExpression(s.condition, tmpStack, variableNames), s.jumpIfTrue)
+                                stack.push(s)
+                                tmpStack.forEach { stack.push(it) }
                             }
                             BoundNode.Kind.ReturnStatement -> {
                                 s as ReturnStatement
-                                s = ReturnStatement(s.expression?.let { flattenExpression(it, stack, variableNames) })
+                                val tmpStack = Stack<Statement>()
+                                s = ReturnStatement(s.expression?.let { flattenExpression(it, tmpStack, variableNames) })
+                                stack.push(s)
+                                tmpStack.forEach { stack.push(it) }
                             }
                             BoundNode.Kind.AssignmentStatement -> {
                                 s as Assignment
-                                s = Assignment(flattenExpression(s.assignee, stack, variableNames), flattenExpression(s.expression, stack, variableNames))
+                                val tmpStack = Stack<Statement>()
+                                s = Assignment(flattenExpression(s.assignee, tmpStack, variableNames), flattenExpression(s.expression, tmpStack, variableNames))
+                                stack.push(s)
+                                tmpStack.forEach { stack.push(it) }
                             }
+                            else -> stack.push(s)
                         }
-                        stack.push(s)
                     }
                 } else {
                     arrayList.add(current)
@@ -98,9 +113,14 @@ class Lowerer : TreeRewriter() {
                     expression as CastExpression
                     CastExpression(expression.type, flattenExpression(expression.expression, stack, variableNames))
                 }
+                BoundNode.Kind.StructInitialization -> {
+                    expression as StructInitialization
+                    StructInitialization(expression.type, expression.fields.mapValues { flattenExpression(it.value, stack, variableNames) })
+                }
                 BoundNode.Kind.BlockExpression -> {
                     expression as BlockExpression
-                    for (i in expression.statements.indices) {
+                    var result: Expression? = null
+                    loop@ for (i in expression.statements.indices.reversed()) {
                         var s = expression.statements.elementAt(i)
                         when (s.kind) {
                             BoundNode.Kind.VariableDeclaration -> {
@@ -117,7 +137,8 @@ class Lowerer : TreeRewriter() {
                             BoundNode.Kind.ExpressionStatement -> {
                                 s as ExpressionStatement
                                 if (i == expression.statements.size - 1) {
-                                    return flattenExpression(s.expression, stack, variableNames)
+                                    result = flattenExpression(s.expression, stack, variableNames)
+                                    continue@loop
                                 }
                                 s = ExpressionStatement(flattenExpression(s.expression, stack, variableNames))
                             }
@@ -132,7 +153,7 @@ class Lowerer : TreeRewriter() {
                         }
                         stack.push(s)
                     }
-                    expression
+                    result ?: expression
                 }
                 else -> expression
             }

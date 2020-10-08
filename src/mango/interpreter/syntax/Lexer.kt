@@ -226,9 +226,39 @@ class Lexer(
         return Token(syntaxTree, type, start, string = text)
     }
 
+    fun readCharExcape(): Char? {
+        return when (lookAhead()) {
+            'n' -> '\n'
+            't' -> '\t'
+            'r' -> '\r'
+            '\\' -> '\\'
+            '0' -> '\u0000'
+            else -> null
+        }
+    }
+
     fun readChar(): Token {
         val start = position++
-        val char = current
+        val char = when (current) {
+            '\\' -> {
+                val escape = readCharExcape()
+                if (escape == null) {
+                    diagnostics.reportInvalidCharacterEscape(
+                        TextLocation(sourceText, TextSpan(position, 1)),
+                        current.toString())
+                    position++
+                    ' '
+                } else {
+                    position++
+                    escape
+                }
+            }
+            '\u0000' -> {
+                diagnostics.reportBadCharacter(TextLocation(sourceText, TextSpan(start, 1)), '\'')
+                ' '
+            }
+            else -> current
+        }
         position++
         if (current != '\'') {
             diagnostics.reportBadCharacter(TextLocation(sourceText, TextSpan(position, 1)), current)
@@ -247,27 +277,17 @@ class Lexer(
                         builder.append('"')
                         position += 2
                     }
-                    'n' -> {
-                        builder.append('\n')
-                        position += 2
-                    }
-                    't' -> {
-                        builder.append('\t')
-                        position += 2
-                    }
-                    '\\' -> {
-                        builder.append('\\')
-                        position += 2
-                    }
-                    'r' -> {
-                        builder.append('\r')
-                        position += 2
-                    }
                     else -> {
-                        diagnostics.reportInvalidCharacterEscape(
-                            TextLocation(sourceText, TextSpan(position, 1)),
-                            current.toString())
-                        position++
+                        val escape = readCharExcape()
+                        if (escape == null) {
+                            diagnostics.reportInvalidCharacterEscape(
+                                    TextLocation(sourceText, TextSpan(position, 1)),
+                                    current.toString())
+                            position++
+                        } else {
+                            builder.append(escape)
+                            position += 2
+                        }
                     }
                 }
                 '\u0000' -> {

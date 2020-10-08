@@ -36,7 +36,24 @@ class Parser(
 
     private inline fun peek(offset: Int): Token {
         val index = position + offset
-        return if (index >= tokens.size) tokens[tokens.lastIndex] else tokens[index]
+        return if (index >= tokens.size) {
+            tokens[tokens.lastIndex]
+        } else tokens[index]
+    }
+
+    private inline fun peekOverLineSeparators(offset: Int): Token {
+        var i = 0
+        var o = position
+        while (o < tokens.size) {
+            val p = tokens[o++]
+            if (p.kind != SyntaxType.LineSeparator) {
+                if (i == offset) {
+                    return p
+                }
+                i++
+            }
+        }
+        return tokens[tokens.lastIndex]
     }
 
     private inline val current get() = peek(0)
@@ -168,6 +185,7 @@ class Parser(
     private fun parseParamList(): SeparatedNodeList<ParameterNode> {
         val nodesNSeparators = ArrayList<Node>()
 
+        skipSeparators()
         while (
             current.kind != SyntaxType.ClosedParentheses &&
             current.kind != SyntaxType.EOF
@@ -175,12 +193,15 @@ class Parser(
             val param = parseParam()
             nodesNSeparators.add(param)
 
+            skipSeparators()
+
             if (current.kind == SyntaxType.Comma) {
                 val comma = match(SyntaxType.Comma)
                 nodesNSeparators.add(comma)
             } else {
                 break
             }
+            skipSeparators()
         }
 
         return SeparatedNodeList(nodesNSeparators)
@@ -247,22 +268,8 @@ class Parser(
         val keyword = match(SyntaxType.Struct)
         val identifier = match(SyntaxType.Identifier)
         val openBrace = match(SyntaxType.OpenBrace)
-        val fields = ArrayList<VariableDeclarationNode>()
-        while (
-            current.kind != SyntaxType.EOF &&
-            current.kind != SyntaxType.ClosedBrace
-        ) {
-            skipSeparators()
-            val startToken = current
-
-            val statement = parseVariableDeclaration()
-            fields.add(statement)
-
-            skipSeparators()
-            if (startToken == current) {
-                skipSeparators()
-                next()
-            }
+        val fields = parseInsideBraces {
+            parseVariableDeclaration()
         }
         val closedBrace = match(SyntaxType.ClosedBrace)
         return StructDeclarationNode(syntaxTree, keyword, identifier, openBrace, fields, closedBrace)
@@ -274,23 +281,8 @@ class Parser(
 
         val openBrace = match(SyntaxType.OpenBrace)
 
-        val statements = ArrayList<TopLevelNode>()
-
-        while (
-            current.kind != SyntaxType.EOF &&
-            current.kind != SyntaxType.ClosedBrace
-        ) {
-            skipSeparators()
-            val startToken = current
-
-            val statement = parseGlobalStatement()
-            statements.add(statement)
-
-            skipSeparators()
-            if (startToken == current) {
-                skipSeparators()
-                next()
-            }
+        val statements = parseInsideBraces {
+            parseGlobalStatement()
         }
 
         val closedBrace = match(SyntaxType.ClosedBrace)
@@ -361,6 +353,15 @@ class Parser(
         return VariableDeclarationNode(syntaxTree, keyword, identifier, typeClause, equals, initializer)
     }
 
+    private fun isComplexTypeClause(): Pair<Boolean, Int> {
+        var i = 0
+        if (peek(i++).kind != SyntaxType.Identifier) return false to 0
+        if (peek(i++).kind != SyntaxType.LessThan) return false to 0
+        while (peek(i).kind == SyntaxType.Identifier || peek(i).kind == SyntaxType.Comma) i++
+        if (peek(i).kind != SyntaxType.MoreThan) return false to 0
+        return true to i
+    }
+
     private fun parseOptionalValueTypeClause(): TypeClauseNode? {
         if (current.kind == SyntaxType.Equals) {
             return null
@@ -410,23 +411,8 @@ class Parser(
     private fun parseBlock(): BlockNode {
         val openBrace = match(SyntaxType.OpenBrace)
 
-        skipSeparators()
-        val statements = ArrayList<Node>()
-        while (
-            current.kind != SyntaxType.EOF &&
-            current.kind != SyntaxType.ClosedBrace
-        ) {
-            skipSeparators()
-            val startToken = current
-
-            val statement = parseStatement()
-            statements.add(statement)
-
-            skipSeparators()
-            if (startToken == current) {
-                skipSeparators()
-                next()
-            }
+        val statements = parseInsideBraces {
+            parseStatement()
         }
 
         val closedBrace = match(SyntaxType.ClosedBrace)
@@ -556,11 +542,11 @@ class Parser(
         else -> parseNameExpression()
     }
 
-    private fun parseParenthesizedExpression(): ParenthesizedExpressionNode {
-        val left = match(SyntaxType.OpenParentheses)
+    private fun parseParenthesizedExpression(): Node {
+        match(SyntaxType.OpenParentheses)
         val expression = parseExpression()
-        val right = match(SyntaxType.ClosedParentheses)
-        return ParenthesizedExpressionNode(syntaxTree, left, expression, right)
+        match(SyntaxType.ClosedParentheses)
+        return expression
     }
 
     private fun parseBooleanLiteral(): LiteralExpressionNode {
@@ -587,23 +573,8 @@ class Parser(
         val keyword = match(SyntaxType.Unsafe)
         val openBrace = match(SyntaxType.OpenBrace)
 
-        skipSeparators()
-        val statements = ArrayList<Node>()
-        while (
-            current.kind != SyntaxType.EOF &&
-            current.kind != SyntaxType.ClosedBrace
-        ) {
-            skipSeparators()
-            val startToken = current
-
-            val statement = parseStatement()
-            statements.add(statement)
-
-            skipSeparators()
-            if (startToken == current) {
-                skipSeparators()
-                next()
-            }
+        val statements = parseInsideBraces {
+            parseStatement()
         }
 
         val closedBrace = match(SyntaxType.ClosedBrace)
@@ -627,14 +598,84 @@ class Parser(
     private fun parseCharLiteral() = LiteralExpressionNode(syntaxTree, match(SyntaxType.Char))
 
     private fun parseNameExpression(): Node {
+        /*val isComplexType = current.kind == SyntaxType.LessThan && (peekOverLineSeparators(2).kind == SyntaxType.MoreThan || peekOverLineSeparators(2).kind == SyntaxType.Comma)
+        val identifier = if (isComplexType) {
+            parseTypeClause()
+        } else {
+            match(SyntaxType.Identifier)
+        }*/
+        val (_, i) = isComplexTypeClause()
+
+        if (peek(i + 1).kind == SyntaxType.OpenBrace) {
+            if (peekOverLineSeparators(i + 2).kind == SyntaxType.Identifier) {
+                if (peekOverLineSeparators(i + 3).kind == SyntaxType.Colon) {
+                    return parseStructInitialization(parseTypeClause())
+                }
+            }
+            if (blockContainsCommas()) {
+                return parseCollectionInitialization(parseTypeClause())
+            }
+        }
+
         val identifier = match(SyntaxType.Identifier)
+
         return NameExpressionNode(syntaxTree, identifier)
+    }
+
+    private fun blockContainsCommas(): Boolean {
+        var i = 0
+        var braceDepth = 0
+        var bracketDepth = 0
+        var parenthesesDepth = 0
+        while (true) {
+            when (peek(i).kind) {
+                SyntaxType.OpenBrace -> braceDepth++
+                SyntaxType.ClosedBrace -> {
+                    braceDepth--
+                    if (braceDepth == 0) return false
+                }
+                SyntaxType.OpenBracket -> bracketDepth++
+                SyntaxType.ClosedBracket -> {
+                    bracketDepth--
+                }
+                SyntaxType.OpenParentheses -> parenthesesDepth++
+                SyntaxType.ClosedParentheses -> {
+                    parenthesesDepth--
+                }
+                SyntaxType.EOF -> return false
+                else -> if (parenthesesDepth == 0 &&
+                            bracketDepth == 0 &&
+                            braceDepth == 1 &&
+                            peek(i).kind == SyntaxType.Comma) return true
+            }
+            i++
+        }
+    }
+
+    private fun parseStructInitialization(type: TypeClauseNode): Node {
+        val openBrace = match(SyntaxType.OpenBrace)
+        val statements = parseInsideBraces {
+            val name = match(SyntaxType.Identifier)
+            val colon = match(SyntaxType.Colon)
+            val expression = parseExpression()
+            AssignmentNode(syntaxTree, name, colon, expression)
+        }
+        val closedBrace = match(SyntaxType.ClosedBrace)
+        return StructInitializationNode(syntaxTree, type, openBrace, statements, closedBrace)
+    }
+
+    private fun parseCollectionInitialization(type: TypeClauseNode): Node {
+        val openBrace = match(SyntaxType.OpenBrace)
+        val expressions = parseArguments()
+        val closedBrace = match(SyntaxType.ClosedBrace)
+        return CollectionInitializationNode(syntaxTree, type, openBrace, expressions, closedBrace)
     }
 
     private fun parseArguments(): SeparatedNodeList<Node> {
 
         val nodesNSeparators = ArrayList<Node>()
 
+        skipSeparators()
         while (
             current.kind != SyntaxType.ClosedParentheses &&
             current.kind != SyntaxType.EOF
@@ -649,8 +690,32 @@ class Parser(
             } else {
                 break
             }
+            skipSeparators()
         }
 
         return SeparatedNodeList(nodesNSeparators)
+    }
+
+    private fun <T : Node> parseInsideBraces(
+        fn: () -> T
+    ): ArrayList<T> {
+        skipSeparators()
+        val statements = ArrayList<T>()
+        while (
+            current.kind != SyntaxType.EOF &&
+            current.kind != SyntaxType.ClosedBrace
+        ) {
+            skipSeparators()
+            val startToken = current
+
+            statements.add(fn())
+
+            skipSeparators()
+            if (startToken == current) {
+                skipSeparators()
+                next()
+            }
+        }
+        return statements
     }
 }

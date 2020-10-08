@@ -27,7 +27,8 @@ class BlockBuilder(
 
     inline fun extendIfNecessary(value: LLVMValue, type: LLVMType) = if (value.type == type) value else extend(value, type)
     inline fun extend(value: LLVMValue, type: LLVMType) = when (type) {
-        is LLVMType.I -> tmpVal(Conversion(Conversion.Kind.ZeroExt, value, type)).ref
+        is LLVMType.I -> tmpVal(Conversion(Conversion.Kind.SignExt, value, type)).ref
+        is LLVMType.U -> tmpVal(Conversion(Conversion.Kind.ZeroExt, value, type)).ref
         is LLVMType.Float -> tmpVal(Conversion(Conversion.Kind.FloatExt, value, type)).ref
         else -> throw EmitterError("type ${type.code} can't be extended")
     }
@@ -44,24 +45,27 @@ class BlockBuilder(
         return tempValue
     }
 
-    private fun getFieldPointer(struct: LLVMValue, i: Int, type: LLVMType) = tmpVal(GetPtr(
-        (struct.type as LLVMType.Ptr).element,
-        struct,
-        LLVMValue.Int(0, LLVMType.I64),
-        LLVMValue.Int(i, LLVMType.I32),
-        type = LLVMType.Ptr(type)
-    )).ref
-
-    fun getStructField(struct: LLVMValue, i: Int, field: TypeSymbol.StructTypeSymbol.Field): LLVMInstruction {
-        val type = LLVMType[field.type]
-        val ptr = getFieldPointer(struct, i, type)
-        return Load(ptr, type)
+    fun getPtr(struct: LLVMValue, arrayI: LLVMValue, fieldI: LLVMValue?, type: LLVMType): LocalRef {
+        return tmpVal(GetPtr(
+            (struct.type as LLVMType.Ptr).element,
+            struct,
+            arrayI,
+            fieldI,
+            type = LLVMType.Ptr(type)
+        )).ref
     }
 
-    fun setStructField(struct: LLVMValue, i: Int, field: TypeSymbol.StructTypeSymbol.Field, value: LLVMValue) {
-        val ptr = getFieldPointer(struct, i, LLVMType[field.type])
-        store(ptr, value)
-    }
+    fun getStructField(struct: LLVMValue, i: Int, field: TypeSymbol.StructTypeSymbol.Field) =
+        Load(getPtr(struct, LLVMValue.Int(0, LLVMType.I32), LLVMValue.Int(i, LLVMType.I32), LLVMType[field.type]))
+
+    fun setStructField(struct: LLVMValue, i: Int, field: TypeSymbol.StructTypeSymbol.Field, value: LLVMValue) =
+        store(getPtr(struct, LLVMValue.Int(0, LLVMType.I32), LLVMValue.Int(i, LLVMType.I32), LLVMType[field.type]), value)
+
+    fun getArrayElement(array: LLVMValue, i: LLVMValue) =
+        Load(getPtr(array, i, null, (array.type as LLVMType.Ptr).element))
+
+    fun setArrayElement(array: LLVMValue, i: LLVMValue, value: LLVMValue) =
+        store(getPtr(array, i, null, (array.type as LLVMType.Ptr).element), value)
 
     inline fun ret() = addInstruction(RetVoid())
     inline fun ret(value: LLVMValue) = addInstruction(Ret(value))
@@ -75,8 +79,40 @@ class BlockBuilder(
     inline fun jump(name: String) = addInstruction(Jmp(name))
 
     inline fun alloc(type: LLVMType) = tmpVal(Alloc(type)).ref
-
     inline fun alloc(name: String, type: LLVMType) = tmpVal(name, Alloc(type)).ref
+
+    inline fun malloc(type: LLVMType) = mallocArray(type, 1)
+    inline fun mallocArray(type: LLVMType, size: Int): LLVMValue {
+        val retType = LLVMType.Ptr(LLVMType.I8)
+        if (!functionBuilder.moduleBuilder.hasFunctionName("malloc")) {
+            functionBuilder.moduleBuilder.addDeclaration(FunctionDeclaration(
+                "malloc", retType, listOf(LLVMType.I32)
+            ))
+        }
+        val heap = tmpVal(Call(retType, LLVMValue.GlobalRef("malloc", LLVMType.Fn(retType, listOf(LLVMType.I32))), LLVMValue.Int(type.bits * size, LLVMType.I32))).ref
+        return tmpVal(Conversion(Conversion.Kind.BitCast, heap, type)).ref
+    }
+    inline fun mallocArray(type: LLVMType, size: LLVMValue): LLVMValue {
+        val retType = LLVMType.Ptr(LLVMType.I8)
+        if (!functionBuilder.moduleBuilder.hasFunctionName("malloc")) {
+            functionBuilder.moduleBuilder.addDeclaration(FunctionDeclaration(
+                "malloc", retType, listOf(LLVMType.I32)
+            ))
+        }
+        val realSize = operation(Operation.Kind.IntMul, LLVMValue.Int(type.bits, LLVMType.I32), size)
+        val heap = tmpVal(Call(retType, LLVMValue.GlobalRef("malloc", LLVMType.Fn(retType, listOf(LLVMType.I32))), realSize)).ref
+        return tmpVal(Conversion(Conversion.Kind.BitCast, heap, type)).ref
+    }
+
+    inline fun free() {
+        val type = LLVMType.Ptr(LLVMType.I8)
+        if (!functionBuilder.moduleBuilder.hasFunctionName("free")) {
+            functionBuilder.moduleBuilder.addDeclaration(FunctionDeclaration(
+                    "free", LLVMType.Void, listOf(type)
+            ))
+        }
+        addInstruction(Call(LLVMType.Void, LLVMValue.GlobalRef("malloc", LLVMType.Fn(LLVMType.Void, listOf(LLVMType.I8))), LLVMValue.Int(type.bits, LLVMType.I8)))
+    }
 
     fun code() = (if (name != null) "$name:\n    " else "") + instructions.joinToString(separator = "\n    ") { it.code }
 
@@ -102,14 +138,23 @@ class BlockBuilder(
     inline fun store(destination: LLVMValue, value: LLVMValue) {
         addInstruction(Store(value, destination))
     }
+
+    inline fun operation(kind: Operation.Kind, left: LLVMValue, right: LLVMValue): LLVMValue {
+        val operation = Operation(kind, left, right)
+        return tmpVal(operation).ref
+    }
 }
 
 class FunctionBuilder(
     val moduleBuilder: ModuleBuilder,
-    val paramTypes: List<LLVMType>,
     val symbol: CallableSymbol
 ) {
     val returnType = LLVMType[symbol.returnType]
+
+    val paramTypes = List(symbol.parameters.size) {
+        val a = LLVMType[symbol.parameters[it].type]
+        a
+    }
 
     private val blocks = LinkedList<BlockBuilder>()
     private val attributes = LinkedList<String>()

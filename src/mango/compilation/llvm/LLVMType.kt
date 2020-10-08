@@ -12,16 +12,16 @@ interface LLVMType {
 
     companion object {
 
-        operator fun get(type: TypeSymbol.StructTypeSymbol) = Ptr(Struct(type.name))
+        operator fun get(type: TypeSymbol.StructTypeSymbol) = Ptr(Struct(type.name, type.size))
         operator fun get(type: TypeSymbol): LLVMType {
             return when (type.kind) {
-                Symbol.Kind.StructType -> Ptr(Struct(type.name))
+                Symbol.Kind.StructType -> get(type as TypeSymbol.StructTypeSymbol)
                 Symbol.Kind.FunctionType -> {
                     type as TypeSymbol.Fn
                     Fn(get(type.returnType), type.args.map { get(it) })
                 }
                 else -> when (type.name) {
-                    TypeSymbol.Any.name -> Ptr(Void)
+                    TypeSymbol.Any.name -> Ptr(I8)
                     TypeSymbol.I8.name -> I8
                     //TypeSymbol.U8 -> U8
                     TypeSymbol.I16.name -> I16
@@ -41,9 +41,13 @@ interface LLVMType {
         }
     }
 
-    open class I(final override val bits: Int) : LLVMType {
+    abstract class I(final override val bits: Int) : LLVMType {
         override val isInteger = true
         override val code = "i$bits"
+    }
+
+    open class U(bits: Int) : I(bits) {
+        override val code = "u$bits"
     }
 
     object Bool : I(1)
@@ -77,15 +81,15 @@ interface LLVMType {
     }
 
     class Struct(
-        val name: String
+        val name: String,
+        override val bits: Int
     ) : LLVMType {
         override val code = "%.struct.$name"
-        override val bits = 0
     }
 
     class Fn(
         val returnType: LLVMType,
-        args: Collection<LLVMType>
+        val args: Collection<LLVMType>
     ) : LLVMType {
         override val code = "${returnType.code}(${args.joinToString(", ") { it.code }})"
         override val bits = 0

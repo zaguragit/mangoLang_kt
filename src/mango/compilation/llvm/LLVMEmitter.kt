@@ -5,7 +5,6 @@ import mango.compilation.llvm.LLVMValue.*
 import mango.compilation.llvm.LLVMValue.Float
 import mango.compilation.llvm.LLVMValue.Int
 import mango.interpreter.binding.Program
-import mango.interpreter.binding.nodes.BiOperator
 import mango.interpreter.binding.nodes.BoundNode
 import mango.interpreter.binding.nodes.UnOperator
 import mango.interpreter.binding.nodes.expressions.*
@@ -38,7 +37,7 @@ object LLVMEmitter : Emitter {
             val symbol = f.key
             val body = f.value
             if (symbol.meta.isExtern) {
-                builder.addImportedDeclaration(symbol)
+                builder.addDeclaration(symbol)
                 continue
             }
             val function = builder.createFunction(symbol)
@@ -59,7 +58,8 @@ object LLVMEmitter : Emitter {
                         statement as VariableDeclaration
                         if (statement.initializer.kind == BoundNode.Kind.LiteralExpression ||
                             statement.initializer.kind == BoundNode.Kind.NameExpression ||
-                            statement.initializer.kind == BoundNode.Kind.ReferenceExpression) {
+                            statement.initializer.kind == BoundNode.Kind.ReferenceExpression ||
+                            statement.initializer.kind == BoundNode.Kind.StructInitialization) {
                             val value = emitValue(currentBlock, statement.initializer)!!
                             val alloc = currentBlock.alloc(statement.variable.realName, value.type)
                             currentBlock.store(alloc, value)
@@ -164,8 +164,10 @@ object LLVMEmitter : Emitter {
         BoundNode.Kind.CastExpression -> emitValue(block, (expression as CastExpression).expression)
         BoundNode.Kind.LiteralExpression -> emitLiteral(block, expression as LiteralExpression)
         BoundNode.Kind.NameExpression -> emitVariableExpression(block, expression as NameExpression)
-        BoundNode.Kind.ErrorExpression -> throw EmitterError("Error expression got to the emission stage")
         BoundNode.Kind.ReferenceExpression -> emitReference(block, (expression as Reference).expression)
+        BoundNode.Kind.StructInitialization -> emitStructInitialization(block, expression as StructInitialization)
+        BoundNode.Kind.PointerArrayInitialization -> emitPointerArrayInitialization(block, expression as PointerArrayInitialization)
+        BoundNode.Kind.ErrorExpression -> throw EmitterError("Error expression got to the emission stage")
         else -> {
             val instruction = emitInstruction(block, expression)!!
             val type = instruction.type
@@ -176,6 +178,38 @@ object LLVMEmitter : Emitter {
                 block.tmpVal(instruction).ref
             }
         }
+    }
+
+    private fun emitPointerArrayInitialization(
+        block: BlockBuilder,
+        expression: PointerArrayInitialization
+    ): LLVMValue {
+        return if (expression.length == null) {
+            val alloc = block.mallocArray(LLVMType[expression.type], expression.expressions!!.size)
+            for (i in expression.expressions.indices) {
+                block.setArrayElement(alloc, Int(i, LLVMType.I32), emitValue(block, expression.expressions[i])!!)
+            }
+            alloc
+        } else {
+            if (expression.length.constantValue == null) {
+                block.mallocArray(LLVMType[expression.type], emitValue(block, expression.length)!!)
+            } else {
+                block.mallocArray(LLVMType[expression.type], expression.length.constantValue!!.value as kotlin.Int)
+            }
+        }
+    }
+
+    private fun emitStructInitialization(
+        block: BlockBuilder,
+        expression: StructInitialization
+    ): LLVMValue {
+        val alloc = block.malloc(LLVMType[expression.type])
+        for (entry in expression.fields) {
+            val field = entry.key
+            val value = entry.value
+            block.setStructField(alloc, expression.type.fields.indexOf(field), field, emitValue(block, value)!!)
+        }
+        return alloc
     }
 
     private fun emitLiteral(
@@ -268,54 +302,16 @@ object LLVMEmitter : Emitter {
     ): LLVMInstruction? {
         val left = emitValue(block, expression.left)!!
         val right = emitValue(block, expression.right)!!
-        return when (expression.operator.type) {
-            BiOperator.Type.Add -> if (expression.right.type.isOfType(TypeSymbol.Integer)) {
-                val max = max(left.type, right.type)
-                Operation(Operation.Kind.IntAdd,
-                    block.extendIfNecessary(left, max),
-                    block.extendIfNecessary(right, max))
-            } else null
-            BiOperator.Type.Sub -> if (expression.right.type.isOfType(TypeSymbol.Integer)) {
-                val max = max(left.type, right.type)
-                Operation(Operation.Kind.IntSub,
-                    block.extendIfNecessary(left, max),
-                    block.extendIfNecessary(right, max))
-            } else null
-            BiOperator.Type.Mul -> if (expression.right.type.isOfType(TypeSymbol.Integer)) {
-                val max = max(left.type, right.type)
-                Operation(Operation.Kind.IntMul,
-                    block.extendIfNecessary(left, max),
-                    block.extendIfNecessary(right, max))
-            } else null
-            BiOperator.Type.Div -> when {
-                expression.right.type.isOfType(TypeSymbol.Integer) -> {
-                    val max = max(left.type, right.type)
-                    Operation(Operation.Kind.IntDiv,
-                        block.extendIfNecessary(left, max),
-                        block.extendIfNecessary(right, max))
-                }
-                expression.right.type.isOfType(TypeSymbol.UInteger) -> {
-                    val max = max(left.type, right.type)
-                    Operation(Operation.Kind.UIntDiv,
-                        block.extendIfNecessary(left, max),
-                        block.extendIfNecessary(right, max))
-                }
-                else -> null
-            }
-            BiOperator.Type.Rem -> null
-            BiOperator.Type.BitAnd -> null
-            BiOperator.Type.BitOr -> null
-            BiOperator.Type.LogicAnd -> null
-            BiOperator.Type.LogicOr -> null
-            BiOperator.Type.LessThan -> Icmp(Icmp.Type.LessThan, left, right)
-            BiOperator.Type.MoreThan -> Icmp(Icmp.Type.MoreThan, left, right)
-            BiOperator.Type.IsEqual -> Icmp(Icmp.Type.IsEqual, left, right)
-            BiOperator.Type.IsEqualOrMore -> Icmp(Icmp.Type.IsEqualOrMore, left, right)
-            BiOperator.Type.IsEqualOrLess -> Icmp(Icmp.Type.IsEqualOrLess, left, right)
-            BiOperator.Type.IsNotEqual -> Icmp(Icmp.Type.IsNotEqual, left, right)
-            BiOperator.Type.IsIdentityEqual -> Icmp(Icmp.Type.IsEqual, left, right)
-            BiOperator.Type.IsNotIdentityEqual -> Icmp(Icmp.Type.IsNotEqual, left, right)
+        val operation = Operation[left.type, expression.operator.type, right.type]
+        if (operation != null) {
+            val max = max(left.type, right.type)
+            return Operation(operation, block.extendIfNecessary(left, max), block.extendIfNecessary(right, max))
         }
+        val comparison = Icmp[left.type, expression.operator.type, right.type]
+        if (comparison != null) {
+            return Icmp(comparison, left, right)
+        }
+        throw EmitterError("Binary operator (${expression.operator.type}) couldn't be converted to LLVM IR")
     }
 
     private fun emitPointerAccessExpression(
@@ -324,7 +320,9 @@ object LLVMEmitter : Emitter {
     ): LLVMInstruction {
         val pointer = emitValue(block, expression.expression)!!
         val i = emitValue(block, expression.i)!!
+        return block.getArrayElement(pointer, i)
+        /*
         val ptr = block.tmpVal(GetPtr((pointer.type as LLVMType.Ptr).element, pointer, i))
-        return Load(ptr.ref, (ptr.type as LLVMType.Ptr).element)
+        return Load(ptr.ref, (ptr.type as LLVMType.Ptr).element)*/
     }
 }

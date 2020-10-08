@@ -252,7 +252,6 @@ class Binder(
 
     private fun bindExpressionInternal(node: Node, type: TypeSymbol?): Expression {
         return when (node.kind) {
-            SyntaxType.ParenthesizedExpression -> bindParenthesizedExpression(node as ParenthesizedExpressionNode)
             SyntaxType.LiteralExpression -> bindLiteralExpression(node as LiteralExpressionNode, type)
             SyntaxType.UnaryExpression -> bindUnaryExpression(node as UnaryExpressionNode)
             SyntaxType.BinaryExpression -> {
@@ -271,6 +270,8 @@ class Binder(
                 isExpression = true,
                 isUnsafe = node.isUnsafe
             ) as Expression
+            SyntaxType.StructInitialization -> bindStructInitialization(node as StructInitializationNode)
+            SyntaxType.CollectionInitialization -> bindCollectionInitialization(node as CollectionInitializationNode)
             else -> throw BinderError("Unexpected node: ${node.kind}, ${node.location}")
         }
     }
@@ -291,7 +292,7 @@ class Binder(
 
         for (a in node.arguments) {
             val arg = bindExpression(a, canBeUnit = true)
-            if (arg.kind == BoundNode.Kind.ErrorExpression) {
+            if (arg.type == TypeSymbol.err) {
                 return ErrorExpression()
             }
             arguments.add(arg)
@@ -364,7 +365,7 @@ class Binder(
     private fun bindIndexExpression(node: IndexExpressionNode): Expression {
         val expression = bindExpression(node.expression)
 
-        if (expression.kind == BoundNode.Kind.ErrorExpression) {
+        if (expression.type == TypeSymbol.err) {
             return ErrorExpression()
         }
 
@@ -432,6 +433,90 @@ class Binder(
         }
     }
 
+    private fun bindStructInitialization(node: StructInitializationNode): Expression {
+        val type = bindTypeClause(node.type)
+        if (type == TypeSymbol.err) {
+            return ErrorExpression()
+        }
+        if (type.kind != Symbol.Kind.StructType) {
+            if (type.isOfType(TypeSymbol.Ptr)) {
+                var length: Expression? = null
+                for (param in node.params) {
+                    val name = (param.assignee as Token).string!!
+                    when (name) {
+                        "length" -> {
+                            val expression = bindExpression(param.expression)
+                            if (!expression.type.isOfType(TypeSymbol.I32)) {
+                                if (expression.type != TypeSymbol.err) {
+                                    diagnostics.reportWrongType(param.expression.location, expression.type, TypeSymbol.I32)
+                                    return ErrorExpression()
+                                }
+                            }
+                            length = expression
+                        }
+                        else -> {
+                            diagnostics.reportNotValidField(param.assignee.location, name)
+                            return ErrorExpression()
+                        }
+                    }
+                }
+                return PointerArrayInitialization(type, length ?: LiteralExpression(0, TypeSymbol.I32), null)
+            }
+            diagnostics.reportTypeNotStruct(node.type.identifier.location, node.type.identifier.string!!)
+            return ErrorExpression()
+        }
+        type as TypeSymbol.StructTypeSymbol
+        return StructInitialization(type, HashMap<TypeSymbol.StructTypeSymbol.Field, Expression>().apply {
+            node.params.forEach { param ->
+                val name = (param.assignee as Token).string!!
+                val field = type.fields.find { it.name == name }
+                if (field == null) {
+                    diagnostics.reportNoSuchField(param.assignee.location, type, name)
+                    return ErrorExpression()
+                }
+                val expression = bindExpression(param.expression)
+                if (!expression.type.isOfType(field.type)) {
+                    if (expression.type != TypeSymbol.err) {
+                        diagnostics.reportWrongType(param.expression.location, expression.type, field.type)
+                        return ErrorExpression()
+                    }
+                }
+                this[field] = expression
+            }
+        })
+    }
+
+    private fun bindCollectionInitialization(node: CollectionInitializationNode): Expression {
+        val type = bindTypeClause(node.type)
+        if (type == TypeSymbol.err) {
+            return ErrorExpression()
+        }
+        if (type.isOfType(TypeSymbol.Ptr)) {
+            val isFullTypeWritten = false
+            val elementType = type.params[0]
+            var actualElementType: TypeSymbol? = null
+            val expressions = ArrayList<Expression>()
+
+            for (e in node.expressions) {
+                val expression = bindExpression(e, elementType)
+                expressions.add(expression)
+
+                actualElementType = if (actualElementType == null) {
+                    expression.type
+                } else {
+                    expression.type.commonType(actualElementType)
+                }
+            }
+
+            if (actualElementType == null) actualElementType = TypeSymbol.Any
+
+            val actualType = if (isFullTypeWritten) type else type(arrayOf(actualElementType))
+            return PointerArrayInitialization(actualType, null, expressions)
+        }
+        diagnostics.reportTypeNotStruct(node.type.identifier.location, node.type.identifier.string!!)
+        return ErrorExpression()
+    }
+
     private fun bindAssignmentStatement(node: AssignmentNode): Statement {
         val a by lazy { bindExpression(node.assignee) }
         val boundExpression = let {
@@ -483,7 +568,7 @@ class Binder(
     private fun bindIndexAssignment(node: IndexExpressionNode, value: Expression): Statement {
         val expression = bindExpression(node.expression)
 
-        if (expression.kind == BoundNode.Kind.ErrorExpression) {
+        if (expression.type == TypeSymbol.err) {
             return bindErrorStatement()
         }
 
@@ -495,6 +580,10 @@ class Binder(
         if (expression.type.isOfType(TypeSymbol.Ptr) && list.size == 2 && list[1].type.isOfType(TypeSymbol.Integer)) {
             if (!isUnsafe) {
                 diagnostics.reportPointerOperationsAreUnsafe(node.location)
+                return bindErrorStatement()
+            }
+            if (!value.type.isOfType(expression.type.params[0])) {
+                diagnostics.reportWrongType(node.location, value.type, expression.type.params[0])
                 return bindErrorStatement()
             }
             return PointerAccessAssignment(expression, list[1], value)
@@ -514,7 +603,7 @@ class Binder(
     }
 
     private fun bindNameExpression(node: NameExpressionNode): Expression {
-        val name = node.identifier.string ?: return ErrorExpression()
+        val name = node.identifier.string!!
         val variable = scope.tryLookup(listOf(name))
         if (variable == null) {
             diagnostics.reportUndefinedName(node.identifier.location, name)
@@ -526,10 +615,6 @@ class Binder(
         }
         return NameExpression(variable)
     }
-
-    private fun bindParenthesizedExpression(
-        node: ParenthesizedExpressionNode
-    ) = bindExpression(node.expression)
 
     private fun bindLiteralExpression(
         node: LiteralExpressionNode,
@@ -650,10 +735,19 @@ class Binder(
         node.right as NameExpressionNode
 
         fun bindNamespaceAccess(leftName: String, rightName: String): Expression {
-            val symbol = scope.tryLookup(leftName.split('.').toMutableList().apply { add(rightName) }, types?.let { CallableSymbol.generateSuffix(it, false) })
-            if (symbol != null) {
-                symbol as VariableSymbol
-                return NameExpression(symbol)
+            run {
+                val symbol = scope.tryLookup(leftName.split('.').toMutableList().apply { add(rightName) }, types?.let { CallableSymbol.generateSuffix(it, false) })
+                if (symbol != null) {
+                    symbol as VariableSymbol
+                    return NameExpression(symbol)
+                }
+            }
+            run {
+                val symbol = scope.tryLookup(leftName.split('.').toMutableList().apply { add(rightName) })
+                if (symbol != null) {
+                    symbol as VariableSymbol
+                    return NameExpression(symbol)
+                }
             }
             val leftNamespace = Namespace[leftName]
             if (leftNamespace == null) {
@@ -670,18 +764,22 @@ class Binder(
 
         if (node.left.kind == SyntaxType.NameExpression) {
             node.left as NameExpressionNode
-            val leftName = node.left.identifier.string ?: return ErrorExpression() to null
-            val rightName = node.right.identifier.string ?: return ErrorExpression() to null
+            val leftName = node.left.identifier.string!!
+            val rightName = node.right.identifier.string!!
             scope.tryLookup(listOf(leftName)) ?: return bindNamespaceAccess(leftName, rightName) to null
         }
 
         val left = bindExpression(node.left)
-        val name = node.right.identifier.string ?: return ErrorExpression() to null
+        val name = node.right.identifier.string!!
 
         if (left.kind == BoundNode.Kind.NamespaceFieldAccess) {
             left as NamespaceFieldAccess
             val leftName = left.namespace.path
             return bindNamespaceAccess(leftName, name) to null
+        }
+
+        if (left.type == TypeSymbol.err) {
+            return ErrorExpression() to null
         }
 
         if (left.type.kind == Symbol.Kind.StructType) {
@@ -700,14 +798,13 @@ class Binder(
                 function as VariableSymbol
                 return NameExpression(function) to left
             }
+            diagnostics.reportUndefinedFunction(node.right.location, name, t, true)
             return ErrorExpression() to null
         }
         if (left.type.kind == Symbol.Kind.StructType) {
-            println(function!!.realName + function.suffix)
             diagnostics.reportNoSuchField(node.right.location, left.type as TypeSymbol.StructTypeSymbol, name)
             return ErrorExpression() to null
         }
-        println("${left.type.name}.${node.right.identifier.string}")
         diagnostics.reportUndefinedName(node.right.location, name)
         return ErrorExpression() to null
     }
@@ -901,6 +998,12 @@ class Binder(
             diagnostics: DiagnosticList,
             functionBodies: HashMap<CallableSymbol, BlockStatement?>?
         ) {
+            val symbolMangledName = symbol.mangledName()
+            if (symbolMangledName == "malloc") {
+                diagnostics.reportReservedFunctionPath(symbol.declarationNode!!.identifier.location, symbolMangledName)
+            } else if (functions.keys.find { it.mangledName() == symbolMangledName } != null) {
+                diagnostics.reportFunctionPathAlreadyDeclared(symbol.declarationNode!!.identifier.location, symbolMangledName)
+            }
             when {
                 symbol.meta.isExtern -> functions[symbol] = null
                 symbol.declarationNode!!.lambdaArrow == null -> {
