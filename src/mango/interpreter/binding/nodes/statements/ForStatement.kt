@@ -8,7 +8,7 @@ class ForStatement(
     val variable: VariableSymbol,
     val lowerBound: Expression,
     val upperBound: Expression,
-    val body: BlockStatement,
+    val body: Statement,
     breakLabel: Label,
     continueLabel: Label
 ) : LoopStatement(breakLabel, continueLabel) {

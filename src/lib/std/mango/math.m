@@ -11,9 +11,9 @@ fn randomU64 (seed U64) U64 {
 }
 
 [inline]
-fn smaller (a Int, b Int) Int -> if a < b { return a } else { return b }
+fn smaller (a Int, b Int) Int -> a < b ? a : b
 
 [inline]
-fn bigger  (a Int, b Int) Int -> if a > b { return a } else { return b }
+fn bigger  (a Int, b Int) Int -> a > b ? a : b
 
 */

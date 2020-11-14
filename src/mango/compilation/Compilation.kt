@@ -45,7 +45,7 @@ class Compilation(
         } else {
             program.statement
         }
-        if (cfgStatement is BoundBlockStatement) {
+        if (cfgStatement is BoundBlockExpression) {
             //val cfg = ControlFlowGraph.create(cfgStatement)
             //cfg.print()
         }*/

@@ -227,8 +227,12 @@ class Conversion(
         FloatToUInt("fptoui"),
         IntToFloat("sitofp"),
         UIntToFloat("uitofp"),
+        Truncate("trunc"),
+        FloatTruncate("fptrunc"),
         ZeroExt("zext"),
         SignExt("sext"),
-        FloatExt("fpext")
+        FloatExt("fpext"),
+        PtrToInt("ptrtoint"),
+        IntToPtr("inttoptr")
     }
 }

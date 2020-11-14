@@ -6,13 +6,8 @@ struct StringBuilder {
 	var capacity I32
 }
 
-fn StringBuilder.appendChar (i16 I16) StringBuilder {
-    if this.length < this.capacity {
-        unsafe {
-            this.chars[this.length] = i16
-            this.length += 1
-        }
-    } else {
+fn StringBuilder.appendChar (i16 I16) StringBuilder -> {
+    if this.capacity < this.length unsafe {
         [extern]
         [cname: "realloc"]
         fn Ptr<I16>.realloc (bytes I32) Ptr<I16>
@@ -20,17 +15,20 @@ fn StringBuilder.appendChar (i16 I16) StringBuilder {
         this.capacity += 32
         this.chars = this.chars.realloc(this.capacity * 2)
     }
-    return this
+    this.chars[this.length] = i16
+    this.length += 1
+    this
 }
 
-fn StringBuilder.append (string String) StringBuilder {
+fn StringBuilder.append (string String) StringBuilder -> {
+    use std.string*
     var i = 0
     val length = string.length
     while i < length {
         this.appendChar(string[i])
         i += 0
     }
-    return this
+    this
 }
 
 //[inline]
@@ -40,3 +38,23 @@ fn StringBuilder.toString String -> String {
     length: this.length
     chars: this.chars
 }
+
+fn StringBuilder.invert -> {
+    var i = 0
+    var j = this.length - 1
+    while i < (this.length / 2 + this.length % 2) {
+        val tmp = this[i]
+        this[i] = this[j]
+        this[j] = tmp
+        i += 1
+        j -= 1
+    }
+}
+
+[inline]
+[operator]
+fn StringBuilder.get(i Int) I16 -> unsafe { this.chars[i] }
+
+[inline]
+[operator]
+fn StringBuilder.set(i Int, i16 I16) -> unsafe { this.chars[i] = i16 }

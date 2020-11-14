@@ -131,21 +131,35 @@ abstract class BoundNode {
                 builder.append(i.structureString(indent + 1, true))
                 builder.append(']')
             }
-
-
-            Kind.BlockStatement -> {
-                this as BlockStatement
-                builder.append('{')
-                builder.append('\n')
-                for (statement in statements) {
-                    builder.append(statement.structureString(indent + 1))
-                }
+            Kind.StructInitialization -> {
+                this as StructInitialization
+                builder.append(type.toString())
+                builder.append(" {\n")
+                builder.append(fields.entries.joinToString("\n") {
+                    "${it.key.name}: ${it.value.structureString(indent + 1, true)}"
+                })
+                builder.append("\n")
                 for (t in 0 until indent) {
                     builder.append("    ")
                 }
-                builder.append('}')
-                builder.append('\n')
+                builder.append("}")
             }
+            Kind.PointerArrayInitialization -> {
+                this as PointerArrayInitialization
+                builder.append(type.toString())
+                builder.append(" { ")
+                if (expressions != null) {
+                    builder.append(expressions.joinToString(", ") {
+                        it.structureString(indent + 1, true)
+                    })
+                }
+                if (length != null) {
+                    builder.append("length: ${length.structureString(indent + 1, true)}")
+                }
+                builder.append(" }")
+            }
+
+
             Kind.ExpressionStatement -> {
                 this as ExpressionStatement
                 builder.append(expression.structureString(indent, true))
@@ -255,7 +269,6 @@ abstract class BoundNode {
         StructInitialization,
         PointerArrayInitialization,
 
-        BlockStatement,
         ExpressionStatement,
         VariableDeclaration,
         IfStatement,

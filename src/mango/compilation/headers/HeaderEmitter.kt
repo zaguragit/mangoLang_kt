@@ -3,7 +3,7 @@ package mango.compilation.headers
 import mango.compilation.Emitter
 import mango.interpreter.binding.Namespace
 import mango.interpreter.binding.Program
-import mango.interpreter.binding.nodes.statements.BlockStatement
+import mango.interpreter.binding.nodes.expressions.BlockExpression
 import mango.interpreter.symbols.CallableSymbol
 import mango.interpreter.symbols.Symbol
 
@@ -62,7 +62,7 @@ object HeaderEmitter : Emitter {
             }} + ' ' + symbol.returnType.name
         }
 
-        class InlineFunction (val symbol: CallableSymbol, val body: BlockStatement) : Header {
+        class InlineFunction (val symbol: CallableSymbol, val body: BlockExpression) : Header {
             override fun toString () = "\n[inline]\n" +
                     "fn " + if (symbol.meta.isExtension) {
                 symbol.parameters[0].type.name + '.' + symbol.name + " (" + symbol.parameters.joinToString(separator = ", ", postfix = ")") {

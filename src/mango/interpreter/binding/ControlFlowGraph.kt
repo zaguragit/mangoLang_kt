@@ -2,10 +2,14 @@ package mango.interpreter.binding
 
 import mango.interpreter.binding.nodes.BoundNode
 import mango.interpreter.binding.nodes.UnOperator
+import mango.interpreter.binding.nodes.expressions.BlockExpression
 import mango.interpreter.binding.nodes.expressions.Expression
 import mango.interpreter.binding.nodes.expressions.LiteralExpression
 import mango.interpreter.binding.nodes.expressions.UnaryExpression
-import mango.interpreter.binding.nodes.statements.*
+import mango.interpreter.binding.nodes.statements.ConditionalGotoStatement
+import mango.interpreter.binding.nodes.statements.GotoStatement
+import mango.interpreter.binding.nodes.statements.LabelStatement
+import mango.interpreter.binding.nodes.statements.Statement
 import mango.interpreter.symbols.TypeSymbol
 import mango.interpreter.syntax.SyntaxType
 import mango.util.BinderError
@@ -50,12 +54,12 @@ class ControlFlowGraph private constructor(
         override fun toString() = "_" + hashCode() + '_'
     }
 
-    class BasicBlockBuilder {
+    private class BasicBlockBuilder {
 
         private val blocks = ArrayList<BasicBlock>()
         private var statements = ArrayList<Statement>()
 
-        fun build(block: BlockStatement): ArrayList<BasicBlock> {
+        fun build(block: BlockExpression): ArrayList<BasicBlock> {
             for (statement in block.statements) {
                 when (statement.kind) {
                     BoundNode.Kind.LabelStatement -> {
@@ -93,7 +97,7 @@ class ControlFlowGraph private constructor(
         }
     }
 
-    class GraphBuilder {
+    private class GraphBuilder {
 
         private val blockFromStatement = HashMap<Statement, BasicBlock>()
         private val blockFromLabel = HashMap<Label, BasicBlock>()
@@ -222,7 +226,7 @@ class ControlFlowGraph private constructor(
             println("        outgoing: ${b.outgoing.joinToString(", ")}")
             if (b.statements.any()) {
                 print("        statements ")
-                print(BlockStatement(b.statements).structureString(indent = 2, sameLine = true))
+                print(BlockExpression(b.statements, TypeSymbol.Unit).structureString(indent = 2, sameLine = true))
             }
             println("    }")
         }
@@ -236,19 +240,21 @@ class ControlFlowGraph private constructor(
     }
 
     companion object {
-        fun create(body: BlockStatement): ControlFlowGraph {
+        fun create(body: BlockExpression): ControlFlowGraph {
             val builder = BasicBlockBuilder()
             val blocks = builder.build(body)
             val graphBuilder = GraphBuilder()
             return graphBuilder.build(blocks)
         }
 
-        fun allPathsReturn(body: BlockStatement): Boolean {
+        fun allPathsReturn(body: BlockExpression): Boolean {
             val graph = create(body)
 
             for (branch in graph.end.incoming) {
                 if (branch.from.statements.isEmpty() ||
                     branch.from.statements.last().kind != BoundNode.Kind.ReturnStatement) {
+                    graph.print()
+                    println(body.structureString())
                     return false
                 }
             }

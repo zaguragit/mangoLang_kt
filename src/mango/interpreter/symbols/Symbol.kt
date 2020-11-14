@@ -26,7 +26,7 @@ abstract class Symbol {
         Kind.Variable, Kind.VisibleVariable, Kind.Field -> printVariable()
         Kind.Parameter -> printParameter()
         Kind.Function -> printFunction()
-        Kind.Type -> printType()
+        Kind.Type -> print(this)
         Kind.StructType -> printStruct()
         Kind.FunctionType -> printFnType()
     }
@@ -63,11 +63,6 @@ abstract class Symbol {
         }
         print(' ')
         returnType.printStructure()
-    }
-
-    private fun printType() {
-        this as TypeSymbol
-        print(name)
     }
 
     private fun printStruct() {

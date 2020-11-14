@@ -183,10 +183,19 @@ class DiagnosticList {
         parameters: List<TypeSymbol>,
         isExtension: Boolean
     ) = report(location, "Undefined name ( ${if (isExtension) {
-        parameters.elementAt(0).name + ".$name" + "(${parameters.subList(1, parameters.size) .joinToString(", ") { it.name }})"
+        parameters.elementAt(0).name + ".$name" + "(${parameters.subList(1, parameters.size).joinToString(", ") { it.name }})"
     } else {
         name + "(${parameters.joinToString(", ") { it.name }})"
     }} )")
+
+    fun reportNotOperator(
+        location: TextLocation,
+        symbol: Symbol
+    ) = report(location, "${if (symbol.meta.isExtension) {
+        (symbol.type as TypeSymbol.Fn).args.elementAt(0).name + ".${symbol.name}" + "(${(symbol.type as TypeSymbol.Fn).args.subList(1, (symbol.type as TypeSymbol.Fn).args.size).joinToString(", ") { it.name }})"
+    } else {
+        symbol.name + "(${(symbol.type as TypeSymbol.Fn).args.joinToString(", ") { it.name }})"
+    }} is missing the [operator] annotation")
 
     fun reportNoSuchField(
         location: TextLocation,

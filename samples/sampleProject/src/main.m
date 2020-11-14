@@ -7,7 +7,8 @@ val badName = "semicolon"
 fn malloc (bytes I32) Ptr<I16>*/
 
 [entry]
-fn main {
+fn main -> {
+    io.println("Hello world!")
 /*
     use secondFile*
     fn doit String {
@@ -20,7 +21,7 @@ fn main {
             io.print("!")
             io.println(" Ur not welcome here!")
         }
-        else {
+        : {
             io.print("Hi, ")
             io.print(name)
             io.println("!")
@@ -61,23 +62,12 @@ fn main {
     io.print("-> ")
     io.println(testReading)
     io.println()
+
+    io.println(-1234567)
 }
 
 namespace thing {
     val someRandomString = "this is a random string"
 
-    fn something {
-        io.println(someRandomString)
-    }
+    fn something -> io.println(someRandomString)
 }
-
-/*
-String* string = malloc(sizeof(String));
-string->length = 0;
-Int ch;
-string->chars = malloc(512);
-while (((ch = getchar()) != '\n') && (ch != EOF) && (string->length < 512)) {
-    string->chars[string->length++] = ch;
-}
-return string;
-*/

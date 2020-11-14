@@ -7,151 +7,110 @@ import mango.interpreter.binding.nodes.statements.*
 import mango.interpreter.symbols.TypeSymbol
 import mango.interpreter.symbols.VariableSymbol
 import mango.interpreter.syntax.SyntaxType
-import java.util.*
-import kotlin.collections.ArrayList
-import kotlin.collections.HashSet
 
 class Lowerer : TreeRewriter() {
 
     companion object {
-        fun lower(expression: Expression): BlockStatement {
+        fun lower(statement: Statement): BlockExpression {
             val lowerer = Lowerer()
-            val block = if (expression.type == TypeSymbol.Unit) {
-                BlockStatement(listOf(ExpressionStatement(expression)))
-            } else {
-                BlockStatement(listOf(ReturnStatement(expression)))
-            }
+            val block = if (statement is ExpressionStatement && statement.expression.type != TypeSymbol.Unit) {
+                ExpressionStatement(BlockExpression(listOf(ReturnStatement(statement.expression)), TypeSymbol.Unit))
+            } else statement
             val result = lowerer.rewriteStatement(block)
             return removeDeadCode(flatten(result))
         }
 
-        fun lower(block: BlockStatement): BlockStatement {
-            val lowerer = Lowerer()
-            val result = lowerer.rewriteBlockStatement(block)
-            return removeDeadCode(flatten(result))
-        }
-
-        private fun flatten(statement: Statement): BlockStatement {
+        private fun flatten(statement: Statement): BlockExpression {
             val arrayList = ArrayList<Statement>()
-            val stack = Stack<Statement>()
-            stack.push(statement)
             val variableNames = HashSet<String>()
-
-            while (stack.count() > 0) {
-                val current = stack.pop()
-                if (current is BlockStatement) {
-                    for (s in current.statements.reversed()) {
-                        var s = s
-                        when (s.kind) {
-                            BoundNode.Kind.VariableDeclaration -> {
-                                s as VariableDeclaration
-                                if (!variableNames.add(s.variable.realName)) {
-                                    var string = s.variable.realName
-                                    while (!variableNames.add(string)) {
-                                        string = ".l_$string"
-                                    }
-                                    s.variable.realName = string
-                                }
-                                val tmpStack = Stack<Statement>()
-                                s = VariableDeclaration(s.variable, flattenExpression(s.initializer, tmpStack, variableNames))
-                                stack.push(s)
-                                tmpStack.forEach { stack.push(it) }
-                            }
-                            BoundNode.Kind.ExpressionStatement -> {
-                                s as ExpressionStatement
-                                val tmpStack = Stack<Statement>()
-                                s = ExpressionStatement(flattenExpression(s.expression, tmpStack, variableNames))
-                                stack.push(s)
-                                tmpStack.forEach { stack.push(it) }
-                            }
-                            BoundNode.Kind.ConditionalGotoStatement -> {
-                                s as ConditionalGotoStatement
-                                val tmpStack = Stack<Statement>()
-                                s = ConditionalGotoStatement(s.label, flattenExpression(s.condition, tmpStack, variableNames), s.jumpIfTrue)
-                                stack.push(s)
-                                tmpStack.forEach { stack.push(it) }
-                            }
-                            BoundNode.Kind.ReturnStatement -> {
-                                s as ReturnStatement
-                                val tmpStack = Stack<Statement>()
-                                s = ReturnStatement(s.expression?.let { flattenExpression(it, tmpStack, variableNames) })
-                                stack.push(s)
-                                tmpStack.forEach { stack.push(it) }
-                            }
-                            BoundNode.Kind.AssignmentStatement -> {
-                                s as Assignment
-                                val tmpStack = Stack<Statement>()
-                                s = Assignment(flattenExpression(s.assignee, tmpStack, variableNames), flattenExpression(s.expression, tmpStack, variableNames))
-                                stack.push(s)
-                                tmpStack.forEach { stack.push(it) }
-                            }
-                            else -> stack.push(s)
-                        }
-                    }
-                } else {
-                    arrayList.add(current)
-                }
-            }
-            return BlockStatement(arrayList)
+            flattenStatement(statement, arrayList, variableNames)
+            return BlockExpression(arrayList, TypeSymbol.Unit)
         }
 
-        private fun flattenExpression(expression: Expression, stack: Stack<Statement>, variableNames: HashSet<String>): Expression {
+        private fun flattenStatement(statement: Statement, arrayList: ArrayList<Statement>, variableNames: HashSet<String>) {
+            when (statement.kind) {
+                BoundNode.Kind.ExpressionStatement -> {
+                    statement as ExpressionStatement
+                    val a = flattenExpression(statement.expression, arrayList, variableNames)
+                    if (a !is BlockExpression) {
+                        arrayList.add(ExpressionStatement(a))
+                    }
+                }
+                BoundNode.Kind.VariableDeclaration -> {
+                    statement as VariableDeclaration
+                    if (!variableNames.add(statement.variable.realName)) {
+                        var string = statement.variable.realName
+                        while (!variableNames.add(string)) {
+                            string = ".l_$string"
+                        }
+                        statement.variable.realName = string
+                    }
+                    arrayList.add(VariableDeclaration(
+                        statement.variable,
+                        flattenExpression(statement.initializer, arrayList, variableNames)))
+                }
+                BoundNode.Kind.ConditionalGotoStatement -> {
+                    statement as ConditionalGotoStatement
+                    arrayList.add(ConditionalGotoStatement(
+                        statement.label,
+                        flattenExpression(statement.condition, arrayList, variableNames),
+                        statement.jumpIfTrue))
+                }
+                BoundNode.Kind.ReturnStatement -> {
+                    statement as ReturnStatement
+                    arrayList.add(ReturnStatement(statement.expression?.let {
+                        flattenExpression(it, arrayList, variableNames)
+                    }))
+                }
+                BoundNode.Kind.AssignmentStatement -> {
+                    statement as Assignment
+                    arrayList.add(Assignment(
+                        flattenExpression(statement.assignee, arrayList, variableNames),
+                        flattenExpression(statement.expression, arrayList, variableNames)))
+                }
+                BoundNode.Kind.PointerAccessAssignment -> {
+                    statement as PointerAccessAssignment
+                    arrayList.add(PointerAccessAssignment(
+                        flattenExpression(statement.expression, arrayList, variableNames),
+                        flattenExpression(statement.i, arrayList, variableNames),
+                        flattenExpression(statement.value, arrayList, variableNames)))
+                }
+                else -> arrayList.add(statement)
+            }
+        }
+
+        private fun flattenExpression(expression: Expression, arrayList: ArrayList<Statement>, variableNames: HashSet<String>): Expression {
             return when (expression.kind) {
                 BoundNode.Kind.UnaryExpression -> {
                     expression as UnaryExpression
-                    UnaryExpression(expression.operator, flattenExpression(expression.operand, stack, variableNames))
+                    UnaryExpression(expression.operator, flattenExpression(expression.operand, arrayList, variableNames))
                 }
                 BoundNode.Kind.BinaryExpression -> {
                     expression as BinaryExpression
-                    BinaryExpression(flattenExpression(expression.left, stack, variableNames), expression.operator, flattenExpression(expression.right, stack, variableNames))
+                    BinaryExpression(flattenExpression(expression.left, arrayList, variableNames), expression.operator, flattenExpression(expression.right, arrayList, variableNames))
                 }
                 BoundNode.Kind.CallExpression -> {
                     expression as CallExpression
-                    CallExpression(expression.expression, expression.arguments.map { flattenExpression(it, stack, variableNames) })
+                    CallExpression(expression.expression, expression.arguments.map { flattenExpression(it, arrayList, variableNames) })
                 }
                 BoundNode.Kind.CastExpression -> {
                     expression as CastExpression
-                    CastExpression(expression.type, flattenExpression(expression.expression, stack, variableNames))
+                    CastExpression(expression.type, flattenExpression(expression.expression, arrayList, variableNames))
                 }
                 BoundNode.Kind.StructInitialization -> {
                     expression as StructInitialization
-                    StructInitialization(expression.type, expression.fields.mapValues { flattenExpression(it.value, stack, variableNames) })
+                    StructInitialization(expression.type, expression.fields.mapValues { flattenExpression(it.value, arrayList, variableNames) })
                 }
                 BoundNode.Kind.BlockExpression -> {
                     expression as BlockExpression
                     var result: Expression? = null
-                    loop@ for (i in expression.statements.indices.reversed()) {
-                        var s = expression.statements.elementAt(i)
-                        when (s.kind) {
-                            BoundNode.Kind.VariableDeclaration -> {
-                                s as VariableDeclaration
-                                if (!variableNames.add(s.variable.realName)) {
-                                    var string = s.variable.realName
-                                    while (!variableNames.add(string)) {
-                                        string = ".l_$string"
-                                    }
-                                    s.variable.realName = string
-                                }
-                                s = VariableDeclaration(s.variable, flattenExpression(s.initializer, stack, variableNames))
-                            }
-                            BoundNode.Kind.ExpressionStatement -> {
-                                s as ExpressionStatement
-                                if (i == expression.statements.size - 1) {
-                                    result = flattenExpression(s.expression, stack, variableNames)
-                                    continue@loop
-                                }
-                                s = ExpressionStatement(flattenExpression(s.expression, stack, variableNames))
-                            }
-                            BoundNode.Kind.ConditionalGotoStatement -> {
-                                s as ConditionalGotoStatement
-                                s = ConditionalGotoStatement(s.label, flattenExpression(s.condition, stack, variableNames), s.jumpIfTrue)
-                            }
-                            BoundNode.Kind.ReturnStatement -> {
-                                s as ReturnStatement
-                                s = ReturnStatement(s.expression?.let { flattenExpression(it, stack, variableNames) })
-                            }
+                    loop@ for (i in expression.statements.indices) {
+                        val s = expression.statements.elementAt(i)
+                        if (i == expression.statements.size - 1 && s is ExpressionStatement) {
+                            result = flattenExpression(s.expression, arrayList, variableNames)
+                            continue@loop
                         }
-                        stack.push(s)
+                        flattenStatement(s, arrayList, variableNames)
                     }
                     result ?: expression
                 }
@@ -159,7 +118,7 @@ class Lowerer : TreeRewriter() {
             }
         }
 
-        private fun removeDeadCode(block: BlockStatement): BlockStatement {
+        private fun removeDeadCode(block: BlockExpression): BlockExpression {
             val controlFlow = ControlFlowGraph.create(block)
             val reachableStatements = controlFlow.blocks.flatMap { it.statements }.toHashSet()
             val builder = block.statements.toMutableList()
@@ -168,7 +127,7 @@ class Lowerer : TreeRewriter() {
                     builder.removeAt(i)
                 }
             }
-            return BlockStatement(builder)
+            return BlockExpression(builder, TypeSymbol.Unit)
         }
     }
 
@@ -197,13 +156,13 @@ class Lowerer : TreeRewriter() {
                 LiteralExpression(1, TypeSymbol.I32)
             )
         )
-        val body = BlockStatement(listOf(
+        val body = ExpressionStatement(BlockExpression(listOf(
             node.body,
             continueLabelStatement,
             increment
-        ))
+        ), TypeSymbol.Unit))
         val whileStatement = WhileStatement(condition, body, node.breakLabel, generateLabel())
-        val result = BlockStatement(listOf(variableDeclaration, upperBoundDeclaration, whileStatement))
+        val result = ExpressionStatement(BlockExpression(listOf(variableDeclaration, upperBoundDeclaration, whileStatement), TypeSymbol.Unit))
         return rewriteStatement(result)
     }
 
@@ -213,7 +172,7 @@ class Lowerer : TreeRewriter() {
             val endLabel = generateLabel()
             val gotoFalse = ConditionalGotoStatement(endLabel, node.condition, false)
             val endLabelStatement = LabelStatement(endLabel)
-            val result = BlockStatement(listOf(gotoFalse, node.statement, endLabelStatement))
+            val result = ExpressionStatement(BlockExpression(listOf(gotoFalse, node.statement, endLabelStatement), TypeSymbol.Unit))
             return rewriteStatement(result)
         }
 
@@ -223,14 +182,14 @@ class Lowerer : TreeRewriter() {
         val gotoEnd = GotoStatement(endLabel)
         val elseLabelStatement = LabelStatement(elseLabel)
         val endLabelStatement = LabelStatement(endLabel)
-        val result = BlockStatement(listOf(
+        val result = ExpressionStatement(BlockExpression(listOf(
             gotoFalse,
             node.statement,
             gotoEnd,
             elseLabelStatement,
             node.elseStatement,
             endLabelStatement
-        ))
+        ), TypeSymbol.Unit))
         return rewriteStatement(result)
     }
 
@@ -241,14 +200,14 @@ class Lowerer : TreeRewriter() {
         val checkLabelStatement = LabelStatement(checkLabel)
         val gotoTrue = ConditionalGotoStatement(node.continueLabel, node.condition, true)
         val breakLabelStatement = LabelStatement(node.breakLabel)
-        return BlockStatement(listOf(
+        return ExpressionStatement(BlockExpression(listOf(
             gotoCheck,
             continueLabelStatement,
-            rewriteBlockStatement(node.body),
+            rewriteStatement(node.body),
             checkLabelStatement,
             rewriteConditionalGotoStatement(gotoTrue),
             breakLabelStatement
-        ))
+        ), TypeSymbol.Unit))
     }
 
     override fun rewriteConditionalGotoStatement(node: ConditionalGotoStatement): Statement {

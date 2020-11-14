@@ -137,7 +137,6 @@ object LLVMEmitter : Emitter {
             v as VariableDeclaration
             val expression = v.initializer
             val value: LLVMValue? = when (expression.kind) {
-                BoundNode.Kind.CastExpression -> emitValue(initBlock, (expression as CastExpression).expression)
                 BoundNode.Kind.LiteralExpression -> emitLiteral(initBlock, expression as LiteralExpression)
                 BoundNode.Kind.NameExpression -> emitVariableExpression(initBlock, expression as NameExpression)
                 else -> {
@@ -161,7 +160,6 @@ object LLVMEmitter : Emitter {
         block: BlockBuilder,
         expression: Expression
     ): LLVMValue? = when (expression.kind) {
-        BoundNode.Kind.CastExpression -> emitValue(block, (expression as CastExpression).expression)
         BoundNode.Kind.LiteralExpression -> emitLiteral(block, expression as LiteralExpression)
         BoundNode.Kind.NameExpression -> emitVariableExpression(block, expression as NameExpression)
         BoundNode.Kind.ReferenceExpression -> emitReference(block, (expression as Reference).expression)
@@ -252,6 +250,20 @@ object LLVMEmitter : Emitter {
         expression: StructFieldAccess
     ) = block.getStructField(emitValue(block, expression.struct)!!, expression.i, expression.field)
 
+    private fun emitCastExpression(
+        block: BlockBuilder,
+        expression: CastExpression
+    ): LLVMInstruction {
+        val value = emitValue(block, expression.expression)!!
+        val type = LLVMType[expression.type]
+        return Conversion(when {
+            value.type is LLVMType.I && value.type.bits > type.bits -> Conversion.Kind.Truncate
+            value.type is LLVMType.U && value.type.bits < type.bits -> Conversion.Kind.ZeroExt
+            value.type is LLVMType.I && value.type.bits < type.bits -> Conversion.Kind.SignExt
+            else -> Conversion.Kind.BitCast
+        }, value, type)
+    }
+
     private fun emitReference(
         block: BlockBuilder,
         expression: NameExpression
@@ -280,8 +292,9 @@ object LLVMEmitter : Emitter {
         BoundNode.Kind.PointerAccessExpression -> emitPointerAccessExpression(block, expression as PointerAccess)
         BoundNode.Kind.ReferenceExpression -> emitInstruction(block, (expression as Reference).expression)
         BoundNode.Kind.StructFieldAccess -> emitStructFieldAccess(block, expression as StructFieldAccess)
+        BoundNode.Kind.CastExpression -> emitCastExpression(block, expression as CastExpression)
         BoundNode.Kind.ErrorExpression -> throw EmitterError("Error expression got to the emission stage")
-        else -> throw EmitterError("internal error: Unknown expression to LLVM (${expression.kind})")
+        else -> throw EmitterError("internal error: Unknown expression to LLVM (${expression.kind}):\n${expression.structureString(1, false)}")
     }
 
     private fun emitUnaryExpression(

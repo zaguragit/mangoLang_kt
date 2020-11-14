@@ -52,6 +52,7 @@ data class BiOperator(
 
             BiOperator(SyntaxType.Plus, Type.Add, TypeSymbol.Integer),
             BiOperator(SyntaxType.Minus, Type.Sub, TypeSymbol.Integer),
+            BiOperator(SyntaxType.Rem, Type.Rem, TypeSymbol.Integer),
             BiOperator(SyntaxType.Star, Type.Mul, TypeSymbol.Integer),
             BiOperator(SyntaxType.Div, Type.Div, TypeSymbol.Integer),
 

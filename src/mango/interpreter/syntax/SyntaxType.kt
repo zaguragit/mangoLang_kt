@@ -17,12 +17,12 @@ enum class SyntaxType {
     LiteralExpression,
     BinaryExpression,
     UnaryExpression,
-    ParenthesizedExpression,
     NameExpression,
     CallExpression,
     IndexExpression,
     StructInitialization,
     CollectionInitialization,
+    CastExpression,
 
     // Literals
     I8,
@@ -81,7 +81,7 @@ enum class SyntaxType {
     IsNotEqual,
     IsIdentityEqual,
     IsNotIdentityEqual,
-    In,
+    As,
     Range,
     DoubleBang,
     QuestionMark,
@@ -115,7 +115,6 @@ enum class SyntaxType {
 
     // Conditional keywords
     If,
-    Else,
     For,
     While,
 
@@ -135,11 +134,11 @@ enum class SyntaxType {
 
     fun getBinaryOperatorPrecedence() = when (this) {
         Dot -> 8
-        BitAnd -> 7
-        BitOr -> 6
-        LessThan, MoreThan, IsEqual, IsEqualOrMore, IsEqualOrLess, IsNotEqual, IsIdentityEqual, IsNotIdentityEqual -> 5
-        Star, Div -> 4
-        Plus, Minus -> 3
+        Star, Div -> 7
+        Plus, Minus, Rem -> 6
+        BitAnd -> 5
+        BitOr -> 4
+        LessThan, MoreThan, IsEqual, IsEqualOrMore, IsEqualOrLess, IsNotEqual, IsIdentityEqual, IsNotIdentityEqual -> 3
         LogicAnd -> 2
         LogicOr -> 1
         else -> 0

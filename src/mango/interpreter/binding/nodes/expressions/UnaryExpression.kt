@@ -4,8 +4,8 @@ import mango.interpreter.binding.ConstantFolding
 import mango.interpreter.binding.nodes.UnOperator
 
 class UnaryExpression(
-        val operator: UnOperator,
-        val operand: Expression
+    val operator: UnOperator,
+    val operand: Expression
 ) : Expression() {
 
     override val type = operator.resultType

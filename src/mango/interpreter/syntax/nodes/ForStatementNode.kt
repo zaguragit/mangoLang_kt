@@ -1,8 +1,8 @@
 package mango.interpreter.syntax.nodes
 
+import mango.interpreter.syntax.SyntaxTree
 import mango.interpreter.syntax.SyntaxType
 import mango.interpreter.syntax.Token
-import mango.interpreter.syntax.SyntaxTree
 
 class ForStatementNode(
     syntaxTree: SyntaxTree,
@@ -12,7 +12,7 @@ class ForStatementNode(
     val lowerBound: Node,
     val rangeToken: Token,
     val upperBound: Node,
-    val body: BlockNode
+    val body: Node
 ) : Node(syntaxTree) {
 
     override val kind = SyntaxType.ForStatement

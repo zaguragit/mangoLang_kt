@@ -5,7 +5,7 @@ use string*
 [cname: "putchar"]
 fn print (char I16)
 
-fn print (string String) {
+fn print (string String) -> {
 	var i = 0
 	while i < string.length {
 		print(string[i])
@@ -31,13 +31,13 @@ fn print (i Bool) -> print(i.toString())
 fn println -> print('\n')
 
 [inline]
-fn println (text String) {
+fn println (text String) -> {
     print(text)
     println()
 }
 
 [inline]
-fn println (char I16) {
+fn println (char I16) -> {
     print(char)
     println()
 }
@@ -54,7 +54,7 @@ fn println (i Bool) -> println(i.toString())
 [cname: "getchar"]
 fn readChar I16
 
-fn readln String {
+fn readln String -> {
     use text.builder*
 
 	val builder = StringBuilder {
@@ -67,5 +67,5 @@ fn readln String {
         builder.appendChar(ch)
         ch = readChar()
     }
-    return builder.toString()
+    builder.toString()
 }

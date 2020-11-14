@@ -4,8 +4,7 @@ struct String {
 	val chars Ptr<I16>
 }
 
-[cname: "stringToInt"]
-fn String.toInt (radix Int) Int {
+fn String.toInt (radix Int) Int -> {
 	var n = 0
 	var p = 1
 	val length = this.length
@@ -15,39 +14,63 @@ fn String.toInt (radix Int) Int {
 		p *= radix
 		i -= 1
 	}
-	return n
+	n
 }
 
 [inline]
 fn String.toInt Int -> this.toInt(10)
 
-[extern]
-[cname: "intToString"]
-fn Int.toString (radix Int) String
+fn Int.toString (radix Int) String -> {
+    use std.text.builder*
+
+    if this == 0 return "0"
+
+    val builder = StringBuilder {
+        length: 0
+        chars: Ptr<I16> { length: 10 }
+        capacity: 10
+    }
+
+    var isNegative = false
+    var num = this
+
+    if num < 0 && radix == 10 {
+        isNegative = true
+        num = -num
+    }
+
+    while num != 0 {
+        val rem = (num % radix) as I16
+        if rem > 9 builder.appendChar((rem - 10) + 'a')
+        : builder.appendChar(rem + '0')
+        num /= radix
+    }
+
+    if isNegative builder.appendChar('-')
+
+    builder.invert()
+
+    builder.toString()
+}
 
 [inline]
 fn Int.toString String -> this.toString(10)
 
 [inline]
-fn Bool.toString String {
-    if this { return "true" }
-    else { return "false" }
-}
+fn Bool.toString String -> if this return "true" : return "false"
 
 [operator]
-fn String.equals (other String) Bool {
+fn String.equals (other String) Bool -> {
 	val size = this.length
-	if size != other.length { return false }
+	if size != other.length return false
     var i = 0
     while i < size {
-        if this[i] != other[i] {
-            return false
-        }
+        if this[i] != other[i] return false
         i += 1
     }
-	return true
+	true
 }
 
 [inline]
 [operator]
-fn String.get(i Int) I16 -> unsafe { this.chars[i] }
+fn String.get(i I32) I16 -> unsafe { this.chars[i] }

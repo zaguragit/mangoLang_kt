@@ -5,7 +5,7 @@ import mango.interpreter.binding.nodes.expressions.Expression
 
 class WhileStatement(
     val condition: Expression,
-    val body: BlockStatement,
+    val body: Statement,
     breakLabel: Label,
     continueLabel: Label
 ) : LoopStatement(breakLabel, continueLabel) {

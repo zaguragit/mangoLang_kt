@@ -10,7 +10,6 @@ open class TreeRewriter {
 
     fun rewriteStatement(node: Statement): Statement {
         return when (node.kind) {
-            BoundNode.Kind.BlockStatement -> rewriteBlockStatement(node as BlockStatement)
             BoundNode.Kind.ExpressionStatement -> rewriteExpressionStatement(node as ExpressionStatement)
             BoundNode.Kind.VariableDeclaration -> rewriteVariableDeclaration(node as VariableDeclaration)
             BoundNode.Kind.IfStatement -> rewriteIfStatement(node as IfStatement)
@@ -25,28 +24,6 @@ open class TreeRewriter {
             BoundNode.Kind.NopStatement -> rewriteNopStatement(node as NopStatement)
             else -> throw BinderError("Unexpected node: ${node.kind}")
         }
-    }
-
-    protected open fun rewriteBlockStatement(node: BlockStatement): BlockStatement {
-        var statements: ArrayList<Statement>? = null
-        for (i in node.statements.indices) {
-            val oldStatement = node.statements.elementAt(i)
-            val newStatement = rewriteStatement(oldStatement)
-            if (newStatement != oldStatement) {
-                if (statements == null) {
-                    statements = ArrayList()
-                    for (j in 0 until i) {
-                        statements.add(node.statements.elementAt(j))
-                    }
-                }
-            }
-            statements?.add(newStatement)
-        }
-
-        if (statements == null) {
-            return node
-        }
-        return BlockStatement(statements)
     }
 
     protected open fun rewriteExpressionStatement(node: ExpressionStatement): Statement {
@@ -67,7 +44,7 @@ open class TreeRewriter {
 
     protected open fun rewriteIfStatement(node: IfStatement): Statement {
         val condition = rewriteExpression(node.condition)
-        val body = rewriteBlockStatement(node.statement)
+        val body = rewriteStatement(node.statement)
         val elseStatement = if (node.elseStatement == null) { null } else {
             rewriteStatement(node.elseStatement)
         }
@@ -79,7 +56,7 @@ open class TreeRewriter {
 
     protected open fun rewriteWhileStatement(node: WhileStatement): Statement {
         val condition = rewriteExpression(node.condition)
-        val body = rewriteBlockStatement(node.body)
+        val body = rewriteStatement(node.body)
         if (condition == node.condition && body == node.body) {
             return node
         }
@@ -89,7 +66,7 @@ open class TreeRewriter {
     protected open fun rewriteForStatement(node: ForStatement): Statement {
         val lowerBound = rewriteExpression(node.lowerBound)
         val upperBound = rewriteExpression(node.upperBound)
-        val body = rewriteBlockStatement(node.body)
+        val body = rewriteStatement(node.body)
         if (lowerBound == node.lowerBound && upperBound == node.upperBound && body == node.body) {
             return node
         }
@@ -176,15 +153,16 @@ open class TreeRewriter {
         for (i in node.arguments.indices) {
             val oldArgument = node.arguments.elementAt(i)
             val newArgument = rewriteExpression(oldArgument)
-            if (newArgument != oldArgument) {
-                if (args == null) {
+            if (args == null) {
+                if (newArgument != oldArgument) {
                     args = ArrayList()
                     for (j in 0 until i) {
                         args.add(node.arguments.elementAt(j))
                     }
                 }
+            } else {
+                args.add(newArgument)
             }
-            args?.add(newArgument)
         }
         val expression = rewriteExpression(node.expression)
         if (args == null && expression == node.expression) {

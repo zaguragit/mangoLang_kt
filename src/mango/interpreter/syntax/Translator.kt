@@ -17,7 +17,6 @@ object Translator {
         "unsafe" -> SyntaxType.Unsafe
 
         "if" -> SyntaxType.If
-        "else" -> SyntaxType.Else
 
         "while" -> SyntaxType.While
         "for" -> SyntaxType.For
@@ -26,7 +25,7 @@ object Translator {
         "continue" -> SyntaxType.Continue
         "return" -> SyntaxType.Return
 
-        "in" -> SyntaxType.In
+        "as" -> SyntaxType.As
 
         "use" -> SyntaxType.Use
 

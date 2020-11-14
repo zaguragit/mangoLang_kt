@@ -4,7 +4,7 @@ import mango.interpreter.binding.nodes.expressions.Expression
 
 class IfStatement(
     val condition: Expression,
-    val statement: BlockStatement,
+    val statement: Statement,
     val elseStatement: Statement?
 ) : Statement() {
 
