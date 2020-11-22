@@ -58,6 +58,17 @@ fn main -> {
     io.println(10f)
     io.println(10.)*/
 
+    loop i : 0..4 {
+        io.println(i)
+    }
+
+    var i = 0
+    loop {
+        io.println(i)
+        if i == 4 break
+        i += 1
+    }
+
     val testReading = io.readln()
     io.print("-> ")
     io.println(testReading)

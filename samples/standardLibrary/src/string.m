@@ -14,7 +14,8 @@ fn String.toInt (radix Int) Int -> {
 	var p = 1
 	val length = this.length
 	var i = length - 1
-	while i >= 0 {
+	loop {
+	    if i < 0 break
 		n += (this[i] - '0') * p
 		p *= radix
 		i -= 1
@@ -31,7 +32,8 @@ fn String.equals (other String) Bool -> {
 	val size = this.length
 	if size != other.length return false
     var i = 0
-    while i < size {
+    loop {
+        if i >= size break
         if this[i] != other[i] return false
         i += 1
     }

@@ -28,12 +28,16 @@ open class CallableSymbol(
 
     companion object {
         fun generateSuffix(parameters: Collection<TypeSymbol>, isExtension: Boolean) = buildString {
-            for (p in parameters) {
-                append('[')
-                append(p.name)
+            if (parameters.isNotEmpty()) {
+                append('<')
+                for (i in parameters.indices) {
+                    if (i != 0) append(',')
+                    append(parameters.elementAt(i).name)
+                }
+                append('>')
             }
             if (isExtension) {
-                append('[')
+                append("(ext)")
             }
         }
     }

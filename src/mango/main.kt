@@ -4,14 +4,13 @@ import conf.ConfParser
 import mango.compilation.Compilation
 import mango.compilation.EmissionType
 import mango.console.Console
-import mango.console.MangoRepl
 import mango.interpreter.syntax.SyntaxTree
 import java.io.File
 import kotlin.system.exitProcess
 
-var isRepl = false; private set
 var isProject = false; private set
 var isSharedLib = false; private set
+var isExecutable = true; private set
 var useStd = true; private set
 
 fun main(args: Array<String>) {
@@ -19,11 +18,6 @@ fun main(args: Array<String>) {
         exitAndPrintHelp()
     }
     when (args[0]) {
-        "repl" -> {
-            isRepl = true
-            val repl = MangoRepl()
-            repl.run()
-        }
         "compile" -> buildFile(args)
         "build" -> build(args)
         "run" -> ProcessBuilder(build(args)).run {
@@ -67,16 +61,22 @@ private fun buildFile(args: Array<String>): String {
             }
             "-nosuggest" -> doSuggestions = false
             "-nostd" -> useStd = false
-            "-shared" -> isSharedLib = true
+            "-shared" -> {
+                isExecutable = false
+                isSharedLib = true
+            }
             else -> exitAndPrintCompileHelp()
         }
         i++
     }
     if (outName == null) {
-        outName = deduceOutputName(inFileName, emissionType)
+        outName = addOutputExtension(inFileName.substringBeforeLast('.'), emissionType)
     }
     if (target == null) {
         target = System.getProperty("os.name").substringBefore(' ').toLowerCase()
+    }
+    if (emissionType != EmissionType.Binary) {
+        isExecutable = false
     }
     val moduleName = inFileName.substringAfterLast(File.separatorChar).substringBefore('.')
     val syntaxTree = SyntaxTree.load(inFileName)
@@ -117,7 +117,10 @@ private fun build(args: Array<String>): String {
     }
 
     when (confData["isLibrary"]) {
-        "true" -> isSharedLib = true
+        "true" -> {
+            isExecutable = false
+            isSharedLib = true
+        }
         "false" -> isSharedLib = false
     }
     when (confData["useStd"]) {
@@ -125,31 +128,33 @@ private fun build(args: Array<String>): String {
         "false" -> useStd = false
     }
 
-    var emissionType: EmissionType = EmissionType.Binary
-    val outName = "out/" + System.getProperty("os.name").substringBefore(' ').toLowerCase() + '/' + (confData["outFileName"] ?: if (isSharedLib) "$moduleName.so" else moduleName)
-    val target = System.getProperty("os.name").substringBefore(' ').toLowerCase()
-
-    var i = 1
-    while (i < args.size) {
-        when (args[i]) {
-            "-type" -> if (++i < args.size) {
-                when(args[i].toLowerCase()) {
-                    "asm", "assembly" -> emissionType = EmissionType.Assembly
-                    "ir", "llvm" -> emissionType = EmissionType.IR
-                    "obj", "object" -> emissionType = EmissionType.Object
-                    "bin", "binary" -> emissionType = EmissionType.Binary
-                    else -> exitAndPrintBuildHelp()
-                }
-            }
-            else -> exitAndPrintBuildHelp()
+    val emissionType: EmissionType = when (confData["emission"]) {
+        "asm", "assembly" -> EmissionType.Assembly
+        "ir", "llvm" -> EmissionType.IR
+        "obj", "object" -> EmissionType.Object
+        null, "bin", "binary" -> EmissionType.Binary
+        else -> {
+            println(Console.RED + "'emission' must be one of: asm/assembly, ir/llvm, obj/object, bin/binary" + Console.RESET)
+            ExitCodes.ERROR()
         }
-        i++
     }
 
+    if (emissionType != EmissionType.Binary) {
+        isExecutable = false
+    }
+
+    val outName = "out/" + System.getProperty("os.name").substringBefore(' ').toLowerCase() + '/' +
+        (confData["outFileName"] ?: addOutputExtension(moduleName!!, emissionType))
+    val target = System.getProperty("os.name").substringBefore(' ').toLowerCase()
+
+    if (args.size != 1) {
+        exitAndPrintBuildHelp()
+    }
+    
     isProject = true
 
-    val syntaxTrees = SyntaxTree.loadProject()
-    compile(moduleName!!, outName, target, emissionType, true, syntaxTrees)
+    val syntaxTrees = SyntaxTree.loadProject(moduleName!!)
+    compile(moduleName, outName, target, emissionType, true, syntaxTrees)
 
     return outName
 }
@@ -164,7 +169,7 @@ private fun compile(
 ) {
     val syntaxTrees = ArrayList(localTrees).apply {
         if (useStd) {
-            addAll(SyntaxTree.loadLib("/usr/local/include/mangoLang/std/", "std"))
+            add(SyntaxTree.loadLib("/usr/local/lib/mangoLang/std", "std"))
         }
     }
     val compilation = Compilation(null, syntaxTrees)
@@ -196,14 +201,14 @@ private fun compile(
     }
 }
 
-private fun deduceOutputName(
+private fun addOutputExtension(
     inFileName: String,
     emissionType: EmissionType
 ) = when (emissionType) {
-    EmissionType.Binary -> inFileName.substringBeforeLast('.')
-    EmissionType.Object -> inFileName.substringBeforeLast('.') + ".o"
-    EmissionType.Assembly -> inFileName.substringBeforeLast('.') + ".asm"
-    EmissionType.IR -> inFileName.substringBeforeLast('.') + ".ll"
+    EmissionType.Binary -> if (isSharedLib) "$inFileName.so" else inFileName
+    EmissionType.Object -> "$inFileName.o"
+    EmissionType.Assembly -> "$inFileName.asm"
+    EmissionType.IR -> "$inFileName.ll"
 }
 
 private fun exitAndPrintHelp() {
@@ -214,7 +219,6 @@ private fun exitAndPrintHelp() {
     println("${p}compile $d<${r}file$d>$r  $d│$r Compile one file")
     println("${p}build           $d│$r Build the project")
     println("${p}run             $d│$r Build and run project")
-    println("${p}repl            $d│$r Use the repl")
     ExitCodes.ERROR()
 }
 
@@ -236,15 +240,9 @@ private fun exitAndPrintCompileHelp() {
 }
 
 fun exitAndPrintBuildHelp() {
-    val p = Console.CYAN_BOLD_BRIGHT
     val d = Console.GRAY
     val r = Console.RESET
-    println("usage: ${Console.GREEN_BOLD_BRIGHT}build/run $d<${r}file$d>$r $d[${r}parameters$d]$r")
-    println("$p-type          $d│$r Type of the output")
-    println("  asm / assembly")
-    println("  ir / llvm")
-    println("  obj / object")
-    println("  bin / binary")
+    println("usage: ${Console.GREEN_BOLD_BRIGHT}build/run $d<${r}file$d>$r")
     ExitCodes.ERROR()
 }
 

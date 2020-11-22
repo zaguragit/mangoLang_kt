@@ -18,8 +18,7 @@ object Translator {
 
         "if" -> SyntaxType.If
 
-        "while" -> SyntaxType.While
-        "for" -> SyntaxType.For
+        "loop" -> SyntaxType.Loop
 
         "break" -> SyntaxType.Break
         "continue" -> SyntaxType.Continue

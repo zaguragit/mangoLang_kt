@@ -9,7 +9,7 @@ import java.io.File
 
 class SyntaxTree private constructor(
     val sourceText: SourceText,
-    val projectPath: String = sourceText.fileName.substringAfter("src/").substringBeforeLast('.').replace('/', '.')
+    val projectPath: String
 ) {
 
     val root: NamespaceNode
@@ -22,8 +22,6 @@ class SyntaxTree private constructor(
     }
 
     companion object {
-
-        fun parse(text: String) = SyntaxTree(SourceText(text, "repl"))
 
         fun load(fileName: String): SyntaxTree {
             val file = File(fileName)
@@ -39,10 +37,10 @@ class SyntaxTree private constructor(
             }
             val text = file.readText()
             val sourceText = SourceText(text, fileName)
-            return SyntaxTree(sourceText)
+            return SyntaxTree(sourceText, sourceText.fileName.substringAfterLast("/").substringBeforeLast('.').replace('/', '.'))
         }
 
-        fun loadProject(): Collection<SyntaxTree> {
+        fun loadProject(moduleName: String): Collection<SyntaxTree> {
             val files = loadDirectory(File("src/"))
             if (files == null) {
                 print(Console.RED)
@@ -53,7 +51,7 @@ class SyntaxTree private constructor(
             for (file in files) {
                 val text = file.readText()
                 val sourceText = SourceText(text, file.path)
-                val syntaxTree = SyntaxTree(sourceText)
+                val syntaxTree = SyntaxTree(sourceText, moduleName + '.' + sourceText.fileName.substringAfter("src/").substringBeforeLast('.').replace('/', '.'))
                 trees.add(syntaxTree)
             }
             return trees
@@ -82,22 +80,17 @@ class SyntaxTree private constructor(
             return list
         }
 
-        fun loadLib(path: String, name: String): Collection<SyntaxTree> {
-            val files = loadDirectory(File(path))
-            if (files == null) {
+        fun loadLib(path: String, name: String): SyntaxTree {
+            val headersFileName = "$path/headers.m"
+            val headersFile = File(headersFileName)
+            if (!headersFile.exists() || !headersFile.isFile) {
                 print(Console.RED)
                 println("$path isn't a valid library path")
                 ExitCodes.ERROR()
             }
-            val trees = ArrayList<SyntaxTree>()
-            for (file in files) {
-                val text = file.readText()
-                val sourceText = SourceText(text, file.path)
-                val namespacePath = name + '.' + file.path.substringAfter(path).substringBeforeLast('.').replace('/', '.')
-                val syntaxTree = SyntaxTree(sourceText, namespacePath)
-                trees.add(syntaxTree)
-            }
-            return trees
+            val text = headersFile.readText()
+            val sourceText = SourceText(text, headersFileName)
+            return SyntaxTree(sourceText, name)
         }
     }
 }

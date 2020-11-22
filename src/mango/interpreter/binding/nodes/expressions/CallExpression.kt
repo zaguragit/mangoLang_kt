@@ -4,7 +4,8 @@ import mango.interpreter.symbols.TypeSymbol
 
 class CallExpression(
     val expression: Expression,
-    val arguments: Collection<Expression>
+    val arguments: Collection<Expression>,
+    val isExtension: Boolean = false
 ) : Expression() {
 
     override val type get() = (expression.type as TypeSymbol.Fn).returnType

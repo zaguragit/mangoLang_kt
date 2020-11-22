@@ -140,7 +140,7 @@ class Lowerer : TreeRewriter() {
     override fun rewriteForStatement(node: ForStatement): Statement {
         val variableDeclaration = VariableDeclaration(node.variable, node.lowerBound)
         val variableExpression = NameExpression(node.variable)
-        val upperBoundSymbol = VariableSymbol.local("0upperBound", TypeSymbol.Int, true, node.upperBound.constantValue)
+        val upperBoundSymbol = VariableSymbol.local(".upperBound", TypeSymbol.Int, true, node.upperBound.constantValue)
         val upperBoundDeclaration = VariableDeclaration(upperBoundSymbol, node.upperBound)
         val condition = BinaryExpression(
             variableExpression,
@@ -157,11 +157,12 @@ class Lowerer : TreeRewriter() {
             )
         )
         val body = ExpressionStatement(BlockExpression(listOf(
+            ConditionalGotoStatement(node.breakLabel, condition, false),
             node.body,
             continueLabelStatement,
             increment
         ), TypeSymbol.Unit))
-        val whileStatement = WhileStatement(condition, body, node.breakLabel, generateLabel())
+        val whileStatement = LoopStatement(body, node.breakLabel, generateLabel())
         val result = ExpressionStatement(BlockExpression(listOf(variableDeclaration, upperBoundDeclaration, whileStatement), TypeSymbol.Unit))
         return rewriteStatement(result)
     }
@@ -193,19 +194,14 @@ class Lowerer : TreeRewriter() {
         return rewriteStatement(result)
     }
 
-    override fun rewriteWhileStatement(node: WhileStatement): Statement {
-        val checkLabel = generateLabel()
-        val gotoCheck = GotoStatement(checkLabel)
+    override fun rewriteWhileStatement(node: LoopStatement): Statement {
         val continueLabelStatement = LabelStatement(node.continueLabel)
-        val checkLabelStatement = LabelStatement(checkLabel)
-        val gotoTrue = ConditionalGotoStatement(node.continueLabel, node.condition, true)
+        val gotoTrue = GotoStatement(node.continueLabel)
         val breakLabelStatement = LabelStatement(node.breakLabel)
         return ExpressionStatement(BlockExpression(listOf(
-            gotoCheck,
             continueLabelStatement,
             rewriteStatement(node.body),
-            checkLabelStatement,
-            rewriteConditionalGotoStatement(gotoTrue),
+            gotoTrue,
             breakLabelStatement
         ), TypeSymbol.Unit))
     }

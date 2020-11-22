@@ -7,7 +7,8 @@ fn print (char I16)
 
 fn print (string String) -> {
 	var i = 0
-	while i < string.length {
+	loop {
+	    if i >= string.length break
 		print(string[i])
 		i += 1
 	}
@@ -28,7 +29,7 @@ fn print (i Bool) -> print(i.toString())
 
 
 [inline]
-fn println -> print('\n')
+fn println -> print('\n' as I16)
 
 [inline]
 fn println (text String) -> {
@@ -63,7 +64,8 @@ fn readln String -> {
 	    capacity: 512
 	}
     var ch = readChar()
-    while ch != '\n' && ch != '\0' {
+    loop {
+        if ch == '\n' && ch == '\0' break
         builder.appendChar(ch)
         ch = readChar()
     }

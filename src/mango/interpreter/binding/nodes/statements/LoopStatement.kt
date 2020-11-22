@@ -2,7 +2,12 @@ package mango.interpreter.binding.nodes.statements
 
 import mango.interpreter.binding.Label
 
-abstract class LoopStatement(
-    val breakLabel: Label,
-    val continueLabel: Label
-) : Statement()
+class LoopStatement(
+    val body: Statement,
+    breakLabel: Label,
+    continueLabel: Label
+) : Loop(breakLabel, continueLabel) {
+
+    override val kind
+        get() = Kind.WhileStatement
+}

@@ -54,6 +54,9 @@ abstract class BoundNode {
             }
             Kind.BlockExpression -> {
                 this as BlockExpression
+                if (isUnsafe) {
+                    builder.append("unsafe ")
+                }
                 builder.append('{')
                 builder.append('\n')
                 for (statement in statements) {
@@ -84,10 +87,15 @@ abstract class BoundNode {
             }
             Kind.CallExpression -> {
                 this as CallExpression
+                val args = if (isExtension) {
+                    val a = ArrayList(arguments)
+                    builder.append(a.removeAt(0).structureString(indent + 1, true)).append('.')
+                    a
+                } else arguments
                 builder.append(expression.structureString(indent + 1, true))
                 builder.append('(')
                 var isFirst = true
-                for (arg in arguments) {
+                for (arg in args) {
                     if (isFirst) {
                         isFirst = false
                     }
@@ -104,10 +112,9 @@ abstract class BoundNode {
             }
             Kind.CastExpression -> {
                 this as CastExpression
-                builder.append(type.name)
-                builder.append('(')
                 builder.append(expression.structureString(indent + 1, true))
-                builder.append(')')
+                builder.append(" as ")
+                builder.append(type.name)
             }
             Kind.NamespaceFieldAccess -> {
                 this as NamespaceFieldAccess
@@ -180,22 +187,20 @@ abstract class BoundNode {
                 builder.append(' ')
                 builder.append(statement.structureString(indent, true))
                 if (elseStatement != null) {
-                    builder.append("\telse ")
+                    builder.append("\t: ")
                     builder.append(elseStatement.structureString(indent, true))
                 }
             }
             Kind.WhileStatement -> {
-                this as WhileStatement
-                builder.append("while ")
-                builder.append(condition.structureString(indent + 1, true))
-                builder.append(' ')
+                this as LoopStatement
+                builder.append("loop ")
                 builder.append(body.structureString(indent, true))
             }
             Kind.ForStatement -> {
                 this as ForStatement
-                builder.append("for ")
+                builder.append("loop ")
                 builder.append(variable.name)
-                builder.append(" in ")
+                builder.append(" : ")
                 builder.append(lowerBound.structureString(indent + 1, true))
                 builder.append("..")
                 builder.append(upperBound.structureString(indent + 1, true))

@@ -11,7 +11,7 @@ class ForStatement(
     val body: Statement,
     breakLabel: Label,
     continueLabel: Label
-) : LoopStatement(breakLabel, continueLabel) {
+) : Loop(breakLabel, continueLabel) {
 
     override val kind = Kind.ForStatement
 }

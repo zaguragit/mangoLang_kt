@@ -26,7 +26,9 @@ open class TypeSymbol private constructor(
             val name: String,
             val type: TypeSymbol,
             val isReadOnly: Boolean
-        )
+        ) {
+            override fun toString() = (if (isReadOnly) "val " else "var ") + name + ' ' + type
+        }
     }
 
     class Fn(

@@ -4,14 +4,13 @@ import mango.interpreter.syntax.SyntaxTree
 import mango.interpreter.syntax.SyntaxType
 import mango.interpreter.syntax.Token
 
-class WhileStatementNode(
+class LoopStatementNode(
     syntaxTree: SyntaxTree,
     val keyword: Token,
-    val condition: Node,
     val body: Node
 ) : Node(syntaxTree) {
     override val kind
-        get() = SyntaxType.WhileStatement
+        get() = SyntaxType.LoopStatement
     override val children: Collection<Node>
-        get() = listOf(keyword, condition, body)
+        get() = listOf(keyword, body)
 }

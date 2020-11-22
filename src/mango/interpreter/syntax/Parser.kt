@@ -5,7 +5,6 @@ import mango.interpreter.syntax.nodes.*
 import mango.interpreter.text.SourceText
 import mango.interpreter.text.TextLocation
 import mango.interpreter.text.TextSpan
-import mango.isRepl
 
 class Parser(
     val syntaxTree: SyntaxTree
@@ -95,7 +94,7 @@ class Parser(
             val startToken = current
 
             val member = parseGlobalStatement()
-            members.add(member)
+            member?.let { members.add(it) }
 
             if (startToken == current) {
                 next()
@@ -207,16 +206,14 @@ class Parser(
         return ParameterNode(syntaxTree, identifier, type)
     }
 
-    private fun parseGlobalStatement(): TopLevelNode {
+    private fun parseGlobalStatement(): TopLevelNode? {
         skipSeparators()
         val statement = if (current.kind == SyntaxType.NamespaceToken) {
             parseNamespace()
         } else parseStatement()
         if (statement !is TopLevelNode) {
-            if (!isRepl) {
-                diagnostics.reportStatementCantBeGlobal(statement.location, statement.kind)
-            }
-            return ReplStatementNode(statement)
+            diagnostics.reportStatementCantBeGlobal(statement.location, statement.kind)
+            return null
         }
         return statement
     }
@@ -229,25 +226,16 @@ class Parser(
         var isInclude = false
 
         while (current.kind != SyntaxType.LineSeparator) {
-            if (current.kind == SyntaxType.Identifier) {
-                directories.add(current)
+            directories.add(match(SyntaxType.Identifier))
+            if (current.kind == SyntaxType.LineSeparator) {
                 position++
-                if (current.kind == SyntaxType.Dot) {
-                    position++
-                } else if (current.kind == SyntaxType.LineSeparator) {
-                    position++
-                    break
-                } else if (current.kind == SyntaxType.Star) {
-                    position++
-                    isInclude = true
-                    break
-                } else {
-                    diagnostics.reportIncorrectUseStatement(next().location)
-                    break
-                }
-            } else {
-                diagnostics.reportIncorrectUseStatement(current.location)
                 break
+            } else if (current.kind == SyntaxType.Star) {
+                position++
+                isInclude = true
+                break
+            } else {
+                match(SyntaxType.Dot)
             }
         }
 
@@ -289,8 +277,7 @@ class Parser(
         return when (current.kind) {
             SyntaxType.Val, SyntaxType.Var -> parseVariableDeclaration()
             SyntaxType.If -> parseIfStatement()
-            SyntaxType.While -> parseWhileStatement()
-            SyntaxType.For -> parseForStatement()
+            SyntaxType.Loop -> parseLoop()
             SyntaxType.Break -> parseBreakStatement()
             SyntaxType.Continue -> parseContinueStatement()
             SyntaxType.Return -> parseReturnStatement()
@@ -431,22 +418,19 @@ class Parser(
         return ElseClauseNode(syntaxTree, keyword, statement)
     }
 
-    private fun parseWhileStatement(): WhileStatementNode {
-        val keyword = match(SyntaxType.While)
-        val condition = parseExpression()
+    private fun parseLoop(): Node {
+        val keyword = match(SyntaxType.Loop)
+        if (peek(1).kind == SyntaxType.Colon) {
+            val identifier = match(SyntaxType.Identifier)
+            val inToken = match(SyntaxType.Colon)
+            val lowerBound = parseExpression()
+            val rangeToken = match(SyntaxType.Range)
+            val upperBound = parseExpression()
+            val body = parseStatement()
+            return ForStatementNode(syntaxTree, keyword, identifier, inToken, lowerBound, rangeToken, upperBound, body)
+        }
         val body = parseStatement()
-        return WhileStatementNode(syntaxTree, keyword, condition, body)
-    }
-
-    private fun parseForStatement(): ForStatementNode {
-        val keyword = match(SyntaxType.For)
-        val identifier = match(SyntaxType.Identifier)
-        val inToken = match(SyntaxType.Colon)
-        val lowerBound = parseExpression()
-        val rangeToken = match(SyntaxType.Range)
-        val upperBound = parseExpression()
-        val body = parseStatement()
-        return ForStatementNode(syntaxTree, keyword, identifier, inToken, lowerBound, rangeToken, upperBound, body)
+        return LoopStatementNode(syntaxTree, keyword, body)
     }
 
     private fun parseBreakStatement(): Node {
@@ -689,7 +673,7 @@ class Parser(
     }
 
     private fun <T : Node> parseInsideBraces(
-        fn: () -> T
+        fn: () -> T?
     ): ArrayList<T> {
         skipSeparators()
         val statements = ArrayList<T>()
@@ -700,7 +684,7 @@ class Parser(
             skipSeparators()
             val startToken = current
 
-            statements.add(fn())
+            fn()?.let { statements.add(it) }
 
             skipSeparators()
             if (startToken == current) {

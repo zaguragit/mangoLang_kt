@@ -37,7 +37,7 @@ enum class SyntaxType {
     // Statements
     ExpressionStatement,
     IfStatement,
-    WhileStatement,
+    LoopStatement,
     ForStatement,
     BreakStatement,
     ContinueStatement,
@@ -48,8 +48,6 @@ enum class SyntaxType {
     UseStatement,
     NamespaceStatement,
     AssignmentStatement,
-
-    ReplStatement,
 
     Block,
 
@@ -115,8 +113,7 @@ enum class SyntaxType {
 
     // Conditional keywords
     If,
-    For,
-    While,
+    Loop,
 
     Break,
     Continue,

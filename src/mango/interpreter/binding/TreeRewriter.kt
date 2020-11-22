@@ -13,7 +13,7 @@ open class TreeRewriter {
             BoundNode.Kind.ExpressionStatement -> rewriteExpressionStatement(node as ExpressionStatement)
             BoundNode.Kind.VariableDeclaration -> rewriteVariableDeclaration(node as VariableDeclaration)
             BoundNode.Kind.IfStatement -> rewriteIfStatement(node as IfStatement)
-            BoundNode.Kind.WhileStatement -> rewriteWhileStatement(node as WhileStatement)
+            BoundNode.Kind.WhileStatement -> rewriteWhileStatement(node as LoopStatement)
             BoundNode.Kind.ForStatement -> rewriteForStatement(node as ForStatement)
             BoundNode.Kind.LabelStatement -> rewriteLabelStatement(node as LabelStatement)
             BoundNode.Kind.GotoStatement -> rewriteGotoStatement(node as GotoStatement)
@@ -54,13 +54,12 @@ open class TreeRewriter {
         return IfStatement(condition, body, elseStatement)
     }
 
-    protected open fun rewriteWhileStatement(node: WhileStatement): Statement {
-        val condition = rewriteExpression(node.condition)
+    protected open fun rewriteWhileStatement(node: LoopStatement): Statement {
         val body = rewriteStatement(node.body)
-        if (condition == node.condition && body == node.body) {
+        if (body == node.body) {
             return node
         }
-        return WhileStatement(condition, body, node.breakLabel, node.continueLabel)
+        return LoopStatement(body, node.breakLabel, node.continueLabel)
     }
 
     protected open fun rewriteForStatement(node: ForStatement): Statement {

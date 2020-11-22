@@ -110,6 +110,9 @@ class Lexer(
     }
 
     private fun readNumberToken(): Token {
+        val start = position
+        val stringBuilder = StringBuilder()
+
         var isFloat = false
         if (current == '.') {
             if (lookAhead() == '.') {
@@ -118,11 +121,10 @@ class Lexer(
                 return Token(syntaxTree, SyntaxType.Dot, position++, string = ".")
             } else {
                 isFloat = true
+                stringBuilder.append('.')
                 position++
             }
         }
-        val start = position
-        val stringBuilder = StringBuilder()
         var isDouble = true
         var isLong = false
         if (current == '0') {
@@ -141,7 +143,7 @@ class Lexer(
             }
             if (!current.isDigit()) {
                 when (current) {
-                    '.' -> if (isFloat) {
+                    '.' -> if (lookAhead() == '.') break@loop else if (isFloat) {
                         diagnostics.reportBadCharacter(TextLocation(sourceText, TextSpan(position, 1)), current)
                     } else {
                         isFloat = true

@@ -73,6 +73,14 @@ class Compilation(
 
     fun emit(moduleName: String, outputPath: String, target: String, emissionType: EmissionType) {
         val program = getProgram()
+
+        if (isSharedLib) {
+            File(if (isProject) "out/headers.m" else outputPath.substringBeforeLast('/') + "/headers.m").run {
+                createNewFile()
+                writeText(HeaderEmitter.emit(program, moduleName))
+            }
+        }
+
         val code = LLVMEmitter.emit(program, moduleName)
         val outFile = File(outputPath)
         if (emissionType == EmissionType.IR) {
@@ -111,16 +119,10 @@ class Compilation(
                     }
                 }
                 outFile.parentFile.mkdirs()
-                if (isSharedLib) {
-                    ProcessBuilder("gcc", objFile.absolutePath, "-o", outputPath, "-shared")
-                    File(if (isProject) "out/headers.m" else outputPath.substringBeforeLast('/') + "/headers.m").run {
-                        createNewFile()
-                        writeText(HeaderEmitter.emit(program, moduleName))
-                    }
-                } else if (useStd) {
-                    ProcessBuilder("gcc", objFile.absolutePath, "/usr/local/lib/mangoLang/std.so", "-o", outputPath)
-                } else {
-                    ProcessBuilder("gcc", objFile.absolutePath, "-o", outputPath)
+                when {
+                    isSharedLib -> ProcessBuilder("gcc", objFile.absolutePath, "-o", outputPath, "-shared")
+                    useStd -> ProcessBuilder("gcc", objFile.absolutePath, "/usr/local/lib/mangoLang/std/$target/std.so", "-o", outputPath)
+                    else -> ProcessBuilder("gcc", objFile.absolutePath, "-o", outputPath)
                 }.run {
                     inheritIO()
                     start().waitFor()
