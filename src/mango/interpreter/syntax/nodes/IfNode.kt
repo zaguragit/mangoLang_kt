@@ -4,17 +4,17 @@ import mango.interpreter.syntax.SyntaxTree
 import mango.interpreter.syntax.SyntaxType
 import mango.interpreter.syntax.Token
 
-class IfStatementNode(
+class IfNode(
     syntaxTree: SyntaxTree,
-    val keyword: Token,
     val condition: Node,
-    val thenStatement: Node,
+    val questionMark: Token,
+    val thenExpression: Node,
     val elseClause: ElseClauseNode?
 ) : Node(syntaxTree) {
     override val kind
-        get() = SyntaxType.IfStatement
+        get() = SyntaxType.IfExpression
     override val children
-        get() = arrayListOf(keyword, condition, thenStatement).apply {
+        get() = arrayListOf(questionMark, condition, thenExpression).apply {
             if (elseClause != null) {
                 add(elseClause)
             }

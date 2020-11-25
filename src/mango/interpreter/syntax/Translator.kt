@@ -16,8 +16,6 @@ object Translator {
 
         "unsafe" -> SyntaxType.Unsafe
 
-        "if" -> SyntaxType.If
-
         "loop" -> SyntaxType.Loop
 
         "break" -> SyntaxType.Break

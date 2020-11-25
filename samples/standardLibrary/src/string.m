@@ -15,7 +15,7 @@ fn String.toInt (radix Int) Int -> {
 	val length = this.length
 	var i = length - 1
 	loop {
-	    if i < 0 break
+	    i < 0 ? break
 		n += (this[i] - '0') * p
 		p *= radix
 		i -= 1
@@ -30,11 +30,11 @@ fn String.toInt Int -> this.toInt(10)
 [operator]
 fn String.equals (other String) Bool -> {
 	val size = this.length
-	if size != other.length return false
+	size != other.length ? return false
     var i = 0
     loop {
-        if i >= size break
-        if this[i] != other[i] return false
+        i >= size ? break
+        this[i] != other[i] ? return false
         i += 1
     }
 	true

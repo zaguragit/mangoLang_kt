@@ -32,12 +32,12 @@ open class CallableSymbol(
                 append('<')
                 for (i in parameters.indices) {
                     if (i != 0) append(',')
-                    append(parameters.elementAt(i).name)
+                    else if (isExtension) {
+                        append('$')
+                    }
+                    append(parameters.elementAt(i).toString())
                 }
                 append('>')
-            }
-            if (isExtension) {
-                append("(ext)")
             }
         }
     }

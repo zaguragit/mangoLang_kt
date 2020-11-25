@@ -8,7 +8,7 @@ struct StringBuilder {
 }
 
 fn StringBuilder.appendChar (i16 I16) StringBuilder -> {
-    if this.capacity < this.length {
+    this.capacity < this.length ? {
         [extern]
         [cname: "realloc"]
         fn Ptr<I16>.realloc (bytes I32) Ptr<I16>
@@ -28,9 +28,9 @@ fn StringBuilder.append (string String) StringBuilder -> {
     var i = 0
     val length = string.length
     loop {
-        if i >= length break
+        i >= length ? break
         this.appendChar(string[i])
-        i += 0
+        i += 1
     }
     this
 }
@@ -47,7 +47,7 @@ fn StringBuilder.invert -> {
     var i = 0
     var j = this.length - 1
     loop {
-        if i >= (this.length / 2 + this.length % 2) break
+        i >= j ? break
         val tmp = this[i]
         this[i] = this[j]
         this[j] = tmp

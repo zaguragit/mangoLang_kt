@@ -83,13 +83,13 @@ class Compilation(
 
         val code = LLVMEmitter.emit(program, moduleName)
         val outFile = File(outputPath)
+        outFile.parentFile.mkdirs()
         if (emissionType == EmissionType.IR) {
-            return try {
-                outFile.writeText(code)
-            } catch (e: FileNotFoundException) {
+            try { outFile.writeText(code) }
+            catch (e: FileNotFoundException) {
                 println(Console.RED + "Couldn't write to file $outputPath")
-                return
             }
+            return
         }
         val llFile = File.createTempFile("mangoLang", ".ll").apply {
             deleteOnExit()
@@ -97,14 +97,12 @@ class Compilation(
         }
         when (emissionType) {
             EmissionType.Assembly -> {
-                outFile.parentFile.mkdirs()
                 ProcessBuilder("llc", llFile.absolutePath, "-o=$outputPath", "-filetype=asm", "-relocation-model=pic").run {
                     inheritIO()
                     start().waitFor()
                 }
             }
             EmissionType.Object -> {
-                outFile.parentFile.mkdirs()
                 ProcessBuilder("llc", llFile.absolutePath, "-o=$outputPath", "-filetype=obj", "-relocation-model=pic").run {
                     inheritIO()
                     start().waitFor()
@@ -118,7 +116,6 @@ class Compilation(
                         start().waitFor()
                     }
                 }
-                outFile.parentFile.mkdirs()
                 when {
                     isSharedLib -> ProcessBuilder("gcc", objFile.absolutePath, "-o", outputPath, "-shared")
                     useStd -> ProcessBuilder("gcc", objFile.absolutePath, "/usr/local/lib/mangoLang/std/$target/std.so", "-o", outputPath)

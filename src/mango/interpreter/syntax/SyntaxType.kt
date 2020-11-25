@@ -23,6 +23,7 @@ enum class SyntaxType {
     StructInitialization,
     CollectionInitialization,
     CastExpression,
+    IfExpression,
 
     // Literals
     I8,
@@ -36,7 +37,6 @@ enum class SyntaxType {
 
     // Statements
     ExpressionStatement,
-    IfStatement,
     LoopStatement,
     ForStatement,
     BreakStatement,
@@ -82,7 +82,6 @@ enum class SyntaxType {
     As,
     Range,
     DoubleBang,
-    QuestionMark,
     PlusPlus,
     MinusMinus,
 
@@ -108,16 +107,16 @@ enum class SyntaxType {
     Var,
     Fn,
     NamespaceToken,
-    Colon,
     Struct,
 
-    // Conditional keywords
-    If,
+    // Loop keywords
     Loop,
-
     Break,
     Continue,
     Return,
+
+    Colon,
+    QuestionMark,
 
     Identifier,
     TypeClause,
@@ -138,6 +137,7 @@ enum class SyntaxType {
         LessThan, MoreThan, IsEqual, IsEqualOrMore, IsEqualOrLess, IsNotEqual, IsIdentityEqual, IsNotIdentityEqual -> 3
         LogicAnd -> 2
         LogicOr -> 1
+        QuestionMark -> 1
         else -> 0
     }
 

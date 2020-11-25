@@ -12,7 +12,6 @@ open class TreeRewriter {
         return when (node.kind) {
             BoundNode.Kind.ExpressionStatement -> rewriteExpressionStatement(node as ExpressionStatement)
             BoundNode.Kind.VariableDeclaration -> rewriteVariableDeclaration(node as VariableDeclaration)
-            BoundNode.Kind.IfStatement -> rewriteIfStatement(node as IfStatement)
             BoundNode.Kind.WhileStatement -> rewriteWhileStatement(node as LoopStatement)
             BoundNode.Kind.ForStatement -> rewriteForStatement(node as ForStatement)
             BoundNode.Kind.LabelStatement -> rewriteLabelStatement(node as LabelStatement)
@@ -40,18 +39,6 @@ open class TreeRewriter {
             return node
         }
         return VariableDeclaration(node.variable, initializer)
-    }
-
-    protected open fun rewriteIfStatement(node: IfStatement): Statement {
-        val condition = rewriteExpression(node.condition)
-        val body = rewriteStatement(node.statement)
-        val elseStatement = if (node.elseStatement == null) { null } else {
-            rewriteStatement(node.elseStatement)
-        }
-        if (condition == node.condition && body == node.statement && elseStatement == node.elseStatement) {
-            return node
-        }
-        return IfStatement(condition, body, elseStatement)
     }
 
     protected open fun rewriteWhileStatement(node: LoopStatement): Statement {
@@ -91,7 +78,7 @@ open class TreeRewriter {
         return node
     }
 
-    private fun rewriteExpression(node: Expression) = when (node.kind) {
+    protected fun rewriteExpression(node: Expression) = when (node.kind) {
         BoundNode.Kind.UnaryExpression -> rewriteUnaryExpression(node as UnaryExpression)
         BoundNode.Kind.BinaryExpression -> rewriteBinaryExpression(node as BinaryExpression)
         BoundNode.Kind.LiteralExpression -> rewriteLiteralExpression(node as LiteralExpression)
@@ -105,6 +92,7 @@ open class TreeRewriter {
         BoundNode.Kind.PointerAccessExpression -> rewritePointerAccessExpression(node as PointerAccess)
         BoundNode.Kind.StructInitialization -> rewriteStructInitialization(node as StructInitialization)
         BoundNode.Kind.PointerArrayInitialization -> rewritePointerArrayInitialization(node as PointerArrayInitialization)
+        BoundNode.Kind.IfExpression -> rewriteIfExpression(node as IfExpression)
         else -> throw BinderError("Unexpected node: ${node.kind}")
     }
 
@@ -259,5 +247,17 @@ open class TreeRewriter {
             }
         }
         return if (wasChanged) return PointerArrayInitialization(node.type, length, list) else node
+    }
+
+    protected open fun rewriteIfExpression(node: IfExpression): Expression {
+        val condition = rewriteExpression(node.condition)
+        val body = rewriteExpression(node.thenExpression)
+        val elseStatement = if (node.elseExpression == null) { null } else {
+            rewriteExpression(node.elseExpression)
+        }
+        if (condition == node.condition && body == node.thenExpression && elseStatement == node.elseExpression) {
+            return node
+        }
+        return IfExpression(condition, body, elseStatement)
     }
 }

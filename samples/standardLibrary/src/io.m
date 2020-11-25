@@ -8,7 +8,7 @@ fn print (char I16)
 fn print (string String) -> {
 	var i = 0
 	loop {
-	    if i >= string.length break
+	    i >= string.length ? break
 		print(string[i])
 		i += 1
 	}
@@ -65,7 +65,7 @@ fn readln String -> {
 	}
     var ch = readChar()
     loop {
-        if ch == '\n' && ch == '\0' break
+        ch == '\n' || ch == '\0' ? break
         builder.appendChar(ch)
         ch = readChar()
     }

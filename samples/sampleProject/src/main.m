@@ -2,10 +2,6 @@ use std*
 
 val badName = "semicolon"
 
-/*[extern]
-[cname: "malloc"]
-fn malloc (bytes I32) Ptr<I16>*/
-
 [entry]
 fn main -> {
     io.println("Hello world!")
@@ -65,7 +61,7 @@ fn main -> {
     var i = 0
     loop {
         io.println(i)
-        if i == 4 break
+        i == 4 ? break
         i += 1
     }
 

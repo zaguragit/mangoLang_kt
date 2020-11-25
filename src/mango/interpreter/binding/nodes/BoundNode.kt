@@ -165,6 +165,16 @@ abstract class BoundNode {
                 }
                 builder.append(" }")
             }
+            Kind.IfExpression -> {
+                this as IfExpression
+                builder.append(condition.structureString(indent + 1, true))
+                builder.append(" ? ")
+                builder.append(thenExpression.structureString(indent, true))
+                if (elseExpression != null) {
+                    builder.append("\t: ")
+                    builder.append(elseExpression.structureString(indent, true))
+                }
+            }
 
 
             Kind.ExpressionStatement -> {
@@ -179,17 +189,6 @@ abstract class BoundNode {
                 builder.append(" = ")
                 builder.append(initializer.structureString(indent + 1, true))
                 builder.append('\n')
-            }
-            Kind.IfStatement -> {
-                this as IfStatement
-                builder.append("if ")
-                builder.append(condition.structureString(indent + 1, true))
-                builder.append(' ')
-                builder.append(statement.structureString(indent, true))
-                if (elseStatement != null) {
-                    builder.append("\t: ")
-                    builder.append(elseStatement.structureString(indent, true))
-                }
             }
             Kind.WhileStatement -> {
                 this as LoopStatement
@@ -273,10 +272,10 @@ abstract class BoundNode {
         PointerAccessExpression,
         StructInitialization,
         PointerArrayInitialization,
+        IfExpression,
 
         ExpressionStatement,
         VariableDeclaration,
-        IfStatement,
         WhileStatement,
         ForStatement,
         LabelStatement,

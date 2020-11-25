@@ -128,7 +128,7 @@ private fun build(args: Array<String>): String {
         "false" -> useStd = false
     }
 
-    val emissionType: EmissionType = when (confData["emission"]) {
+    var emissionType: EmissionType = when (confData["emission"]) {
         "asm", "assembly" -> EmissionType.Assembly
         "ir", "llvm" -> EmissionType.IR
         "obj", "object" -> EmissionType.Object
@@ -143,14 +143,27 @@ private fun build(args: Array<String>): String {
         isExecutable = false
     }
 
+    var i = 1
+    while (i < args.size) {
+        when (args[i]) {
+            "-type" -> if (++i < args.size) {
+                when(args[i].toLowerCase()) {
+                    "asm", "assembly" -> emissionType = EmissionType.Assembly
+                    "ir", "llvm" -> emissionType = EmissionType.IR
+                    "obj", "object" -> emissionType = EmissionType.Object
+                    "bin", "binary" -> emissionType = EmissionType.Binary
+                    else -> exitAndPrintBuildHelp()
+                }
+            }
+            else -> exitAndPrintBuildHelp()
+        }
+        i++
+    }
+
     val outName = "out/" + System.getProperty("os.name").substringBefore(' ').toLowerCase() + '/' +
         (confData["outFileName"] ?: addOutputExtension(moduleName!!, emissionType))
     val target = System.getProperty("os.name").substringBefore(' ').toLowerCase()
 
-    if (args.size != 1) {
-        exitAndPrintBuildHelp()
-    }
-    
     isProject = true
 
     val syntaxTrees = SyntaxTree.loadProject(moduleName!!)
@@ -240,9 +253,15 @@ private fun exitAndPrintCompileHelp() {
 }
 
 fun exitAndPrintBuildHelp() {
+    val p = Console.CYAN_BOLD_BRIGHT
     val d = Console.GRAY
     val r = Console.RESET
-    println("usage: ${Console.GREEN_BOLD_BRIGHT}build/run $d<${r}file$d>$r")
+    println("usage: ${Console.GREEN_BOLD_BRIGHT}build/run $d<${r}file$d>$r $d[${r}parameters$d]$r")
+    println("$p-type          $d│$r Type of the output")
+    println("  asm / assembly")
+    println("  ir / llvm")
+    println("  obj / object")
+    println("  bin / binary")
     ExitCodes.ERROR()
 }
 

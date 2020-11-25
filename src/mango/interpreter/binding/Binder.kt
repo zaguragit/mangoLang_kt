@@ -46,7 +46,6 @@ class Binder(
         return when (node.kind) {
             SyntaxType.ExpressionStatement -> bindExpressionStatement(node as ExpressionStatementNode, isActuallyExpression)
             SyntaxType.VariableDeclaration -> bindVariableDeclaration(node as VariableDeclarationNode)
-            SyntaxType.IfStatement -> bindIfStatement(node as IfStatementNode)
             SyntaxType.LoopStatement -> bindWhileStatement(node as LoopStatementNode)
             SyntaxType.ForStatement -> bindForStatement(node as ForStatementNode)
             SyntaxType.BreakStatement -> bindBreakStatement(node as BreakStatementNode)
@@ -59,29 +58,17 @@ class Binder(
 
     private fun bindErrorStatement() = ExpressionStatement(ErrorExpression())
 
-    private fun bindIfStatement(node: IfStatementNode): IfStatement {
+    private fun bindIfExpression(node: IfNode): IfExpression {
         val condition = bindExpression(node.condition, TypeSymbol.Bool)
-        val statement = bindStatement(node.thenStatement)
-        val elseStatement: Statement?
-        if (node.elseClause != null) {
-            elseStatement = bindStatement(node.elseClause.statement)
-            if (elseStatement is ExpressionStatement) {
-                val block = elseStatement.expression
-                if (block is BlockExpression &&
-                    block.statements.size == 1 &&
-                    block.statements.elementAt(0) is IfStatement) {
-                    diagnostics.styleElseIfStatement(TextLocation(
-                        node.location.text,
-                        TextSpan.fromBounds(
-                            node.elseClause.keyword.span.start,
-                            node.elseClause.statement.children.elementAt(1)
-                                .children.elementAt(0).span.end)))
-                }
-            }
-        } else {
-            elseStatement = null
+        val then = run {
+            val t = bindStatement(node.thenExpression)
+            if (t is ExpressionStatement) t.expression else BlockExpression(listOf(t), TypeSymbol.Unit)
         }
-        return IfStatement(condition, statement, elseStatement)
+        val elseExpression = node.elseClause?.let {
+            val t = bindStatement(it.expression)
+            if (t is ExpressionStatement) t.expression else BlockExpression(listOf(t), TypeSymbol.Unit)
+        }
+        return IfExpression(condition, then, elseExpression)
     }
 
     private fun bindWhileStatement(node: LoopStatementNode): LoopStatement {
@@ -280,6 +267,7 @@ class Binder(
             SyntaxType.StructInitialization -> bindStructInitialization(node as StructInitializationNode)
             SyntaxType.CollectionInitialization -> bindCollectionInitialization(node as CollectionInitializationNode)
             SyntaxType.CastExpression -> bindCastExpression(node as CastExpressionNode)
+            SyntaxType.IfExpression -> bindIfExpression(node as IfNode)
             else -> throw BinderError("Unexpected node: ${node.kind}, ${node.location}")
         }
     }
@@ -918,7 +906,6 @@ class Binder(
                         else { strBuilder.append('.').append(s).toString() }
                     parent = Namespace.getOr(path) { Namespace(path, parent) }
                 }
-                println(strBuilder)
             }
             for (syntaxTree in syntaxTrees) {
                 binder.diagnostics.append(syntaxTree.diagnostics)

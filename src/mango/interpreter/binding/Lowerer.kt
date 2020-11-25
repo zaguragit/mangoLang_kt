@@ -167,31 +167,57 @@ class Lowerer : TreeRewriter() {
         return rewriteStatement(result)
     }
 
-    override fun rewriteIfStatement(node: IfStatement): Statement {
+    override fun rewriteIfExpression(node: IfExpression): Expression {
 
-        if (node.elseStatement == null) {
-            val endLabel = generateLabel()
+        val endLabel = generateLabel()
+        val endLabelStatement = LabelStatement(endLabel)
+
+        if (node.elseExpression == null) {
             val gotoFalse = ConditionalGotoStatement(endLabel, node.condition, false)
-            val endLabelStatement = LabelStatement(endLabel)
-            val result = ExpressionStatement(BlockExpression(listOf(gotoFalse, node.statement, endLabelStatement), TypeSymbol.Unit))
-            return rewriteStatement(result)
+            val thenStatement = ExpressionStatement(rewriteExpression(node.thenExpression))
+            val result = BlockExpression(listOf(gotoFalse, thenStatement, endLabelStatement), TypeSymbol.Unit)
+            return rewriteExpression(result)
         }
 
         val elseLabel = generateLabel()
-        val endLabel = generateLabel()
+        val elseLabelStatement = LabelStatement(elseLabel)
+
         val gotoFalse = ConditionalGotoStatement(elseLabel, node.condition, false)
         val gotoEnd = GotoStatement(endLabel)
-        val elseLabelStatement = LabelStatement(elseLabel)
-        val endLabelStatement = LabelStatement(endLabel)
-        val result = ExpressionStatement(BlockExpression(listOf(
+
+        val isActuallyExpression = node.type != TypeSymbol.Unit
+
+        val varDeclaration = if (isActuallyExpression) VariableDeclaration(VariableSymbol.local(".tmp", node.type, false, null), run {
+            LiteralExpression.nullEquivalent(node.type)
+        }) else null
+
+        val t = rewriteExpression(node.thenExpression)
+        val e = rewriteExpression(node.elseExpression)
+        val thenStatement: Statement
+        val elseStatement: Statement
+        if (isActuallyExpression) {
+            thenStatement = Assignment(NameExpression(varDeclaration!!.variable), t)
+            elseStatement = Assignment(NameExpression(varDeclaration.variable), e)
+        } else {
+            thenStatement = ExpressionStatement(t)
+            elseStatement = ExpressionStatement(e)
+        }
+
+        val statements = arrayListOf(
             gotoFalse,
-            node.statement,
+            thenStatement,
             gotoEnd,
             elseLabelStatement,
-            node.elseStatement,
+            elseStatement,
             endLabelStatement
-        ), TypeSymbol.Unit))
-        return rewriteStatement(result)
+        )
+
+        if (isActuallyExpression) {
+            statements.add(0, varDeclaration!!)
+            statements.add(ExpressionStatement(NameExpression(varDeclaration.variable)))
+        }
+
+        return rewriteExpression(BlockExpression(statements, TypeSymbol.Unit))
     }
 
     override fun rewriteWhileStatement(node: LoopStatement): Statement {

@@ -14,4 +14,17 @@ class LiteralExpression(
 
     override val constantValue = BoundConstant(value)
     val value get() = constantValue.value
+
+    companion object {
+        fun nullEquivalent(type: TypeSymbol): LiteralExpression {
+            return LiteralExpression(when {
+                type.isOfType(TypeSymbol.Integer) -> 0
+                type.isOfType(TypeSymbol.UInteger) -> 0
+                type.isOfType(TypeSymbol.Float) -> 0f
+                type.isOfType(TypeSymbol.Double) -> 0.0
+                type.isOfType(TypeSymbol.Bool) -> false
+                else -> null
+            }, type)
+        }
+    }
 }

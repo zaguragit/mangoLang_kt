@@ -276,7 +276,6 @@ class Parser(
         val annotations = parseAnnotations()
         return when (current.kind) {
             SyntaxType.Val, SyntaxType.Var -> parseVariableDeclaration()
-            SyntaxType.If -> parseIfStatement()
             SyntaxType.Loop -> parseLoop()
             SyntaxType.Break -> parseBreakStatement()
             SyntaxType.Continue -> parseContinueStatement()
@@ -400,22 +399,14 @@ class Parser(
         return BlockNode(syntaxTree, null, openBrace, statements, closedBrace, false)
     }
 
-    private fun parseIfStatement(): IfStatementNode {
-        val keyword = match(SyntaxType.If)
-        val condition = parseExpression()
-        val statement = parseStatement()
-        val elseClause = parseElseClause()
-        return IfStatementNode(syntaxTree, keyword, condition, statement, elseClause)
-    }
-
     private fun parseElseClause(): ElseClauseNode? {
         skipSeparators()
         if (current.kind != SyntaxType.Colon) {
             return null
         }
-        val keyword = next()
-        val statement = parseStatement()
-        return ElseClauseNode(syntaxTree, keyword, statement)
+        val colon = next()
+        val then = parseStatement()
+        return ElseClauseNode(syntaxTree, colon, then)
     }
 
     private fun parseLoop(): Node {
@@ -457,20 +448,30 @@ class Parser(
 
     private fun parsePostUnaryExpression(pre: Node, parentPrecedence: Int): Node {
         if (parentPrecedence != SyntaxType.Dot.getBinaryOperatorPrecedence()) {
-            if (current.kind == SyntaxType.OpenBracket) {
-                val open = match(SyntaxType.OpenBracket)
-                val arguments = parseArguments()
-                val closed = match(SyntaxType.ClosedBracket)
-                return IndexExpressionNode(syntaxTree, pre, open, arguments, closed)
-            } else if (current.kind == SyntaxType.OpenParentheses) {
-                val open = match(SyntaxType.OpenParentheses)
-                val arguments = parseArguments()
-                val closed = match(SyntaxType.ClosedParentheses)
-                return CallExpressionNode(syntaxTree, pre, open, arguments, closed)
-            } else if (current.kind == SyntaxType.As) {
-                val keyword = match(SyntaxType.As)
-                val type = parseTypeClause()
-                return CastExpressionNode(syntaxTree, pre, keyword, type)
+            when (current.kind) {
+                SyntaxType.OpenBracket -> {
+                    val open = match(SyntaxType.OpenBracket)
+                    val arguments = parseArguments()
+                    val closed = match(SyntaxType.ClosedBracket)
+                    return IndexExpressionNode(syntaxTree, pre, open, arguments, closed)
+                }
+                SyntaxType.OpenParentheses -> {
+                    val open = match(SyntaxType.OpenParentheses)
+                    val arguments = parseArguments()
+                    val closed = match(SyntaxType.ClosedParentheses)
+                    return CallExpressionNode(syntaxTree, pre, open, arguments, closed)
+                }
+                SyntaxType.As -> {
+                    val keyword = match(SyntaxType.As)
+                    val type = parseTypeClause()
+                    return CastExpressionNode(syntaxTree, pre, keyword, type)
+                }
+                SyntaxType.QuestionMark -> if (parentPrecedence < SyntaxType.QuestionMark.getBinaryOperatorPrecedence()) {
+                    val q = match(SyntaxType.QuestionMark)
+                    val then = parseStatement()
+                    val elseClause = parseElseClause()
+                    return IfNode(syntaxTree, pre, q, then, elseClause)
+                }
             }
         }
         return pre

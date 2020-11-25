@@ -115,10 +115,6 @@ class DiagnosticList {
         message: String
     ) = nonErrors.add(Diagnostic(location, message, Diagnostic.Type.Style))
 
-    fun styleElseIfStatement(
-        location: TextLocation
-    ) = style(location, "Unnecessary brackets (Use \"else if {}\" instead of \"else { if {} }\")")
-
 
     /// WARNINGS ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
