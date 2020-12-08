@@ -1,5 +1,5 @@
 
-struct String {
+type String {
 	val length I32
 	val chars Ptr<I16>
 }
@@ -16,7 +16,7 @@ fn String.toInt (radix Int) Int -> {
 	var i = length - 1
 	loop {
 	    i < 0 ? break
-		n += (this[i] - '0') * p
+		n += {this[i] - '0'} * p
 		p *= radix
 		i -= 1
 	}

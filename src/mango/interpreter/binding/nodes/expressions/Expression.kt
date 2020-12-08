@@ -6,6 +6,9 @@ import mango.interpreter.symbols.TypeSymbol
 abstract class Expression : BoundNode() {
     abstract val type: TypeSymbol
     open val constantValue: BoundConstant? = null
+
+    inline fun isError() = type == TypeSymbol.err
+    inline fun isNotError() = !isError()
 }
 
 class BoundConstant(val value: Any?)

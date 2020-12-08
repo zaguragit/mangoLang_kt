@@ -12,7 +12,7 @@ object Translator {
         "var" -> SyntaxType.Var
         "fn" -> SyntaxType.Fn
         "namespace" -> SyntaxType.NamespaceToken
-        "struct" -> SyntaxType.Struct
+        "type" -> SyntaxType.Type
 
         "unsafe" -> SyntaxType.Unsafe
 

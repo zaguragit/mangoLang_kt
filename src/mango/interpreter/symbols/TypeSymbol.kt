@@ -4,8 +4,8 @@ import mango.util.BinderError
 
 open class TypeSymbol private constructor(
     override val name: String,
-    val parentType: TypeSymbol?,
-    val size: Int = -1,
+    open val parentType: TypeSymbol?,
+    open val size: Int = 0,
     val paramCount: Int = 0,
     val params: Array<TypeSymbol> = arrayOf()
 ) : Symbol() {
@@ -15,19 +15,55 @@ open class TypeSymbol private constructor(
     override val kind = Kind.Type
 
     class StructTypeSymbol(
-        name: String,
-        val fields: Array<Field>,
-        parentType: TypeSymbol
-    ) : TypeSymbol(name, parentType, fields.sumBy { it.type.size }) {
+        name: String
+    ) : TypeSymbol(name, null) {
 
         override val kind = Kind.StructType
 
-        class Field(
+        override val size get() = fields.sumBy {
+            it.type.size
+        } + (parentType?.size ?: 0)
+
+        override var parentType: TypeSymbol? = null
+
+        var fields: Array<Field> = arrayOf()
+
+        fun getAllRealFields() = Array(getFieldCount()) { getField(it) }
+
+        fun getField(name: String): Field? {
+            return fields.find { it.name == name } ?: run {
+                val p = parentType
+                if (p is StructTypeSymbol) p.getField(name) else null
+            }
+        }
+
+        fun getField(i: Int): Field {
+            val index = i - getFieldCount() + fields.size
+            val p = parentType
+            return if (index < 0 && p is StructTypeSymbol) p.getField(i) else fields[index]
+        }
+
+        fun getFieldCount(): Int = fields.count { !it.isOverride }.let {
+            val p = parentType
+            if (p is StructTypeSymbol) it + p.getFieldCount() else it
+        }
+
+        fun getFieldI(name: String): Int {
+            return fields.indexOfFirst { it.name == name && !it.isOverride }.let {
+                if (it == -1) {
+                    val p = parentType
+                    if (p is StructTypeSymbol) p.getFieldI(name) else -1
+                } else it + getFieldCount() - fields.size
+            }
+        }
+
+        open class Field(
             val name: String,
             val type: TypeSymbol,
-            val isReadOnly: Boolean
+            val isReadOnly: Boolean,
+            val isOverride: Boolean
         ) {
-            override fun toString() = (if (isReadOnly) "val " else "var ") + name + ' ' + type
+            override fun toString() = (if (isOverride) "[override]" else "") + (if (isReadOnly) "val " else "var ") + name + ' ' + type
         }
     }
 
@@ -69,6 +105,8 @@ open class TypeSymbol private constructor(
 
         val Int = I32
 
+        val Char = TypeSymbol("Char", I16, I16.size)
+
         val Float = TypeSymbol("Float", Primitive, 32)
         val Double = TypeSymbol("Double", Primitive, 64)
 
@@ -90,6 +128,7 @@ open class TypeSymbol private constructor(
             map["I64"] = I64
 
             map["Int"] = I32
+            map["Char"] = Char
 
             map["Float"] = Float
             map["Double"] = Double

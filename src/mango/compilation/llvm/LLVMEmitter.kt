@@ -27,15 +27,13 @@ object LLVMEmitter : Emitter {
 
         for (struct in TypeSymbol.map.values) {
             if (struct is TypeSymbol.StructTypeSymbol) {
-                builder.declareStruct(struct.name, struct.fields.map {
+                builder.declareStruct(struct.name, struct.getAllRealFields().map {
                     LLVMType[it.type]
                 }.toTypedArray())
             }
         }
 
-        for (f in program.functions) {
-            val symbol = f.key
-            val body = f.value
+        for ((symbol, body) in program.functions) {
             if (symbol.meta.isExtern) {
                 builder.addDeclaration(symbol)
                 continue
@@ -60,7 +58,7 @@ object LLVMEmitter : Emitter {
                             statement.initializer.kind == BoundNode.Kind.NameExpression ||
                             statement.initializer.kind == BoundNode.Kind.ReferenceExpression ||
                             statement.initializer.kind == BoundNode.Kind.StructInitialization) {
-                            val value = emitValue(currentBlock, statement.initializer)!!
+                            val value = emitValue(currentBlock, statement.initializer, LLVMType[statement.variable.type])!!
                             val alloc = currentBlock.alloc(statement.variable.realName, value.type)
                             currentBlock.store(alloc, value)
                         } else {
@@ -94,12 +92,12 @@ object LLVMEmitter : Emitter {
                         if (statement.expression == null) {
                             currentBlock.ret()
                         } else {
-                            currentBlock.ret(emitValue(currentBlock, statement.expression)!!)
+                            currentBlock.ret(emitValue(currentBlock, statement.expression, LLVMType[symbol.returnType])!!)
                         }
                     }
                     BoundNode.Kind.AssignmentStatement -> {
                         statement as Assignment
-                        val value = emitValue(currentBlock, statement.expression)!!
+                        val value = emitValue(currentBlock, statement.expression, LLVMType[statement.assignee.type])!!
                         when (statement.assignee.kind) {
                             BoundNode.Kind.NameExpression -> {
                                 val assignee = statement.assignee as NameExpression
@@ -158,7 +156,8 @@ object LLVMEmitter : Emitter {
 
     private fun emitValue(
         block: BlockBuilder,
-        expression: Expression
+        expression: Expression,
+        desiredType: LLVMType? = null
     ): LLVMValue? = when (expression.kind) {
         BoundNode.Kind.LiteralExpression -> emitLiteral(block, expression as LiteralExpression)
         BoundNode.Kind.NameExpression -> emitVariableExpression(block, expression as NameExpression)
@@ -176,6 +175,10 @@ object LLVMEmitter : Emitter {
                 block.tmpVal(instruction).ref
             }
         }
+    }?.let {
+        if (desiredType != null && it.type != desiredType) {
+            block.tmpVal(Conversion(Conversion.Kind.BitCast, it, desiredType)).ref
+        } else it
     }
 
     private fun emitPointerArrayInitialization(
@@ -185,7 +188,7 @@ object LLVMEmitter : Emitter {
         return if (expression.length == null) {
             val alloc = block.mallocArray(LLVMType[expression.type], expression.expressions!!.size)
             for (i in expression.expressions.indices) {
-                block.setArrayElement(alloc, Int(i, LLVMType.I32), emitValue(block, expression.expressions[i])!!)
+                block.setArrayElement(alloc, Int(i, LLVMType.I32), emitValue(block, expression.expressions[i], LLVMType[expression.type.params[0]])!!)
             }
             alloc
         } else {
@@ -205,7 +208,7 @@ object LLVMEmitter : Emitter {
         for (entry in expression.fields) {
             val field = entry.key
             val value = entry.value
-            block.setStructField(alloc, expression.type.fields.indexOf(field), field, emitValue(block, value)!!)
+            block.setStructField(alloc, expression.type.getFieldI(field.name), field, emitValue(block, value, LLVMType[field.type])!!)
         }
         return alloc
     }
@@ -284,7 +287,7 @@ object LLVMEmitter : Emitter {
             val type = LLVMType[expression.type]
             val function = emitValue(block, expression.expression)!!
             Call(type, function, *Array(expression.arguments.size) {
-                emitValue(block, expression.arguments.elementAt(it))!!
+                emitValue(block, expression.arguments.elementAt(it), LLVMType[(expression.expression.type as TypeSymbol.Fn).args[it]])!!
             })
         }
         BoundNode.Kind.UnaryExpression -> emitUnaryExpression(block, expression as UnaryExpression)
@@ -312,7 +315,7 @@ object LLVMEmitter : Emitter {
     private fun emitBinaryExpression(
         block: BlockBuilder,
         expression: BinaryExpression
-    ): LLVMInstruction? {
+    ): LLVMInstruction {
         val left = emitValue(block, expression.left)!!
         val right = emitValue(block, expression.right)!!
         val operation = Operation[left.type, expression.operator.type, right.type]

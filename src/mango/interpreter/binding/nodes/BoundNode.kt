@@ -72,11 +72,18 @@ abstract class BoundNode {
                 if (type == TypeSymbol["String"]!!/*TypeSymbol.String*/) {
                     val value = value as String
                     builder.append('"' + value
-                            .replace("\\", "\\\\")
-                            .replace("\"", "\\\"")
-                            .replace("\t", "\\t")
-                            .replace("\n", "\\n")
-                            .replace("\r", "\\r") + '"')
+                        .replace("\\", "\\\\")
+                        .replace("\"", "\\\"")
+                        .replace("\t", "\\t")
+                        .replace("\n", "\\n")
+                        .replace("\r", "\\r") + '"')
+                } else if (type == TypeSymbol.Char) {
+                    builder.append('\'' + (value as Short).toChar().toString()
+                        .replace("\\", "\\\\")
+                        .replace("\"", "\\\"")
+                        .replace("\t", "\\t")
+                        .replace("\n", "\\n")
+                        .replace("\r", "\\r") + '\'')
                 } else {
                     builder.append(value.toString())
                 }

@@ -36,7 +36,7 @@ object HeaderEmitter : Emitter {
                         }
                         Symbol.Kind.StructType -> {
                             symbol as TypeSymbol.StructTypeSymbol
-                            namespaceRepresentation.add(Header.Struct(symbol))
+                            namespaceRepresentation.add(Header.Type(symbol))
                         }
                     }
                 }
@@ -45,7 +45,7 @@ object HeaderEmitter : Emitter {
         for (e in TypeSymbol.map) {
             val type = e.value
             if (type is TypeSymbol.StructTypeSymbol) {
-                namespaceMap[e.key] = Header.Struct(type)
+                namespaceMap[e.key] = Header.Type(type)
             }
         }
         val builder = StringBuilder()
@@ -107,9 +107,10 @@ object HeaderEmitter : Emitter {
                 "\n}\n\n"
         }
 
-        class Struct (val symbol: TypeSymbol.StructTypeSymbol) : Header {
+        class Type (val symbol: TypeSymbol.StructTypeSymbol) : Header {
 
-            override fun toString () = "struct ${symbol.name} {" + symbol.fields.joinToString(separator = "\n", prefix = "\n").replace("\n", "\n\t") + "\n}\n\n"
+            override fun toString () = "type ${if (symbol.parentType == TypeSymbol.Any) symbol.toString() else symbol.toString() + " : ${symbol.parentType}"} {" +
+                symbol.fields.joinToString(separator = "\n", prefix = "\n").replace("\n", "\n\t") + "\n}\n\n"
         }
     }
 }

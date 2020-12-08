@@ -29,8 +29,8 @@ fn Int.toString (radix Int) String -> {
 
     loop {
         num == 0 ? break
-        val rem = (num % radix) as I16
-        rem > 9 ? builder.appendChar((rem - 10) + 'a')
+        val rem = {num % radix} as I16
+        rem > 9 ? builder.appendChar({rem - 10} + 'a')
         : builder.appendChar(rem + '0')
         num /= radix
     }

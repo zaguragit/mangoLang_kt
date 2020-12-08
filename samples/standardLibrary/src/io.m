@@ -29,7 +29,7 @@ fn print (i Bool) -> print(i.toString())
 
 
 [inline]
-fn println -> print('\n' as I16)
+fn println -> print('\n')
 
 [inline]
 fn println (text String) -> {

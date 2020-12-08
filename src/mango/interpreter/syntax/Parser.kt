@@ -246,15 +246,20 @@ class Parser(
             isInclude)
     }
 
-    private fun parseStructDeclaration(annotations: Collection<AnnotationNode>): Node {
-        val keyword = match(SyntaxType.Struct)
+    private fun parseTypeDeclaration(annotations: Collection<AnnotationNode>): Node {
+        val keyword = match(SyntaxType.Type)
         val identifier = match(SyntaxType.Identifier)
-        val openBrace = match(SyntaxType.OpenBrace)
-        val fields = parseInsideBraces {
-            parseVariableDeclaration()
-        }
-        val closedBrace = match(SyntaxType.ClosedBrace)
-        return StructDeclarationNode(syntaxTree, keyword, identifier, openBrace, fields, closedBrace)
+        val parent = if (current.kind == SyntaxType.Colon) {
+            next()
+            parseTypeClause()
+        } else null
+        val fields = if (current.kind == SyntaxType.OpenBrace) {
+            next()
+            parseInsideBraces {
+                parseVariableDeclaration(parseAnnotations())
+            }.also { match(SyntaxType.ClosedBrace) }
+        } else null
+        return TypeDeclarationNode(syntaxTree, keyword, identifier, parent, fields)
     }
 
     private fun parseNamespace(): NamespaceStatementNode {
@@ -275,14 +280,14 @@ class Parser(
         skipSeparators()
         val annotations = parseAnnotations()
         return when (current.kind) {
-            SyntaxType.Val, SyntaxType.Var -> parseVariableDeclaration()
+            SyntaxType.Val, SyntaxType.Var -> parseVariableDeclaration(annotations)
             SyntaxType.Loop -> parseLoop()
             SyntaxType.Break -> parseBreakStatement()
             SyntaxType.Continue -> parseContinueStatement()
             SyntaxType.Return -> parseReturnStatement()
             SyntaxType.Fn -> parseFunctionDeclaration(annotations)
             SyntaxType.Use -> parseUseStatement()
-            SyntaxType.Struct -> parseStructDeclaration(annotations)
+            SyntaxType.Type -> parseTypeDeclaration(annotations)
             else -> parseAssignmentStatement()
         }
     }
@@ -312,7 +317,7 @@ class Parser(
         node.kind == SyntaxType.IndexExpression ||
         node.kind == SyntaxType.BinaryExpression && (node as BinaryExpressionNode).operator.kind == SyntaxType.Dot
 
-    private fun parseVariableDeclaration(): VariableDeclarationNode {
+    private fun parseVariableDeclaration(annotations: Collection<AnnotationNode>): VariableDeclarationNode {
         skipSeparators()
         val expected = if (current.kind == SyntaxType.Val) { SyntaxType.Val } else { SyntaxType.Var }
         val keyword = match(expected)
@@ -330,7 +335,7 @@ class Parser(
         } else if (typeClause == null) {
             diagnostics.reportCantInferType(identifier.location)
         }
-        return VariableDeclarationNode(syntaxTree, keyword, identifier, typeClause, equals, initializer)
+        return VariableDeclarationNode(syntaxTree, keyword, identifier, typeClause, equals, initializer, annotations)
     }
 
     private fun isComplexTypeClause(): Pair<Boolean, Int> {

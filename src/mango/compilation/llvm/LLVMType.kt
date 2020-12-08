@@ -35,6 +35,7 @@ interface LLVMType {
                     TypeSymbol.Bool.name -> Bool
                     TypeSymbol.Ptr.name -> Ptr(get(type.params[0]))
                     TypeSymbol.Unit.name -> Void
+                    TypeSymbol.Char.name -> I16
                     else -> throw EmitterError("internal error: type unknown to LLVM (${type.name})")
                 }
             }

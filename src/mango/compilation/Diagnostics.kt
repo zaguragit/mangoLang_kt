@@ -178,11 +178,11 @@ class DiagnosticList {
         name: String,
         parameters: List<TypeSymbol>,
         isExtension: Boolean
-    ) = report(location, "Undefined name ( ${if (isExtension) {
+    ) = report(location, "Undefined name (${if (isExtension) {
         parameters.elementAt(0).name + ".$name" + "(${parameters.subList(1, parameters.size).joinToString(", ") { it.name }})"
     } else {
         name + "(${parameters.joinToString(", ") { it.name }})"
-    }} )")
+    }})")
 
     fun reportNotOperator(
         location: TextLocation,
@@ -372,7 +372,23 @@ class DiagnosticList {
 
     fun reportHasToBeInitialized(
         location: TextLocation
-    ) = report(location, "Can't infer type")
+    ) = report(location, "Value must be initialized")
+
+    fun reportChickenEggWithTypes(
+        location: TextLocation,
+        a: TypeSymbol,
+        b: TypeSymbol
+    ) = report(location, "The compiler ran into a chicken & egg situation with types $a & $b")
+
+    fun reportFieldAlreadyDeclared(
+        location: TextLocation,
+        typeWithOriginalField: TypeSymbol.StructTypeSymbol
+    ) = report(location, "The field was already declared in the ${typeWithOriginalField.name} type")
+
+    fun reportOverridesNothing(
+        location: TextLocation,
+        name: String
+    ) = report(location, "\"$name\" overrides nothing")
 
     /// CONF ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 

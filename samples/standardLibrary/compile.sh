@@ -11,6 +11,9 @@ case $1 in
 
         sudo cp -r out /usr/local/lib/mangoLang/std
     ;;
+    'clean')
+        rm -r out
+    ;;
     *)
         echo $1
     ;;

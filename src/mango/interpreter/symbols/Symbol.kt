@@ -67,7 +67,7 @@ abstract class Symbol {
 
     private fun printStruct() {
         this as TypeSymbol.StructTypeSymbol
-        print("struct ")
+        print("type ")
         print(name)
         println(" {")
         for (field in fields) {

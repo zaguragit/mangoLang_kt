@@ -65,9 +65,11 @@ fn main -> {
         i += 1
     }
 
+    io.print("\ntype something: ")
     val testReading = io.readln()
-    io.print("-> ")
-    io.println(testReading)
+    io.print("you typed \"")
+    io.print(testReading)
+    io.println('"')
     io.println()
 
     io.println(-1234567)

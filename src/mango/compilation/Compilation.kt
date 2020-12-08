@@ -74,6 +74,9 @@ class Compilation(
     fun emit(moduleName: String, outputPath: String, target: String, emissionType: EmissionType) {
         val program = getProgram()
 
+        val outFile = File(outputPath)
+        outFile.parentFile.mkdirs()
+
         if (isSharedLib) {
             File(if (isProject) "out/headers.m" else outputPath.substringBeforeLast('/') + "/headers.m").run {
                 createNewFile()
@@ -82,8 +85,6 @@ class Compilation(
         }
 
         val code = LLVMEmitter.emit(program, moduleName)
-        val outFile = File(outputPath)
-        outFile.parentFile.mkdirs()
         if (emissionType == EmissionType.IR) {
             try { outFile.writeText(code) }
             catch (e: FileNotFoundException) {

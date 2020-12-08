@@ -1,9 +1,11 @@
 use string*
 use primitives*
 
-struct StringBuilder {
+type StringBuilder : String {
+    [override]
     var length I32
-	var chars Ptr<I16>
+    [override]
+    var chars Ptr<I16>
 	var capacity I32
 }
 
@@ -55,10 +57,6 @@ fn StringBuilder.invert -> {
         j -= 1
     }
 }
-
-[inline]
-[operator]
-fn StringBuilder.get(i Int) I16 -> unsafe { this.chars[i] }
 
 [inline]
 [operator]

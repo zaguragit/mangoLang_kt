@@ -10,7 +10,8 @@ class VariableDeclarationNode(
     val identifier: Token,
     val typeClauseNode: TypeClauseNode?,
     val equals: Token?,
-    val initializer: Node?
+    val initializer: Node?,
+    val annotations: Collection<AnnotationNode>
 ) : TopLevelNode(syntaxTree) {
 
     override val kind = SyntaxType.VariableDeclaration

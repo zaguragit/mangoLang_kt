@@ -44,7 +44,7 @@ enum class SyntaxType {
     ReturnStatement,
     VariableDeclaration,
     FunctionDeclaration,
-    StructDeclaration,
+    TypeDeclaration,
     UseStatement,
     NamespaceStatement,
     AssignmentStatement,
@@ -107,7 +107,7 @@ enum class SyntaxType {
     Var,
     Fn,
     NamespaceToken,
-    Struct,
+    Type,
 
     // Loop keywords
     Loop,

@@ -2,6 +2,7 @@ package mango.interpreter.binding
 
 import mango.interpreter.symbols.CallableSymbol
 import mango.interpreter.symbols.Symbol
+import mango.interpreter.symbols.TypeSymbol
 
 open class Scope(
     val parent: Scope?
@@ -11,14 +12,14 @@ open class Scope(
         if (parent is Namespace) parent
         else parent?.namespace
 
-    protected open val map by lazy { HashMap<String, HashMap<String?, Symbol>>() }
+    protected open val map by lazy { HashMap<String, HashMap<CallableSymbol.Info?, Symbol>>() }
     open val symbols: Collection<Symbol> get() = map.values.flatMap { it.values }
 
     val used = ArrayList<UseStatement>()
 
     fun tryDeclare(symbol: Symbol): Boolean {
         val name = symbol.name
-        val extra = if (symbol is CallableSymbol) symbol.suffix else null
+        val extra = if (symbol is CallableSymbol) CallableSymbol.Info(symbol) else null
         if (map.containsKey(name)) {
             if (map[name]!!.containsKey(extra)) {
                 return false
@@ -30,18 +31,25 @@ open class Scope(
         return true
     }
 
-    fun tryLookup (path: List<String>, extra: String? = null): Symbol? = tryLookup(path, extra, true)
-    protected fun tryLookup (path: List<String>, extra: String? = null, isReal: Boolean): Symbol? {
+    fun tryLookup (path: List<String>, extra: CallableSymbol.Info? = null): Symbol? = tryLookup(path, extra, true)
+    protected fun tryLookup (path: List<String>, extra: CallableSymbol.Info? = null, isReal: Boolean): Symbol? {
         val parentNamespace = namespace
-        return if (path.size == 1) {
+        if (path.size == 1) {
             val name = path.elementAt(0)
             when {
                 map.containsKey(name) -> {
-                    var res = map[name]?.get(extra)
-                    if (res == null && extra == null) {
-                        res = map[name]?.values?.elementAtOrNull(0)
+                    val overloads = map[name]
+                    if (extra == null) {
+                        return overloads?.values?.elementAtOrNull(0)
                     }
-                    res?.apply { useCounter++ }
+                    if (overloads != null) {
+                        for (symbol in overloads.values) {
+                            if (extra.matches(symbol.type as TypeSymbol.Fn, symbol.meta.isExtension)) {
+                                return symbol.apply { useCounter++ }
+                            }
+                        }
+                    }
+                    return null
                 }
                 parent == null -> return null
                 else -> {

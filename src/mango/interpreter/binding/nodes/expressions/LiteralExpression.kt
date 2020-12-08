@@ -9,7 +9,7 @@ class LiteralExpression(
 
     override val kind = Kind.LiteralExpression
     override fun toString() =
-        if (type == TypeSymbol["String"]!!/*TypeSymbol.String*/) { '"' + value.toString() + '"' }
+        if (type == TypeSymbol["String"]!!) { '"' + value.toString() + '"' }
         else { value.toString() }
 
     override val constantValue = BoundConstant(value)
