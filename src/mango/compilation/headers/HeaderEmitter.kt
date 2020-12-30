@@ -60,7 +60,7 @@ object HeaderEmitter : Emitter {
     interface Header {
 
         class Function (val symbol: CallableSymbol) : Header {
-            override fun toString () = "\n[extern][cname:\"${symbol.mangledName()}\"]\nfn " + run {
+            override fun toString () = "\n[extern][cname:\"${symbol.mangledName()}\"]\nval " + run {
                 val a = ArrayList<VariableSymbol>()
                 a.addAll(symbol.parameters)
                 val b = if (symbol.meta.isExtension) {
@@ -75,7 +75,7 @@ object HeaderEmitter : Emitter {
 
         class InlineFunction (val symbol: CallableSymbol, val body: Statement) : Header {
             override fun toString (): String {
-                return "\n[inline]\nfn " + run {
+                return "\n[inline]\nval " + run {
                     val a = ArrayList<VariableSymbol>()
                     a.addAll(symbol.parameters)
                     val b = if (symbol.meta.isExtension) {

@@ -1,7 +1,7 @@
 use std.io*
 
 [inline]
-fn ask (question String) String -> {
+val ask (question String) String -> {
     println(question)
     readln()
 }

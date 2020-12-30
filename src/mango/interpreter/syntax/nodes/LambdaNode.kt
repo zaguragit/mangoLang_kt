@@ -5,26 +5,22 @@ import mango.interpreter.syntax.SyntaxTree
 import mango.interpreter.syntax.SyntaxType
 import mango.interpreter.syntax.Token
 
-class FunctionDeclarationNode(
+class LambdaNode(
     syntaxTree: SyntaxTree,
-    val keyword: Token,
-    val identifier: Token,
-    val typeClause: TypeClauseNode?,
     val params: SeparatedNodeList<ParameterNode>?,
-    val lambdaArrow: Token?,
-    val body: Node?,
-    val annotations: Collection<AnnotationNode>,
-    val extensionType: TypeClauseNode?
+    val typeClause: TypeClauseNode?,
+    val arrow: Token?,
+    val body: Node?
 ) : TopLevelNode(syntaxTree) {
 
-    override val kind = SyntaxType.FunctionDeclaration
-    override val children: Collection<Node> get() = arrayListOf<Node>(keyword, identifier).apply {
+    override val kind = SyntaxType.LambdaExpression
+    override val children: Collection<Node> get() = arrayListOf<Node>().apply {
         if (params != null) {
             for (param in params) {
                 add(param)
             }
         }
-        lambdaArrow?.let { add(it) }
+        arrow?.let { add(it) }
         typeClause?.let { add(it) }
         body?.let { add(it) }
     }

@@ -3,9 +3,9 @@ use string*
 
 [extern]
 [cname: "putchar"]
-fn print (char I16)
+val print (char I16)
 
-fn print (string String) -> {
+val print (string String) -> {
 	var i = 0
 	loop {
 	    i >= string.length ? break
@@ -15,47 +15,47 @@ fn print (string String) -> {
 
     [extern]
     [cname: "flushPrint"]
-    fn flushPrint
+    val flushPrint ()
 
 	flushPrint()
 }
 
 [inline]
-fn print (i Int) -> print(i.toString())
+val print (i Int) -> print(i.toString())
 
 [inline]
-fn print (i Bool) -> print(i.toString())
+val print (i Bool) -> print(i.toString())
 
 
 
 [inline]
-fn println -> print('\n')
+val println -> print('\n')
 
 [inline]
-fn println (text String) -> {
+val println (text String) -> {
     print(text)
     println()
 }
 
 [inline]
-fn println (char I16) -> {
+val println (char I16) -> {
     print(char)
     println()
 }
 
 [inline]
-fn println (i Int) -> println(i.toString())
+val println (i Int) -> println(i.toString())
 
 [inline]
-fn println (i Bool) -> println(i.toString())
+val println (i Bool) -> println(i.toString())
 
 
 
 [extern]
 [cname: "getchar"]
-fn readChar I16
+val readChar () I16
 
-fn readln String -> {
+val readln String -> {
     use text.builder*
 
 	val builder = StringBuilder {

@@ -24,6 +24,7 @@ enum class SyntaxType {
     CollectionInitialization,
     CastExpression,
     IfExpression,
+    LambdaExpression,
 
     // Literals
     I8,
@@ -42,8 +43,7 @@ enum class SyntaxType {
     BreakStatement,
     ContinueStatement,
     ReturnStatement,
-    VariableDeclaration,
-    FunctionDeclaration,
+    ValVarDeclaration,
     TypeDeclaration,
     UseStatement,
     NamespaceStatement,
@@ -105,7 +105,6 @@ enum class SyntaxType {
     // Declaration keywords
     Val,
     Var,
-    Fn,
     NamespaceToken,
     Type,
 

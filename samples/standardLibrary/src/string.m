@@ -6,10 +6,10 @@ type String {
 
 [inline]
 [operator]
-fn String.get(i Int) I16 -> unsafe { this.chars[i] }
+val String.get(i Int) I16 -> unsafe { this.chars[i] }
 
 [cname: "stringToInt"]
-fn String.toInt (radix Int) Int -> {
+val String.toInt (radix Int) Int -> {
 	var n = 0
 	var p = 1
 	val length = this.length
@@ -25,10 +25,10 @@ fn String.toInt (radix Int) Int -> {
 
 
 [inline]
-fn String.toInt Int -> this.toInt(10)
+val String.toInt Int -> this.toInt(10)
 
 [operator]
-fn String.equals (other String) Bool -> {
+val String.equals (other String) Bool -> {
 	val size = this.length
 	size != other.length ? return false
     var i = 0

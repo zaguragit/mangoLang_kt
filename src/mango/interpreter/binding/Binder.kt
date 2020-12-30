@@ -53,7 +53,7 @@ class Binder(
     private fun bindStatement(node: Node, isActuallyExpression: Boolean = false): Statement {
         return when (node.kind) {
             SyntaxType.ExpressionStatement -> bindExpressionStatement(node as ExpressionStatementNode, isActuallyExpression)
-            SyntaxType.VariableDeclaration -> bindVariableDeclaration(node as VariableDeclarationNode)
+            SyntaxType.ValVarDeclaration -> bindVariableDeclaration(node as ValVarDeclarationNode)
             SyntaxType.LoopStatement -> bindWhileStatement(node as LoopStatementNode)
             SyntaxType.ForStatement -> bindForStatement(node as ForStatementNode)
             SyntaxType.BreakStatement -> bindBreakStatement(node as BreakStatementNode)
@@ -173,7 +173,7 @@ class Binder(
             }
             else -> {
                 val expression = bindExpression(node.expression, canBeUnit = true)
-                if (function != null && function.declarationNode?.lambdaArrow == null) {
+                if (function != null && function.lambda?.arrow == null) {
                     val kind = expression.kind
                     val isAllowedExpression =
                         kind == BoundNode.Kind.CallExpression ||
@@ -188,7 +188,7 @@ class Binder(
         }
     }
 
-    private fun bindVariableDeclaration(node: VariableDeclarationNode): VariableDeclaration {
+    private fun bindVariableDeclaration(node: ValVarDeclarationNode): VariableDeclaration {
         val isReadOnly = node.keyword.kind == SyntaxType.Val
         val type = node.typeClauseNode?.let { bindTypeClause(it) }
         if (node.initializer == null) {
@@ -426,14 +426,14 @@ class Binder(
             this.isUnsafe = this.isUnsafe || isUnsafe
             for (i in node.statements.indices) {
                 val s = node.statements.elementAt(i)
-                when (s.kind) {
-                    SyntaxType.FunctionDeclaration -> {
-                        val symbol = bindFunctionDeclaration(s as FunctionDeclarationNode)
+                when {
+                    s.kind == SyntaxType.ValVarDeclaration && (s as ValVarDeclarationNode).initializer?.kind == SyntaxType.LambdaExpression -> {
+                        val symbol = bindFunctionDeclaration(s, s.initializer as LambdaNode)
                         if (function != null) {
                             bindFunction(scope, functions, symbol, diagnostics, functionBodies)
                         }
                     }
-                    SyntaxType.UseStatement -> bindUseStatement(s as UseStatementNode)
+                    s.kind == SyntaxType.UseStatement -> bindUseStatement(s as UseStatementNode)
                     else -> {
                         if (isExpression && i == node.statements.size - 1 && s.kind == SyntaxType.ExpressionStatement) {
                             s as ExpressionStatementNode
@@ -852,15 +852,15 @@ class Binder(
         symbols: ArrayList<Symbol>
     ) {
         when (statement.kind) {
-            SyntaxType.FunctionDeclaration -> {
-                statement as FunctionDeclarationNode
-                symbols.add(bindFunctionDeclaration(statement))
-            }
-            SyntaxType.VariableDeclaration -> {
-                statement as VariableDeclarationNode
-                val statement = bindVariableDeclaration(statement)
-                statementBuilder.add(statement)
-                symbols.add(statement.variable)
+            SyntaxType.ValVarDeclaration -> {
+                statement as ValVarDeclarationNode
+                if (statement.initializer?.kind == SyntaxType.LambdaExpression) {
+                    symbols.add(bindFunctionDeclaration(statement, statement.initializer as LambdaNode))
+                } else {
+                    val statement = bindVariableDeclaration(statement)
+                    statementBuilder.add(statement)
+                    symbols.add(statement.variable)
+                }
             }
             SyntaxType.UseStatement -> {
                 statement as UseStatementNode
@@ -883,9 +883,9 @@ class Binder(
         }
     }
 
-    private fun bindField(node: VariableDeclarationNode, struct: TypeSymbol.StructTypeSymbol, declaredTypes: HashMap<TypeSymbol.StructTypeSymbol, TypeDeclarationNode>): TypeSymbol.StructTypeSymbol.Field {
+    private fun bindField(node: ValVarDeclarationNode, struct: TypeSymbol.StructTypeSymbol, declaredTypes: HashMap<TypeSymbol.StructTypeSymbol, TypeDeclarationNode>): TypeSymbol.StructTypeSymbol.Field {
 
-        fun isNew(node: VariableDeclarationNode, struct: TypeSymbol.StructTypeSymbol, declaredTypes: HashMap<TypeSymbol.StructTypeSymbol, TypeDeclarationNode>): Pair<Boolean, TypeSymbol.StructTypeSymbol> {
+        fun isNew(node: ValVarDeclarationNode, struct: TypeSymbol.StructTypeSymbol, declaredTypes: HashMap<TypeSymbol.StructTypeSymbol, TypeDeclarationNode>): Pair<Boolean, TypeSymbol.StructTypeSymbol> {
             val p = struct.parentType
             return when {
                 p == TypeSymbol.Any -> true to struct
@@ -1019,6 +1019,7 @@ class Binder(
                     TypeSymbol.Fn(TypeSymbol.Unit, listOf()),
                     "main",
                     null,
+                        null,
                     Symbol.MetaData()
                 )
                 if (isExecutable) {
@@ -1080,22 +1081,22 @@ class Binder(
         ) {
             val symbolMangledName = symbol.mangledName()
             if (symbolMangledName == "malloc") {
-                diagnostics.reportReservedFunctionPath(symbol.declarationNode!!.identifier.location, symbolMangledName)
+                diagnostics.reportReservedFunctionPath(symbol.declaration!!.identifier.location, symbolMangledName)
             } else if (functions.keys.find { it.mangledName() == symbolMangledName } != null) {
-                diagnostics.reportFunctionPathAlreadyDeclared(symbol.declarationNode!!.identifier.location, symbolMangledName)
+                diagnostics.reportFunctionPathAlreadyDeclared(symbol.declaration!!.identifier.location, symbolMangledName)
             }
             when {
                 symbol.meta.isExtern -> functions[symbol] = null
                 else -> {
                     val binder = Binder(parentScope, symbol, functions, functionBodies)
-                    val body = binder.bindStatement(symbol.declarationNode!!.body!!, isActuallyExpression = true)
+                    val body = binder.bindStatement(symbol.lambda!!.body!!, isActuallyExpression = true)
                     val loweredBody = Lowerer.lower(body)
 
                     if (body is ExpressionStatement) {
-                        binder.typeCheck(body.expression, symbol.returnType, symbol.declarationNode.body!!.location)
+                        binder.typeCheck(body.expression, symbol.returnType, symbol.lambda.body!!.location)
                     } else {
                         if (!TypeSymbol.Unit.isOfType(symbol.returnType) && !ControlFlowGraph.allPathsReturn(loweredBody)) {
-                            diagnostics.reportWrongType(symbol.declarationNode.body!!.location, TypeSymbol.Unit, symbol.returnType)
+                            diagnostics.reportWrongType(symbol.lambda.body!!.location, TypeSymbol.Unit, symbol.returnType)
                             //diagnostics.reportAllPathsMustReturn(symbol.declarationNode.identifier.location)
                         }
                     }
@@ -1145,7 +1146,7 @@ class Binder(
         }
     }
 
-    private fun bindFunctionDeclaration(node: FunctionDeclarationNode): CallableSymbol {
+    private fun bindFunctionDeclaration(node: ValVarDeclarationNode, lambda: LambdaNode): CallableSymbol {
 
         val meta = Symbol.MetaData()
         val params = ArrayList<VariableSymbol>()
@@ -1157,8 +1158,8 @@ class Binder(
             meta.isExtension = true
         }
 
-        if (node.params != null) {
-            for (paramNode in node.params.iterator()) {
+        if (lambda.params != null) {
+            for (paramNode in lambda.params.iterator()) {
                 val name = paramNode.identifier.string ?: continue
                 if (!seenParameterNames.add(name)) {
                     diagnostics.reportParamAlreadyExists(paramNode.identifier.location, name)
@@ -1170,10 +1171,10 @@ class Binder(
             }
         }
 
-        val type: TypeSymbol = if (node.typeClause == null) {
+        val type: TypeSymbol = if (lambda.typeClause == null) {
             TypeSymbol.Unit
         } else {
-            bindTypeClause(node.typeClause)
+            bindTypeClause(lambda.typeClause)
         }
 
         val path = if (scope is Namespace) {
@@ -1181,7 +1182,7 @@ class Binder(
         } else {
             function!!.mangledName().substringBeforeLast('.') + '.' + Symbol.genFnUID()
         }
-        val function = CallableSymbol(node.identifier.string!!, params.toTypedArray(), TypeSymbol.Fn(type, params.map { it.type }), path, node, meta)
+        val function = CallableSymbol(node.identifier.string!!, params.toTypedArray(), TypeSymbol.Fn(type, params.map { it.type }), path, node, lambda, meta)
         for (annotation in node.annotations) {
             when (annotation.identifier.string) {
                 "inline" -> meta.isInline = true

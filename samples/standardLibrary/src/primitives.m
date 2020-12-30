@@ -1,14 +1,14 @@
 
 [inline]
-fn Bool.toString String -> return this ? "true" : "false"
+val Bool.toString String -> return this ? "true" : "false"
 
 [inline]
-fn Bool.toInt Int -> return this ? 1 : 0
+val Bool.toInt Int -> return this ? 1 : 0
 
 [inline]
-fn Int.toBool Bool -> this != 0
+val Int.toBool Bool -> this != 0
 
-fn Int.toString (radix Int) String -> {
+val Int.toString (radix Int) String -> {
     use text.builder*
 
     this == 0 ? return "0"
@@ -43,4 +43,4 @@ fn Int.toString (radix Int) String -> {
 }
 
 [inline]
-fn Int.toString String -> this.toString(10)
+val Int.toString String -> this.toString(10)

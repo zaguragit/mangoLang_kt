@@ -10,7 +10,7 @@ class TypeDeclarationNode(
     val keyword: Token,
     val identifier: Token,
     val parent: TypeClauseNode?,
-    val fields: ArrayList<VariableDeclarationNode>?
+    val fields: ArrayList<ValVarDeclarationNode>?
 ) : TopLevelNode(syntaxTree) {
 
     override val kind = SyntaxType.TypeDeclaration

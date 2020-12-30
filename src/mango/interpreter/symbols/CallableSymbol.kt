@@ -1,6 +1,7 @@
 package mango.interpreter.symbols
 
-import mango.interpreter.syntax.nodes.FunctionDeclarationNode
+import mango.interpreter.syntax.nodes.LambdaNode
+import mango.interpreter.syntax.nodes.ValVarDeclarationNode
 import java.util.*
 
 open class CallableSymbol(
@@ -8,7 +9,8 @@ open class CallableSymbol(
     val parameters: Array<VariableSymbol>,
     override val type: TypeSymbol.Fn,
     path: String,
-    val declarationNode: FunctionDeclarationNode?,
+    val declaration: ValVarDeclarationNode?,
+    val lambda: LambdaNode?,
     override val meta: MetaData
 ) : VariableSymbol(
     name,

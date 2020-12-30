@@ -2,7 +2,7 @@
 /*
  * returns a random unsigned 64 bit integer (except 0)
  */
-fn randomU64 (seed U64) U64 -> {
+val randomU64 (seed U64) U64 -> {
     var n = seed
     n = n.xor(n << 21)
     n = n.xor(n >>> 35)
@@ -11,9 +11,9 @@ fn randomU64 (seed U64) U64 -> {
 }
 
 [inline]
-fn smaller (a Int, b Int) Int -> a < b ? a : b
+val smaller (a Int, b Int) Int -> a < b ? a : b
 
 [inline]
-fn bigger (a Int, b Int) Int -> a > b ? a : b
+val bigger (a Int, b Int) Int -> a > b ? a : b
 
 */

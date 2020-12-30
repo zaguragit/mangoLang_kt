@@ -5,29 +5,54 @@
 </div>
 
 ### Technical details
-- Strings are structs of: { length I32, chars I8* }
+- Strings are structs of: { length I32, chars I16* }
 - All types are children of the "Any" type
-- "Unit" is the type for functions that don't return anything
 - Decimal numbers aren't completely supported yet
 
 ### Syntax
-- Field initialization: ``` (val (for immutable) | var (for mutable)) <name> ((optional) <type>) = <value> ```
-- if/else expressions: ``` <condition> ? <then> ((optional) : <else>) ```
-- Function declaration: ``` fn <name> '('<params separated by commas>')' ((optional) <type>) -> <expression> ```
-- Use statement: ``` use <dot-separated namespaces> ```, and an optional '*' to include the content of the namespace (the equivalent of "using namespace" in c++)
-
-### Syntactic sugar
 - Functions can be declared inside other functions
 
 
-```rust
+- Field initialization:
+```
+('val' (immutable) | 'var' (mutable)) <name> ((optional) <type>) = <value>
+example: var a = 36
+```
+- Lambdas:
+```
+'('<params separated by commas>')' (optional <type>) -> <expression>
+example: (a I32, b I32) Int -> a + b
+```
+- Function declaration:
+```
+'val' (optional <extensionType>'.')<name> (optional '=') <lambda>
+example: val String.get (i Int) -> unsafe { this.chars[i] }
+```
+- Type declaration:
+```
+'type' <name> (optional ':' <parentType>) '{' <fields> '}'
+example: type ProcessID : Int
+```
+- if/else expressions:
+```
+<condition> ? <then> ((optional) ':' <else>)
+example: a > b ? a : b
+```
+- Use statement: 
+```
+'use' <dot-separated namespaces> // and an optional '*' to include the content of the namespace (the equivalent of "using namespace" in c++)
+example: use std.io*
+```
+
+### Example
+```kotlin
 use std.io*
 
 val valueName = expression
 var variableName = expression
 val something = "some text and stuff, here are some character escapes \n\t\r\\\""
 
-fn count (num Int) -> {
+val count (num Int) -> {
     var x = num
     x == 0 ? println("Done!") : {
         count(x - 1)

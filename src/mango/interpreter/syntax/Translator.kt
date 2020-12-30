@@ -10,7 +10,6 @@ object Translator {
 
         "val" -> SyntaxType.Val
         "var" -> SyntaxType.Var
-        "fn" -> SyntaxType.Fn
         "namespace" -> SyntaxType.NamespaceToken
         "type" -> SyntaxType.Type
 

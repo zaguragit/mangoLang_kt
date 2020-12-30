@@ -9,11 +9,11 @@ type StringBuilder : String {
 	var capacity I32
 }
 
-fn StringBuilder.appendChar (i16 I16) StringBuilder -> {
+val StringBuilder.appendChar (i16 I16) StringBuilder -> {
     this.capacity < this.length ? {
         [extern]
         [cname: "realloc"]
-        fn Ptr<I16>.realloc (bytes I32) Ptr<I16>
+        val Ptr<I16>.realloc (bytes I32) Ptr<I16>
 
         this.capacity += 32
         this.chars = this.chars.realloc(this.capacity * 2)
@@ -25,7 +25,7 @@ fn StringBuilder.appendChar (i16 I16) StringBuilder -> {
     this
 }
 
-fn StringBuilder.append (string String) StringBuilder -> {
+val StringBuilder.append (string String) StringBuilder -> {
     use string*
     var i = 0
     val length = string.length
@@ -38,14 +38,14 @@ fn StringBuilder.append (string String) StringBuilder -> {
 }
 
 //[inline]
-//fn StringBuilder.append (i32 I32) StringBuilder -> this.append(i32.toString())
+//val StringBuilder.append (i32 I32) StringBuilder -> this.append(i32.toString())
 
-fn StringBuilder.toString String -> String {
+val StringBuilder.toString String -> String {
     length: this.length
     chars: this.chars
 }
 
-fn StringBuilder.invert -> {
+val StringBuilder.invert -> {
     var i = 0
     var j = this.length - 1
     loop {
@@ -60,4 +60,4 @@ fn StringBuilder.invert -> {
 
 [inline]
 [operator]
-fn StringBuilder.set(i Int, i16 I16) -> unsafe { this.chars[i] = i16 }
+val StringBuilder.set(i Int, i16 I16) -> unsafe { this.chars[i] = i16 }

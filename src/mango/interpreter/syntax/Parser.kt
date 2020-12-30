@@ -138,21 +138,7 @@ class Parser(
         return list
     }
 
-    private fun parseFunctionDeclaration(annotations: Collection<AnnotationNode>): FunctionDeclarationNode {
-        val keyword = match(SyntaxType.Fn)
-        if (current.kind == SyntaxType.LineSeparator) {
-            diagnostics.reportDeclarationAndNameOnSameLine(keyword.location)
-        }
-        val extensionType: TypeClauseNode?
-        if (peek(1).kind == SyntaxType.Dot ||
-            peek(1).kind == SyntaxType.LessThan) {
-            extensionType = parseTypeClause()
-            next()
-        } else { extensionType = null }
-        val identifier = match(SyntaxType.Identifier)
-
-        //println("${identifier.string} \t\t -> \t\t ${extensionType?.identifier?.string}")
-
+    private fun parseLambda(annotations: Collection<AnnotationNode>): LambdaNode {
         var params: SeparatedNodeList<ParameterNode>? = null
         if (current.kind == SyntaxType.OpenParentheses) {
             position++
@@ -164,14 +150,13 @@ class Parser(
         if (current.kind == SyntaxType.Identifier) {
             type = parseTypeClause()
         }
-        skipSeparators()
         return if (annotations.find { it.identifier.string == "extern" } == null) {
             skipSeparators()
-            val lambdaArrow: Token = next()
+            val arrow = match(SyntaxType.LambdaArrow)
             val body = parseStatement()
-            FunctionDeclarationNode(syntaxTree, keyword, identifier, type, params, lambdaArrow, body, annotations, extensionType)
+            LambdaNode(syntaxTree, params, type, arrow, body)
         } else {
-            FunctionDeclarationNode(syntaxTree, keyword, identifier, type, params, null, null, annotations, extensionType)
+            LambdaNode(syntaxTree, params, type, null, null)
         }
     }
 
@@ -256,7 +241,7 @@ class Parser(
         val fields = if (current.kind == SyntaxType.OpenBrace) {
             next()
             parseInsideBraces {
-                parseVariableDeclaration(parseAnnotations())
+                parseValVarDeclaration(parseAnnotations())
             }.also { match(SyntaxType.ClosedBrace) }
         } else null
         return TypeDeclarationNode(syntaxTree, keyword, identifier, parent, fields)
@@ -280,12 +265,11 @@ class Parser(
         skipSeparators()
         val annotations = parseAnnotations()
         return when (current.kind) {
-            SyntaxType.Val, SyntaxType.Var -> parseVariableDeclaration(annotations)
+            SyntaxType.Val, SyntaxType.Var -> parseValVarDeclaration(annotations)
             SyntaxType.Loop -> parseLoop()
             SyntaxType.Break -> parseBreakStatement()
             SyntaxType.Continue -> parseContinueStatement()
             SyntaxType.Return -> parseReturnStatement()
-            SyntaxType.Fn -> parseFunctionDeclaration(annotations)
             SyntaxType.Use -> parseUseStatement()
             SyntaxType.Type -> parseTypeDeclaration(annotations)
             else -> parseAssignmentStatement()
@@ -317,25 +301,50 @@ class Parser(
         node.kind == SyntaxType.IndexExpression ||
         node.kind == SyntaxType.BinaryExpression && (node as BinaryExpressionNode).operator.kind == SyntaxType.Dot
 
-    private fun parseVariableDeclaration(annotations: Collection<AnnotationNode>): VariableDeclarationNode {
+    private fun parseValVarDeclaration(annotations: Collection<AnnotationNode>): ValVarDeclarationNode {
         skipSeparators()
         val expected = if (current.kind == SyntaxType.Val) { SyntaxType.Val } else { SyntaxType.Var }
         val keyword = match(expected)
         val isError = current.kind == SyntaxType.LineSeparator
+
+
+        val extensionType: TypeClauseNode?
+        if (peek(1).kind == SyntaxType.Dot || peek(1).kind == SyntaxType.LessThan) {
+            extensionType = parseTypeClause()
+            next()
+        } else { extensionType = null }
+
+
         val identifier = match(SyntaxType.Identifier)
         if (isError) {
             diagnostics.reportDeclarationAndNameOnSameLine(identifier.location)
         }
-        val typeClause = parseOptionalValueTypeClause()
+
+        val typeClause = if (extensionType == null && peek(1).kind != SyntaxType.LambdaArrow) parseOptionalValueTypeClause() else null
         var equals: Token? = null
         var initializer: Node? = null
-        if (current.kind == SyntaxType.Equals) {
-            equals = match(SyntaxType.Equals)
-            initializer = parseExpression()
-        } else if (typeClause == null) {
-            diagnostics.reportCantInferType(identifier.location)
+
+        if (typeClause == null && (
+            extensionType != null ||
+            current.kind == SyntaxType.OpenParentheses ||
+            peek(1).kind == SyntaxType.OpenParentheses ||
+            current.kind == SyntaxType.LambdaArrow ||
+            peek(1).kind == SyntaxType.LambdaArrow
+        )) {
+            if (current.kind == SyntaxType.Equals) {
+                equals = match(SyntaxType.Equals)
+            }
+            initializer = parseLambda(annotations)
+        } else {
+            if (current.kind == SyntaxType.Equals) {
+                equals = match(SyntaxType.Equals)
+                initializer = parseExpression()
+            } else if (typeClause == null) {
+                diagnostics.reportCantInferType(identifier.location)
+            }
         }
-        return VariableDeclarationNode(syntaxTree, keyword, identifier, typeClause, equals, initializer, annotations)
+
+        return ValVarDeclarationNode(syntaxTree, keyword, identifier, typeClause, equals, initializer, extensionType, annotations)
     }
 
     private fun isComplexTypeClause(): Pair<Boolean, Int> {
@@ -348,10 +357,7 @@ class Parser(
     }
 
     private fun parseOptionalValueTypeClause(): TypeClauseNode? {
-        if (current.kind == SyntaxType.Equals) {
-            return null
-        }
-        return parseTypeClause()
+        return if (current.kind == SyntaxType.Identifier) parseTypeClause() else null
     }
 
     private fun parseTypeClause(): TypeClauseNode {
@@ -509,7 +515,7 @@ class Parser(
     }
 
     private fun parsePrimaryExpression() = when (current.kind) {
-        SyntaxType.OpenParentheses -> parseParenthesizedExpression()
+        SyntaxType.OpenParentheses -> parseLambda(listOf())
         SyntaxType.False, SyntaxType.True -> parseBooleanLiteral()
         SyntaxType.I8,
         SyntaxType.I16,
@@ -522,13 +528,6 @@ class Parser(
         SyntaxType.Unsafe -> parseUnsafeExpression()
         SyntaxType.OpenBrace -> parseBlock()
         else -> parseNameExpression()
-    }
-
-    private fun parseParenthesizedExpression(): Node {
-        match(SyntaxType.OpenParentheses)
-        val expression = parseExpression()
-        match(SyntaxType.ClosedParentheses)
-        return expression
     }
 
     private fun parseBooleanLiteral(): LiteralExpressionNode {
@@ -580,12 +579,6 @@ class Parser(
     private fun parseCharLiteral() = LiteralExpressionNode(syntaxTree, match(SyntaxType.Char))
 
     private fun parseNameExpression(): Node {
-        /*val isComplexType = current.kind == SyntaxType.LessThan && (peekOverLineSeparators(2).kind == SyntaxType.MoreThan || peekOverLineSeparators(2).kind == SyntaxType.Comma)
-        val identifier = if (isComplexType) {
-            parseTypeClause()
-        } else {
-            match(SyntaxType.Identifier)
-        }*/
         val (_, i) = isComplexTypeClause()
 
         if (peek(i + 1).kind == SyntaxType.OpenBrace) {
@@ -594,7 +587,7 @@ class Parser(
                     return parseStructInitialization(parseTypeClause())
                 }
             }
-            if (blockContainsCommas()) {
+            if (levelContains(SyntaxType.Comma)) {
                 return parseCollectionInitialization(parseTypeClause())
             }
         }
@@ -604,8 +597,8 @@ class Parser(
         return NameExpressionNode(syntaxTree, identifier)
     }
 
-    private fun blockContainsCommas(): Boolean {
-        var i = 0
+    private fun levelContains(type: SyntaxType): Boolean {
+        var i = 1
         var braceDepth = 0
         var bracketDepth = 0
         var parenthesesDepth = 0
@@ -627,8 +620,8 @@ class Parser(
                 SyntaxType.EOF -> return false
                 else -> if (parenthesesDepth == 0 &&
                             bracketDepth == 0 &&
-                            braceDepth == 1 &&
-                            peek(i).kind == SyntaxType.Comma) return true
+                            braceDepth == 0 &&
+                            peek(i).kind == type) return true
             }
             i++
         }

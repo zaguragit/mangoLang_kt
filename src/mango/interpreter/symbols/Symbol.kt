@@ -48,7 +48,7 @@ abstract class Symbol {
 
     private fun printFunction() {
         this as CallableSymbol
-        print("fn ")
+        print("val ")
         print(name)
         if (parameters.isNotEmpty()) {
             print(" (")
