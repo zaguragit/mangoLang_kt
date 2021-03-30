@@ -3,7 +3,7 @@ use std*
 val badName = "semicolon"
 
 [entry]
-val main -> {
+val main () -> {
     io.println("Hello world!")
 /*
     use secondFile*
@@ -78,5 +78,5 @@ val main -> {
 namespace thing {
     val someRandomString = "this is a random string"
 
-    val something -> io.println(someRandomString)
+    val something () -> io.println(someRandomString)
 }

@@ -1,37 +1,46 @@
+use text.string*
 
 [inline]
-val Bool.toString String -> return this ? "true" : "false"
+val (b Bool) toString () String -> return b ? "true" : "false"
+
+/*
+[inline]
+val (b Bool) toI64 () I64 -> return b ? 1 : 0
+*/
+[inline]
+val (b Bool) toI32 () I32 -> return b ? 1 : 0
+/*
+[inline]
+val (b Bool) toI16 () I16 -> return b ? 1 : 0
 
 [inline]
-val Bool.toInt Int -> return this ? 1 : 0
+val (b Bool) toI8 () I8 -> return b ? 1 : 0
+*/
 
 [inline]
-val Int.toBool Bool -> this != 0
+val (i I32) toBool () Bool -> i != 0
 
-val Int.toString (radix Int) String -> {
+val (i I32) toString (radix I32) String -> {
     use text.builder*
 
-    this == 0 ? return "0"
+    i == 0 ? return "0"
 
-    val builder = StringBuilder {
-        length: 0
-        chars: Ptr<I16> { length: 10 }
-        capacity: 10
-    }
+    val builder = StringBuilder(10)
 
     var isNegative = false
-    var num = this
+    var num = i
 
     num < 0 && radix == 10 ? {
         isNegative = true
         num = -num
     }
 
+    val translation = "0123456789abcdefghijklmnopqrstuwxyz" // risky, radix can be too big
+
     loop {
         num == 0 ? break
-        val rem = {num % radix} as I16
-        rem > 9 ? builder.appendChar({rem - 10} + 'a')
-        : builder.appendChar(rem + '0')
+        val rem = num % radix
+        builder.appendChar(translation[rem])
         num /= radix
     }
 
@@ -43,4 +52,4 @@ val Int.toString (radix Int) String -> {
 }
 
 [inline]
-val Int.toString String -> this.toString(10)
+val (i I32) toString () String -> i.toString(10)

@@ -1,19 +1,17 @@
 use primitives*
-use string*
+use text.string*
 
-[extern]
 [cname: "putchar"]
 val print (char I16)
 
-val print (string String) -> {
+val print (text CharSequence) -> {
 	var i = 0
 	loop {
-	    i >= string.length ? break
-		print(string[i])
+	    i >= text.length ? break
+		print(text[i])
 		i += 1
 	}
 
-    [extern]
     [cname: "flushPrint"]
     val flushPrint ()
 
@@ -21,7 +19,7 @@ val print (string String) -> {
 }
 
 [inline]
-val print (i Int) -> print(i.toString())
+val print (i I32) -> print(i.toString())
 
 [inline]
 val print (i Bool) -> print(i.toString())
@@ -29,10 +27,10 @@ val print (i Bool) -> print(i.toString())
 
 
 [inline]
-val println -> print('\n')
+val println () -> print('\n')
 
 [inline]
-val println (text String) -> {
+val println (text CharSequence) -> {
     print(text)
     println()
 }
@@ -44,25 +42,19 @@ val println (char I16) -> {
 }
 
 [inline]
-val println (i Int) -> println(i.toString())
+val println (i I32) -> println(i.toString())
 
 [inline]
 val println (i Bool) -> println(i.toString())
 
 
-
-[extern]
 [cname: "getchar"]
 val readChar () I16
 
-val readln String -> {
+val readln () String -> {
     use text.builder*
 
-	val builder = StringBuilder {
-	    length: 0
-	    chars: Ptr<I16> { length: 512 }
-	    capacity: 512
-	}
+	val builder = StringBuilder(512)
     var ch = readChar()
     loop {
         ch == '\n' || ch == '\0' ? break
