@@ -1,14 +1,10 @@
-package mango.cli
+package mango.compiler.binding
 
-import mango.cli.console.Highlighter
 import mango.compiler.binding.nodes.BiOperator
 import mango.compiler.binding.nodes.BoundNode
 import mango.compiler.binding.nodes.UnOperator
 import mango.compiler.binding.nodes.expressions.*
 import mango.compiler.binding.nodes.statements.*
-import mango.compiler.ir.instructions.ConditionalGotoStatement
-import mango.compiler.ir.instructions.GotoStatement
-import mango.compiler.ir.instructions.LabelStatement
 import mango.compiler.symbols.CallableSymbol
 import mango.compiler.symbols.TypeSymbol
 
@@ -210,9 +206,9 @@ fun BoundNode.structureString(functionBodies: HashMap<CallableSymbol, Statement?
             builder.append('\n')
         }
         BoundNode.Kind.ValVarDeclaration -> {
-            this as VariableDeclaration
+            this as ValVarDeclaration
             if (variable.meta.isExtern) {
-                builder.append("[cname: \"${variable.meta.cname}\"]\n")
+                builder.append("@cname(\"${variable.meta.cname}\")\n")
                 for (t in 0 until indent) {
                     builder.append("    ")
                 }
@@ -241,18 +237,22 @@ fun BoundNode.structureString(functionBodies: HashMap<CallableSymbol, Statement?
         }
         BoundNode.Kind.LabelStatement -> {
             this as LabelStatement
-            builder.append(Highlighter.label(symbol.name))
+            builder.append(symbol.name)
             builder.append(':')
             builder.append('\n')
         }
         BoundNode.Kind.GotoStatement -> {
-            this as GotoStatement
-            builder.append("br ")
-            builder.append(label)
+            this as Goto
+            builder.append(when (type) {
+                Goto.Type.Jump -> "br $label"
+                Goto.Type.Return -> "//ret"
+                Goto.Type.Break -> "break"
+                Goto.Type.Continue -> "continue"
+            })
             builder.append('\n')
         }
         BoundNode.Kind.ConditionalGotoStatement -> {
-            this as ConditionalGotoStatement
+            this as ConditionalGoto
             builder.append("br ")
             builder.append(label)
             builder.append(if (jumpIfTrue) " if " else " unless ")
@@ -261,7 +261,7 @@ fun BoundNode.structureString(functionBodies: HashMap<CallableSymbol, Statement?
         }
         BoundNode.Kind.ReturnStatement -> {
             this as ReturnStatement
-            builder.append("return ")
+            builder.append("ret ")
             builder.append(expression?.structureString(functionBodies, indent + 1, true))
             builder.append('\n')
         }
@@ -283,7 +283,7 @@ fun BoundNode.structureString(functionBodies: HashMap<CallableSymbol, Statement?
             builder.append('\n')
         }
         BoundNode.Kind.NopStatement -> {
-            builder.append("nop")
+            builder.append("//nop")
             builder.append('\n')
         }
     }

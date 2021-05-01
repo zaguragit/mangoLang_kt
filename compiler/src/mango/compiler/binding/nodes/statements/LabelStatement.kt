@@ -1,6 +1,5 @@
-package mango.compiler.ir.instructions
+package mango.compiler.binding.nodes.statements
 
-import mango.compiler.binding.nodes.statements.Statement
 import mango.compiler.ir.Label
 
 class LabelStatement(

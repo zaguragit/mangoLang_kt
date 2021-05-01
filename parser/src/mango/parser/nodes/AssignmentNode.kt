@@ -5,10 +5,10 @@ import mango.parser.TextFile
 import mango.parser.Token
 
 class AssignmentNode(
-        textFile: TextFile,
-        val assignee: Node,
-        val equalsToken: Token,
-        val expression: Node
+    textFile: TextFile,
+    val assignee: Node,
+    val equalsToken: Token,
+    val expression: Node
 ) : Node(textFile) {
     override val kind = SyntaxType.AssignmentStatement
     override val children

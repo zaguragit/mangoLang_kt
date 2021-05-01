@@ -11,7 +11,7 @@
 # Syntax
 All the keywords in the language:
 ```
-val var type namespace loop break continue return as use true false null unsafe
+val var type namespace loop break continue ret as use true false null unsafe
 ```
 
 ### Field declaration

@@ -11,5 +11,5 @@ class TextLocation(
     inline val endLineI get() = text.getLineI(span.end)
     inline val endCharI get() = text.lines[endLineI].end - span.end
 
-    override fun toString() = "${text.fileName}[$startLineI:$startCharI..$endLineI:$endCharI]"
+    override fun toString() = "${text.filePackage}[$startLineI:$startCharI..$endLineI:$endCharI]"
 }

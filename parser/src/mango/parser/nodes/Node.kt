@@ -22,35 +22,4 @@ abstract class Node(val textFile: TextFile) {
         }
         return children.last().getLastToken()
     }
-/*
-    fun printTree(indent: String = "", isLast: Boolean = true) {
-        print(Console.GRAY)
-        print(indent)
-        print(if (isLast) "└──" else "├──")
-
-        if (this is Token) {
-            print(Console.CYAN_BRIGHT)
-            print(kind.name)
-            if (string != null) {
-                print(" ")
-                print(Console.GREEN_BOLD_BRIGHT)
-                print(string)
-            }
-        } else {
-            print(Console.RESET)
-            print(kind.name)
-        }
-
-        println()
-
-        val newIndent = indent + if (isLast) "    " else "│   "
-
-        val lastChild = children.lastOrNull()
-
-        for (child in children) {
-            child.printTree(newIndent, child === lastChild)
-        }
-
-        print(Console.RESET)
-    }*/
 }

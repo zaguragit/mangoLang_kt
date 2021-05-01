@@ -1,9 +1,7 @@
 package mango.parser
 
 import mango.parser.nodes.*
-import shared.text.TextLocation
-import shared.text.TextSpan
-import shared.utils.DiagnosticList
+import shared.DiagnosticList
 
 class Parser(
     val textFile: TextFile
@@ -104,13 +102,7 @@ class Parser(
         }
     }
 
-    fun parseCompilationUnit(): NamespaceNode {
-        val statement = parseMembers()
-        match(SyntaxType.EOF)
-        return NamespaceNode(textFile, statement)
-    }
-
-    private fun parseMembers(): Collection<TopLevelNode> {
+    fun parseCompilationUnit(): Collection<TopLevelNode> {
         val members = ArrayList<TopLevelNode>()
 
         while (current.kind != SyntaxType.EOF) {
@@ -125,40 +117,31 @@ class Parser(
 
             skipSeparators()
         }
-
+        match(SyntaxType.EOF)
         return members
     }
 
     internal fun parseAnnotations(): Collection<AnnotationNode> {
         val list = ArrayList<AnnotationNode>()
         var lastAnnotationLine = 0
-        while (current.kind == SyntaxType.OpenBracket) {
-            val left = next()
-            if (left.location.startLineI > lastAnnotationLine + 1 && list.isNotEmpty()) {
+        skipSeparators()
+        while (current.kind == SyntaxType.At) {
+            val character = next()
+            if (character.location.startLineI > lastAnnotationLine + 1 && list.isNotEmpty()) {
                 val last = list.last()
                 diagnostics.reportInvalidAnnotation(last.location)
                 if (trying != 0) throw ParsingError()
             }
-            skipSeparators()
-            if (current.kind == SyntaxType.Identifier) {
-                val identifier = next()
-                var colon: Token? = null
-                var expression: Node? = null
-                if (current.kind == SyntaxType.Colon) {
-                    colon = next()
-                    expression = parseExpression()
-                }
-                skipSeparators()
-                val right = match(SyntaxType.ClosedBracket)
-                if (current.kind == SyntaxType.LineSeparator) {
-                    position++
-                }
-                lastAnnotationLine = right.location.endLineI
-                list.add(AnnotationNode(textFile, left, identifier, colon, expression, right))
+            val identifier = match(SyntaxType.Identifier)
+            if (current.kind == SyntaxType.OpenParentheses) {
+                val call = parseCall(identifier)
+                lastAnnotationLine = call.location.endLineI
+                list.add(AnnotationNode(textFile, character, identifier, call))
             } else {
-                diagnostics.reportInvalidAnnotation(TextLocation(left.location.text, TextSpan(left.span.start, 2)))
-                if (trying != 0) throw ParsingError()
+                lastAnnotationLine = identifier.location.endLineI
+                list.add(AnnotationNode(textFile, character, identifier, null))
             }
+            skipSeparators()
         }
         return list
     }
@@ -274,22 +257,23 @@ class Parser(
     internal fun parseAssignmentStatement(): Node {
         val left = parseExpression()
         val k = peek(0).kind
-        if (isAssignee(left) && (
-            k == SyntaxType.Equals ||
-            k == SyntaxType.PlusEquals ||
-            k == SyntaxType.MinusEquals ||
-            k == SyntaxType.DivEquals ||
-            k == SyntaxType.TimesEquals ||
-            k == SyntaxType.RemEquals ||
-            k == SyntaxType.OrEquals ||
-            k == SyntaxType.AndEquals
-        )) {
+        if (isAssignee(left) && isAssignmentSymbol(k)) {
             val operatorToken = next()
             val right = parseExpression()
             return AssignmentNode(textFile, left, operatorToken, right)
         }
         return ExpressionStatementNode(textFile, left)
     }
+
+    private fun isAssignmentSymbol(k: SyntaxType) =
+        k == SyntaxType.Equals ||
+        k == SyntaxType.PlusEquals ||
+        k == SyntaxType.MinusEquals ||
+        k == SyntaxType.DivEquals ||
+        k == SyntaxType.TimesEquals ||
+        k == SyntaxType.RemEquals ||
+        k == SyntaxType.OrEquals ||
+        k == SyntaxType.AndEquals
 
     private fun isAssignee(node: Node) =
         node.kind == SyntaxType.NameExpression ||
@@ -386,16 +370,12 @@ class Parser(
         var end: Token? = null
         if (current.kind == SyntaxType.LessThan) {
             start = match(SyntaxType.LessThan)
-            types = parseSeparatedList(SyntaxType.Comma, { it == SyntaxType.MoreThan }) {
-                parseTypeClause()
-            }
+            types = parseSeparatedList(SyntaxType.Comma, { it == SyntaxType.MoreThan }, ::parseTypeClause)
             end = match(SyntaxType.MoreThan)
         }
         else if (current.kind == SyntaxType.OpenParentheses) {
             start = match(SyntaxType.OpenParentheses)
-            types = parseSeparatedList(SyntaxType.Comma, { it == SyntaxType.ClosedParentheses }) {
-                parseTypeClause()
-            }
+            types = parseSeparatedList(SyntaxType.Comma, { it == SyntaxType.ClosedParentheses }, ::parseTypeClause)
             end = match(SyntaxType.ClosedParentheses)
         }
         return TypeClauseNode(textFile, identifier, start, types, end)
@@ -412,7 +392,6 @@ class Parser(
         ) {
             nodesNSeparators.add(parseNode())
             skipSeparators()
-
             if (current.kind == separator) {
                 nodesNSeparators.add(match(separator))
             } else break
@@ -460,12 +439,12 @@ class Parser(
 
     internal fun parseBreakStatement(): Node {
         val keyword = match(SyntaxType.Break)
-        return BreakStatementNode(textFile, keyword)
+        return BreakNode(textFile, keyword)
     }
 
     internal fun parseContinueStatement(): Node {
         val keyword = match(SyntaxType.Continue)
-        return ContinueStatementNode(textFile, keyword)
+        return ContinueNode(textFile, keyword)
     }
 
     internal fun parseReturnStatement(): Node {
@@ -483,16 +462,11 @@ class Parser(
             when (current.kind) {
                 SyntaxType.OpenBracket -> {
                     val open = match(SyntaxType.OpenBracket)
-                    val arguments = parseArguments()
+                    val arguments = parseSeparatedList(SyntaxType.Comma, { it == SyntaxType.ClosedBracket }, ::parseExpression)
                     val closed = match(SyntaxType.ClosedBracket)
                     return IndexExpressionNode(textFile, pre, open, arguments, closed)
                 }
-                SyntaxType.OpenParentheses -> {
-                    val open = match(SyntaxType.OpenParentheses)
-                    val arguments = parseArguments()
-                    val closed = match(SyntaxType.ClosedParentheses)
-                    return CallExpressionNode(textFile, pre, open, arguments, closed)
-                }
+                SyntaxType.OpenParentheses -> return parseCall(pre)
                 SyntaxType.As -> {
                     val keyword = match(SyntaxType.As)
                     val type = parseTypeClause()
@@ -507,6 +481,13 @@ class Parser(
             }
         }
         return pre
+    }
+
+    private fun parseCall(pre: Node): CallExpressionNode {
+        val open = match(SyntaxType.OpenParentheses)
+        val arguments = parseSeparatedList(SyntaxType.Comma, { it == SyntaxType.ClosedParentheses }, ::parseExpression)
+        val closed = match(SyntaxType.ClosedParentheses)
+        return CallExpressionNode(textFile, pre, open, arguments, closed)
     }
 
     private fun parseBinaryExpression(parentPrecedence: Int = 0): Node {
@@ -554,10 +535,21 @@ class Parser(
         }
     }
 
-    private fun parseBooleanLiteral(): LiteralExpressionNode {
+    private fun parseUnsafeExpression(): Node {
+        val keyword = match(SyntaxType.Unsafe)
+        val openBrace = match(SyntaxType.OpenBrace)
+
+        val statements = parseInsideBraces {
+            parseStatement()
+        }
+
+        val closedBrace = match(SyntaxType.ClosedBrace)
+        return BlockNode(textFile, keyword, openBrace, statements, closedBrace, true)
+    }
+
+    private fun parseBooleanLiteral(): BoolConstantNode {
         val token = next()
-        val isTrue = token.kind == SyntaxType.True
-        return LiteralExpressionNode(textFile, token, isTrue)
+        return BoolConstantNode(textFile, token)
     }
 
     private fun parseIntLiteral(): LiteralExpressionNode {
@@ -575,18 +567,6 @@ class Parser(
         })
     }
 
-    private fun parseUnsafeExpression(): Node {
-        val keyword = match(SyntaxType.Unsafe)
-        val openBrace = match(SyntaxType.OpenBrace)
-
-        val statements = parseInsideBraces {
-            parseStatement()
-        }
-
-        val closedBrace = match(SyntaxType.ClosedBrace)
-        return BlockNode(textFile, keyword, openBrace, statements, closedBrace, true)
-    }
-
     private fun parseFloatLiteral(): Node {
         val token = next()
         return LiteralExpressionNode(textFile, if (
@@ -600,7 +580,7 @@ class Parser(
         })
     }
 
-    private fun parseStringLiteral() = LiteralExpressionNode(textFile, match(SyntaxType.String))
+    private fun parseStringLiteral() = TextConstantNode(textFile, match(SyntaxType.String))
 
     private fun parseCharLiteral() = LiteralExpressionNode(textFile, match(SyntaxType.Char))
 
@@ -668,34 +648,9 @@ class Parser(
 
     private fun parseCollectionInitialization(type: TypeClauseNode): Node {
         val openBrace = match(SyntaxType.OpenBrace)
-        val expressions = parseArguments()
+        val expressions = parseSeparatedList(SyntaxType.Comma, { it == SyntaxType.ClosedBrace }, ::parseExpression)
         val closedBrace = match(SyntaxType.ClosedBrace)
         return CollectionInitializationNode(textFile, type, openBrace, expressions, closedBrace)
-    }
-
-    private fun parseArguments(): SeparatedNodeList<Node> {
-
-        val nodesNSeparators = ArrayList<Node>()
-
-        skipSeparators()
-        while (
-            current.kind != SyntaxType.ClosedParentheses &&
-            current.kind != SyntaxType.EOF
-        ) {
-            val expression = parseExpression()
-            nodesNSeparators.add(expression)
-
-            skipSeparators()
-            if (current.kind == SyntaxType.Comma) {
-                val comma = match(SyntaxType.Comma)
-                nodesNSeparators.add(comma)
-            } else {
-                break
-            }
-            skipSeparators()
-        }
-
-        return SeparatedNodeList(nodesNSeparators)
     }
 
     private fun <T : Node> parseInsideBraces(

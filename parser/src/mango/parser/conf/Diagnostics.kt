@@ -1,7 +1,7 @@
-package mango.cli.conf
+package mango.parser.conf
 
+import shared.DiagnosticList
 import shared.text.TextLocation
-import shared.utils.DiagnosticList
 
 fun DiagnosticList.reportConfError(
     location: TextLocation,

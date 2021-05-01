@@ -4,14 +4,14 @@ type Process {
     val pid I32
 }
 
-[internal]
-[cname: "fork"]
+@internal
+@cname("fork")
 val fork () I32
 
-[inline]
+@inline
 val getCurrentProcess () Process -> {
-    [internal]
-    [cname: "getpid"]
+    @internal
+    @cname("getpid")
     val getpid () I32
     Process { pid: getpid() }
 }

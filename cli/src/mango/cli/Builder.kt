@@ -1,12 +1,13 @@
 package mango.cli
 
-import mango.cli.conf.ConfParser
-import mango.cli.conf.reportConfMissingMandatoryField
 import mango.cli.console.Console
 import mango.cli.emission.EmissionType
 import mango.cli.emission.Emitter
 import mango.compiler.Compilation
-import mango.compiler.SyntaxTree
+import mango.compiler.binding.structureString
+import mango.parser.SyntaxTree
+import mango.parser.conf.ConfParser
+import mango.parser.conf.reportConfMissingMandatoryField
 import java.io.File
 
 var isProject = false; private set
@@ -182,10 +183,29 @@ object Builder {
         }
         val (errors, nonErrors, program) = Compilation.evaluate(syntaxTrees, isSharedLib, isExecutable)
         if (DEBUG) {
+            println("SYNTAX TREE")
+            syntaxTrees.forEach {
+                it.printTree()
+                println()
+                println()
+            }
+            println("PARSED FUNCTIONS")
+            program.functionBodies.forEach {
+                val symbol = it.key
+                symbol.printStructure()
+                val body = it.value
+                body?.run {
+                    print(" -> ")
+                    print(structureString(program.functionBodies))
+                }
+                println()
+                println()
+            }
+            println("COMPILED FUNCTIONS")
             program.functions.forEach {
                 val symbol = it.key
                 symbol.printStructure()
-                val body = program.functions[symbol]
+                val body = it.value
                 body?.run {
                     print(" -> ")
                     print(structureString(program.functionBodies))

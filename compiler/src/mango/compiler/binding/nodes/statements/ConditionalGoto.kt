@@ -1,10 +1,9 @@
-package mango.compiler.ir.instructions
+package mango.compiler.binding.nodes.statements
 
 import mango.compiler.binding.nodes.expressions.Expression
-import mango.compiler.binding.nodes.statements.Statement
 import mango.compiler.ir.Label
 
-class ConditionalGotoStatement(
+class ConditionalGoto(
     val label: Label,
     val condition: Expression,
     val jumpIfTrue: Boolean

@@ -1,4 +1,4 @@
-package mango.cli.conf
+package mango.parser.conf
 
 class ConfData {
 

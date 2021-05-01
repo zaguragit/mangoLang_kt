@@ -9,7 +9,7 @@ interface LLVMValue {
         val arrayConst: ArrayConst
     ) : LLVMValue {
         override val type get() = LLVMType.Ptr(arrayConst.type)
-        override val code get() = "getelementptr inbounds ([${arrayConst.lengthInBytes()} x ${arrayConst.type.code}], [${arrayConst.lengthInBytes()} x ${arrayConst.type.code}]* @${arrayConst.id}, i64 0, i32 0)"
+        override val code get() = "getelementptr inbounds ([${arrayConst.lengthInBytes()} x ${arrayConst.type.code}], [${arrayConst.lengthInBytes()} x ${arrayConst.type.code}]* @\"${arrayConst.name}\", i64 0, i32 0)"
     }
 
     class LocalRef(
@@ -62,8 +62,8 @@ interface LLVMValue {
     }
 
     class Struct(
-            override val type: LLVMType.Struct,
-            val values: Array<LLVMValue>
+        override val type: LLVMType.Struct,
+        val values: Array<LLVMValue>
     ) : LLVMValue {
         override val code get() = "{ " + values.joinToString(", ") { it.type.code + ' ' + it.code } + " }"
     }

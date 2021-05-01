@@ -2,13 +2,17 @@ package mango.cli
 
 import mango.cli.console.Console
 import mango.cli.console.Highlighter
-import mango.compiler.binding.ControlFlowGraph
 import mango.compiler.binding.nodes.expressions.BlockExpression
+import mango.compiler.binding.structureString
+import mango.compiler.ir.ControlFlowGraph
 import mango.compiler.symbols.CallableSymbol
 import mango.compiler.symbols.Symbol
 import mango.compiler.symbols.TypeSymbol
 import mango.compiler.symbols.VariableSymbol
-import shared.utils.Diagnostic
+import mango.parser.SyntaxTree
+import mango.parser.Token
+import mango.parser.nodes.Node
+import shared.Diagnostic
 
 fun Symbol.printStructure() = when (kind) {
     Symbol.Kind.Variable, Symbol.Kind.VisibleVariable, Symbol.Kind.Field -> printVariable()
@@ -110,7 +114,7 @@ fun printError(diagnostic: Diagnostic) {
     val spanStart = span.start
     val spanEnd = span.end
 
-    print(Console.RED + "${location.text.fileName}[" + Console.BLUE_BRIGHT + "${location.startLineI}, $charI" + Console.RED + "]: $message" + Console.RESET + " {\n\t")
+    print(Console.RED + "${location.text.filePackage}[" + Console.BLUE_BRIGHT + "${location.startLineI}, $charI" + Console.RED + "]: $message" + Console.RESET + " {\n\t")
     print(location.text.getTextRange(startLine.start, spanStart))
     print(Console.RED_BOLD_BRIGHT)
     print(location.text.getTextRange(spanStart, spanEnd).replace("\n", "\n\t"))
@@ -136,7 +140,7 @@ fun printSuggestion(diagnostic: Diagnostic) {
         else -> Console.CYAN
     }
 
-    print(color + "${location.text.fileName}[" + Console.BLUE_BRIGHT + "${location.startLineI}, $charI" + color + "]: $message" + Console.RESET + " {\n\t")
+    print(color + "${location.text.filePackage}[" + Console.BLUE_BRIGHT + "${location.startLineI}, $charI" + color + "]: $message" + Console.RESET + " {\n\t")
     print(location.text.getTextRange(startLine.start, spanStart))
     when (diagnostic.diagnosticType) {
         Diagnostic.Type.Warning -> print(Console.YELLOW_BOLD_BRIGHT)
@@ -147,4 +151,56 @@ fun printSuggestion(diagnostic: Diagnostic) {
     print(location.text.getTextRange(spanEnd, endLine.end))
     println()
     println('}')
+}
+
+fun SyntaxTree.printTree(indent: String = "", isLast: Boolean = true) {
+    print(Console.GRAY)
+    print(indent)
+    print(if (isLast) "└──" else "├──")
+
+    print(Console.RESET)
+    print(projectPath)
+
+    println()
+
+    val newIndent = indent + if (isLast) "    " else "│   "
+
+    val lastChild = members.lastOrNull()
+
+    for (child in members) {
+        child.printTree(newIndent, child === lastChild)
+    }
+
+    print(Console.RESET)
+}
+
+fun Node.printTree(indent: String = "", isLast: Boolean = true) {
+    print(Console.GRAY)
+    print(indent)
+    print(if (isLast) "└──" else "├──")
+
+    if (this is Token) {
+        print(Console.CYAN_BRIGHT)
+        print(kind.name)
+        if (string != null) {
+            print(" ")
+            print(Console.GREEN_BOLD_BRIGHT)
+            print(string)
+        }
+    } else {
+        print(Console.RESET)
+        print(kind.name)
+    }
+
+    println()
+
+    val newIndent = indent + if (isLast) "    " else "│   "
+
+    val lastChild = children.lastOrNull()
+
+    for (child in children) {
+        child.printTree(newIndent, child === lastChild)
+    }
+
+    print(Console.RESET)
 }

@@ -1,54 +1,51 @@
 use primitives*
 use text.string*
 
-[cname: "putchar"]
+@cname("putchar")
 val print (char I16)
 
 val print (text CharSequence) -> {
-	var i = 0
-	loop {
-	    i >= text.length ? break
+	loop i : 0 .. text.length - 1 {
 		print(text[i])
-		i += 1
 	}
 
-    [cname: "flushPrint"]
+    @cname("flushPrint")
     val flushPrint ()
 
 	flushPrint()
 }
 
-[inline]
+@inline
 val print (i I32) -> print(i.toString())
 
-[inline]
+@inline
 val print (i Bool) -> print(i.toString())
 
 
 
-[inline]
+@inline
 val println () -> print('\n')
 
-[inline]
+@inline
 val println (text CharSequence) -> {
     print(text)
     println()
 }
 
-[inline]
+@inline
 val println (char I16) -> {
     print(char)
     println()
 }
 
-[inline]
+@inline
 val println (i I32) -> println(i.toString())
 
-[inline]
+@inline
 val println (i Bool) -> println(i.toString())
 
 
-[cname: "getchar"]
+@cname("getchar")
 val readChar () I16
 
 val readln () String -> {

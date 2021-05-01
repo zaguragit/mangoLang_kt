@@ -4,9 +4,9 @@ import mango.compiler.binding.ConstantFolding
 import mango.compiler.binding.nodes.BiOperator
 
 class BinaryExpression(
-        val left: Expression,
-        val operator: BiOperator,
-        val right: Expression
+    val left: Expression,
+    val operator: BiOperator,
+    val right: Expression
 ) : Expression() {
 
     override val type get() = operator.resultType

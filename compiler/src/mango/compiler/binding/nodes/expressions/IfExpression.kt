@@ -3,9 +3,9 @@ package mango.compiler.binding.nodes.expressions
 import mango.compiler.symbols.TypeSymbol
 
 class IfExpression(
-        val condition: Expression,
-        val thenExpression: Expression,
-        val elseExpression: Expression?
+    val condition: Expression,
+    val thenExpression: Expression,
+    val elseExpression: Expression?
 ) : Expression() {
 
     override val type: TypeSymbol

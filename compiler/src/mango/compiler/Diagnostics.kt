@@ -6,8 +6,8 @@ import mango.compiler.binding.nodes.UnOperator
 import mango.compiler.symbols.Symbol
 import mango.compiler.symbols.TypeSymbol
 import mango.parser.SyntaxType
+import shared.DiagnosticList
 import shared.text.TextLocation
-import shared.utils.DiagnosticList
 
 fun DiagnosticList.reportWrongType(
     location: TextLocation,
@@ -69,7 +69,7 @@ fun DiagnosticList.reportNotOperator(
     (symbol.type as TypeSymbol.Fn).args.elementAt(0).path + ".${symbol.name}" + "(${(symbol.type as TypeSymbol.Fn).args.subList(1, (symbol.type as TypeSymbol.Fn).args.size).joinToString(", ") { it.path }})"
 } else {
     symbol.name + "(${(symbol.type as TypeSymbol.Fn).args.joinToString(", ") { it.path }})"
-}} is missing the [operator] annotation")
+}} is missing the '@operator' annotation")
 
 fun DiagnosticList.reportNoSuchField(
     location: TextLocation,
@@ -129,15 +129,6 @@ fun DiagnosticList.reportVarIsConstant(
     symbol: Symbol
 ) = report(location, "\"${symbol.name}\" is constant")
 
-fun DiagnosticList.reportInvalidCharacterEscape(
-    location: TextLocation,
-    string: String
-) = report(location, "The character escape \\$string doesn't exist")
-
-fun DiagnosticList.reportUnterminatedString(
-    location: TextLocation
-) = report(location, "Unterminated string")
-
 fun DiagnosticList.reportWrongArgumentCount(
     location: TextLocation,
     count: Int,
@@ -164,17 +155,6 @@ fun DiagnosticList.reportTypeNotStruct(
     location: TextLocation,
     name: String
 ) = report(location, "Type \"$name\" isn't a struct")
-
-fun DiagnosticList.reportBadCharacter(
-    location: TextLocation,
-    char: Char
-) = report(location, "Invalid character '$char'")
-
-fun DiagnosticList.reportCantCast(
-    location: TextLocation,
-    from: TypeSymbol,
-    to: TypeSymbol
-) = report(location, "Can't cast from type $from to type $to")
 
 fun DiagnosticList.reportBreakContinueOutsideLoop(
     location: TextLocation,

@@ -7,11 +7,11 @@ type CharSequence {
 	val chars Ptr<I16>
 }
 
-[inline]
-[operator]
+@inline
+@operator
 val (s CharSequence) get (i I32) I16 -> unsafe { s.chars[i] }
 
-[cname: "stringToInt"]
+@cname("stringToInt")
 val (s CharSequence) toInt (radix I32) I32 -> {
     var n = 0
     var p = 1
@@ -26,17 +26,17 @@ val (s CharSequence) toInt (radix I32) I32 -> {
     n
 }
 
-[inline]
+@inline
 val (s CharSequence) toInt () I32 -> s.toInt(10)
 
-[operator]
+@operator
 val (s CharSequence) equals (other CharSequence) Bool -> {
     val size = s.length
-    size != other.length ? return false
+    size != other.length ? ret false
     var i = 0
     loop {
         i >= size ? break
-        s[i] != other[i] ? return false
+        s[i] != other[i] ? ret false
         i += 1
     }
     true

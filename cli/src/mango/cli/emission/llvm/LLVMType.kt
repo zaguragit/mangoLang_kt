@@ -1,8 +1,8 @@
 package mango.cli.emission.llvm
 
+import mango.cli.emission.llvm.LLVMEmitter.LLVMEmitterError
 import mango.compiler.symbols.Symbol
 import mango.compiler.symbols.TypeSymbol
-import mango.util.EmitterError
 
 interface LLVMType {
     val code: String
@@ -34,7 +34,7 @@ interface LLVMType {
                     TypeSymbol.Ptr.path -> Ptr(get(type.params[0]))
                     TypeSymbol.Void.path -> Void
                     TypeSymbol.Char.path -> I16
-                    else -> throw EmitterError("internal error: type unknown to LLVM (${type.path})")
+                    else -> throw LLVMEmitterError("internal error: type unknown to LLVM (${type.path})")
                 }
             }
         }

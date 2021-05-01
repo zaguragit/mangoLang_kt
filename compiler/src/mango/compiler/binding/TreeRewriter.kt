@@ -3,32 +3,28 @@ package mango.compiler.binding
 import mango.compiler.binding.nodes.BoundNode
 import mango.compiler.binding.nodes.expressions.*
 import mango.compiler.binding.nodes.statements.*
-import mango.compiler.ir.instructions.ConditionalGotoStatement
-import mango.compiler.ir.instructions.GotoStatement
-import mango.compiler.ir.instructions.LabelStatement
 import mango.compiler.symbols.TypeSymbol
-import mango.util.BinderError
 
-open class TreeRewriter {
+interface TreeRewriter {
 
     fun rewriteStatement(node: Statement): Statement {
         return when (node.kind) {
             BoundNode.Kind.ExpressionStatement -> rewriteExpressionStatement(node as ExpressionStatement)
-            BoundNode.Kind.ValVarDeclaration -> rewriteVariableDeclaration(node as VariableDeclaration)
-            BoundNode.Kind.LoopStatement -> rewriteWhileStatement(node as LoopStatement)
+            BoundNode.Kind.ValVarDeclaration -> rewriteValVarDeclaration(node as ValVarDeclaration)
+            BoundNode.Kind.LoopStatement -> rewriteLoopStatement(node as LoopStatement)
             BoundNode.Kind.ForLoopStatement -> rewriteForStatement(node as ForStatement)
             BoundNode.Kind.LabelStatement -> rewriteLabelStatement(node as LabelStatement)
-            BoundNode.Kind.GotoStatement -> rewriteGotoStatement(node as GotoStatement)
-            BoundNode.Kind.ConditionalGotoStatement -> rewriteConditionalGotoStatement(node as ConditionalGotoStatement)
+            BoundNode.Kind.GotoStatement -> rewriteGotoStatement(node as Goto)
+            BoundNode.Kind.ConditionalGotoStatement -> rewriteConditionalGotoStatement(node as ConditionalGoto)
             BoundNode.Kind.ReturnStatement -> rewriteReturnStatement(node as ReturnStatement)
             BoundNode.Kind.AssignmentStatement -> rewriteAssignmentStatement(node as Assignment)
             BoundNode.Kind.PointerAccessAssignment -> rewritePointerAccessAssignment(node as PointerAccessAssignment)
             BoundNode.Kind.NopStatement -> NopStatement
-            else -> throw BinderError("Unexpected node: ${node.kind}")
+            else -> throw Binder.BinderError("Unexpected node: ${node.kind}")
         }
     }
 
-    protected open fun rewriteExpressionStatement(node: ExpressionStatement): Statement {
+    fun rewriteExpressionStatement(node: ExpressionStatement): Statement {
         val expression = rewriteExpression(node.expression)
         if (expression == node.expression) {
             return node
@@ -36,15 +32,15 @@ open class TreeRewriter {
         return ExpressionStatement(expression)
     }
 
-    protected open fun rewriteVariableDeclaration(node: VariableDeclaration): Statement {
+    fun rewriteValVarDeclaration(node: ValVarDeclaration): Statement {
         val initializer = rewriteExpression(node.initializer)
         if (initializer == node.initializer) {
             return node
         }
-        return VariableDeclaration(node.variable, initializer)
+        return ValVarDeclaration(node.variable, initializer)
     }
 
-    protected open fun rewriteWhileStatement(node: LoopStatement): Statement {
+    fun rewriteLoopStatement(node: LoopStatement): Statement {
         val body = rewriteStatement(node.body)
         if (body == node.body) {
             return node
@@ -52,7 +48,7 @@ open class TreeRewriter {
         return LoopStatement(body, node.breakLabel, node.continueLabel)
     }
 
-    protected open fun rewriteForStatement(node: ForStatement): Statement {
+    fun rewriteForStatement(node: ForStatement): Statement {
         val lowerBound = rewriteExpression(node.lowerBound)
         val upperBound = rewriteExpression(node.upperBound)
         val body = rewriteStatement(node.body)
@@ -62,22 +58,22 @@ open class TreeRewriter {
         return ForStatement(node.variable, lowerBound, upperBound, body, node.breakLabel, node.continueLabel)
     }
 
-    protected open fun rewriteLabelStatement(node: LabelStatement) = node
-    protected open fun rewriteGotoStatement(node: GotoStatement) = node
+    fun rewriteLabelStatement(node: LabelStatement) = node
+    fun rewriteGotoStatement(node: Goto) = node
 
-    protected open fun rewriteConditionalGotoStatement(node: ConditionalGotoStatement): Statement {
+    fun rewriteConditionalGotoStatement(node: ConditionalGoto): Statement {
         val condition = rewriteExpression(node.condition)
         if (condition == node.condition) {
             return node
         }
-        return ConditionalGotoStatement(node.label, condition, node.jumpIfTrue)
+        return ConditionalGoto(node.label, condition, node.jumpIfTrue)
     }
 
-    protected open fun rewriteReturnStatement(node: ReturnStatement): Statement {
+    fun rewriteReturnStatement(node: ReturnStatement): Statement {
         return ReturnStatement(node.expression?.let { rewriteExpression(it) })
     }
 
-    protected fun rewriteExpression(node: Expression) = when (node.kind) {
+    fun rewriteExpression(node: Expression) = when (node.kind) {
         BoundNode.Kind.UnaryExpression -> rewriteUnaryExpression(node as UnaryExpression)
         BoundNode.Kind.BinaryExpression -> rewriteBinaryExpression(node as BinaryExpression)
         BoundNode.Kind.LiteralExpression -> rewriteLiteralExpression(node as LiteralExpression)
@@ -93,13 +89,13 @@ open class TreeRewriter {
         BoundNode.Kind.PointerArrayInitialization -> rewritePointerArrayInitialization(node as PointerArrayInitialization)
         BoundNode.Kind.IfExpression -> rewriteIfExpression(node as IfExpression)
         BoundNode.Kind.Lambda -> rewriteLambdaExpression(node as Lambda)
-        else -> throw BinderError("Unexpected node: ${node.kind}")
+        else -> throw Binder.BinderError("Unexpected node: ${node.kind}")
     }
 
-    protected open fun rewriteLiteralExpression(node: LiteralExpression) = node
-    protected open fun rewriteNameExpression(node: NameExpression) = node
+    fun rewriteLiteralExpression(node: LiteralExpression) = node
+    fun rewriteNameExpression(node: NameExpression) = node
 
-    protected open fun rewriteUnaryExpression(node: UnaryExpression): Expression {
+    fun rewriteUnaryExpression(node: UnaryExpression): Expression {
         val operand = rewriteExpression(node.operand)
         if (operand == node.operand) {
             return node
@@ -107,7 +103,7 @@ open class TreeRewriter {
         return UnaryExpression(node.operator, operand)
     }
 
-    protected open fun rewriteBinaryExpression(node: BinaryExpression): Expression {
+    fun rewriteBinaryExpression(node: BinaryExpression): Expression {
         val left = rewriteExpression(node.left)
         val right = rewriteExpression(node.right)
         if (left == node.left && right == node.right) {
@@ -116,7 +112,7 @@ open class TreeRewriter {
         return BinaryExpression(left, node.operator, right)
     }
 
-    protected open fun rewriteAssignmentStatement(node: Assignment): Statement {
+    fun rewriteAssignmentStatement(node: Assignment): Statement {
         val expression = rewriteExpression(node.expression)
         val assignee = rewriteExpression(node.assignee)
         if (expression == node.expression && assignee == node.assignee) {
@@ -125,7 +121,7 @@ open class TreeRewriter {
         return Assignment(assignee, expression)
     }
 
-    private fun rewritePointerAccessAssignment(node: PointerAccessAssignment): Statement {
+    fun rewritePointerAccessAssignment(node: PointerAccessAssignment): Statement {
         val expression = rewriteExpression(node.expression)
         val i = rewriteExpression(node.i)
         val value = rewriteExpression(node.value)
@@ -135,7 +131,7 @@ open class TreeRewriter {
         return PointerAccessAssignment(expression, i, value)
     }
 
-    protected fun rewriteCallExpression(node: CallExpression): Expression {
+    fun rewriteCallExpression(node: CallExpression): Expression {
         var args: ArrayList<Expression>? = null
         for (i in node.arguments.indices) {
             val oldArgument = node.arguments.elementAt(i)
@@ -143,7 +139,7 @@ open class TreeRewriter {
             if (args == null) {
                 if (newArgument != oldArgument) {
                     args = ArrayList()
-                    for (j in 0 until i) {
+                    for (j in 0..i) {
                         args.add(node.arguments.elementAt(j))
                     }
                 }
@@ -158,7 +154,7 @@ open class TreeRewriter {
         return CallExpression(node.expression, args ?: node.arguments)
     }
 
-    protected fun rewriteCastExpression(node: CastExpression): Expression {
+    fun rewriteCastExpression(node: CastExpression): Expression {
         val expression = rewriteExpression(node.expression)
         if (expression == node.expression) {
             return node
@@ -166,7 +162,7 @@ open class TreeRewriter {
         return CastExpression(node.type, expression)
     }
 
-    protected fun rewriteStructFieldAccess(node: StructFieldAccess): Expression {
+    fun rewriteStructFieldAccess(node: StructFieldAccess): Expression {
         val struct = rewriteExpression(node.struct)
         if (struct == node.struct) {
             return node
@@ -174,7 +170,7 @@ open class TreeRewriter {
         return StructFieldAccess(struct, node.i)
     }
 
-    protected open fun rewriteBlockExpression(node: BlockExpression): Expression {
+    fun rewriteBlockExpression(node: BlockExpression): Expression {
         var statements: ArrayList<Statement>? = null
         for (i in node.statements.indices) {
             val oldStatement = node.statements.elementAt(i)
@@ -196,7 +192,7 @@ open class TreeRewriter {
         return BlockExpression(statements, node.type)
     }
 
-    protected fun rewriteReferenceExpression(node: Reference): Expression {
+    fun rewriteReferenceExpression(node: Reference): Expression {
         val expression = rewriteNameExpression(node.expression)
         if (expression == node.expression) {
             return node
@@ -204,7 +200,7 @@ open class TreeRewriter {
         return Reference(expression)
     }
 
-    protected fun rewritePointerAccessExpression(node: PointerAccess): Expression {
+    fun rewritePointerAccessExpression(node: PointerAccess): Expression {
         val expression = rewriteExpression(node.expression)
         val i = rewriteExpression(node.i)
         if (expression == node.expression && i == node.i) {
@@ -213,7 +209,7 @@ open class TreeRewriter {
         return PointerAccess(expression, i)
     }
 
-    protected fun rewriteStructInitialization(node: StructInitialization): Expression {
+    fun rewriteStructInitialization(node: StructInitialization): Expression {
         val map = HashMap<TypeSymbol.StructTypeSymbol.Field, Expression>()
         var wasChanged = false
         for (entry in node.fields) {
@@ -226,7 +222,7 @@ open class TreeRewriter {
         return if (wasChanged) StructInitialization(node.type, map) else node
     }
 
-    protected fun rewritePointerArrayInitialization(node: PointerArrayInitialization): Expression {
+    fun rewritePointerArrayInitialization(node: PointerArrayInitialization): Expression {
         var list: ArrayList<Expression>? = null
         var wasChanged = false
         if (node.expressions != null) {
@@ -249,7 +245,7 @@ open class TreeRewriter {
         return if (wasChanged) return PointerArrayInitialization(node.type, length, list) else node
     }
 
-    protected open fun rewriteIfExpression(node: IfExpression): Expression {
+    fun rewriteIfExpression(node: IfExpression): Expression {
         val condition = rewriteExpression(node.condition)
         val body = rewriteExpression(node.thenExpression)
         val elseStatement = if (node.elseExpression == null) { null } else {
@@ -261,7 +257,7 @@ open class TreeRewriter {
         return IfExpression(condition, body, elseStatement)
     }
 
-    protected open fun rewriteLambdaExpression(node: Lambda): Expression {
+    fun rewriteLambdaExpression(node: Lambda): Expression {
         return node
     }
 }

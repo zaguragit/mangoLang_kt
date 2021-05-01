@@ -9,33 +9,17 @@ import mango.compiler.symbols.TypeSymbol
 object ConstantFolding {
 
     fun computeConstant(
-            left: Expression,
-            operator: BiOperator,
-            right: Expression
+        left: Expression,
+        operator: BiOperator,
+        right: Expression
     ): BoundConstant? {
-        val leftConst = left.constantValue
-        val rightConst = right.constantValue
-        if (leftConst == null) {
-            return null
-        }
-        if (operator.type == BiOperator.Type.LogicAnd) {
-            if (leftConst.value == false || rightConst?.value == false) {
-                return BoundConstant(false)
-            }
-        }
-        if (operator.type == BiOperator.Type.LogicOr) {
-            if (leftConst.value == true || rightConst?.value == true) {
-                return BoundConstant(true)
-            }
-        }
-        if (rightConst == null) {
-            return null
-        }
+        val leftConst = left.constantValue ?: return null
+        val rightConst = right.constantValue ?: return null
         val leftVal = leftConst.value
         val rightVal = rightConst.value
         return BoundConstant(when (operator.type) {
             BiOperator.Type.Add -> {
-                if (left.type == TypeSymbol.String/*TypeSymbol.String*/) {
+                if (left.type == TypeSymbol.String) {
                     leftVal as String + rightVal as String
                 } else {
                     leftVal as Int + rightVal as Int
@@ -73,17 +57,15 @@ object ConstantFolding {
     }
 
     fun computeConstant(
-            operator: UnOperator,
-            operand: Expression
+        operator: UnOperator,
+        operand: Expression
     ): BoundConstant? {
-        if (operand.constantValue != null) {
-            val value = operand.constantValue!!.value
-            return when (operator.type) {
-                UnOperator.Type.Identity -> BoundConstant(value)
-                UnOperator.Type.Negation -> BoundConstant(-(value as Int))
-                UnOperator.Type.Not -> BoundConstant(!(value as Boolean))
-            }
-        }
-        return null
+        val c = operand.constantValue ?: return null
+        val value = c.value
+        return BoundConstant(when (operator.type) {
+            UnOperator.Type.Identity -> value
+            UnOperator.Type.Negation -> -(value as Int)
+            UnOperator.Type.Not -> !(value as Boolean)
+        })
     }
 }

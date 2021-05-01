@@ -1,4 +1,4 @@
-package shared.utils
+package shared
 
 import shared.text.TextLocation
 

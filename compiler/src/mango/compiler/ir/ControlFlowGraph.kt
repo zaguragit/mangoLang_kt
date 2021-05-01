@@ -1,25 +1,23 @@
-package mango.compiler.binding
+package mango.compiler.ir
 
+import mango.compiler.binding.Binder
 import mango.compiler.binding.nodes.BoundNode
 import mango.compiler.binding.nodes.UnOperator
-import mango.compiler.binding.nodes.expressions.BlockExpression
 import mango.compiler.binding.nodes.expressions.Expression
 import mango.compiler.binding.nodes.expressions.LiteralExpression
 import mango.compiler.binding.nodes.expressions.UnaryExpression
+import mango.compiler.binding.nodes.statements.ConditionalGoto
+import mango.compiler.binding.nodes.statements.Goto
+import mango.compiler.binding.nodes.statements.LabelStatement
 import mango.compiler.binding.nodes.statements.Statement
-import mango.compiler.ir.Label
-import mango.compiler.ir.instructions.ConditionalGotoStatement
-import mango.compiler.ir.instructions.GotoStatement
-import mango.compiler.ir.instructions.LabelStatement
 import mango.compiler.symbols.TypeSymbol
 import mango.parser.SyntaxType
-import mango.util.BinderError
 
 class ControlFlowGraph private constructor(
-        val start: BasicBlock,
-        val end: BasicBlock,
-        val blocks: List<BasicBlock>,
-        val branches: List<BasicBlockBranch>
+    val start: BasicBlock,
+    val end: BasicBlock,
+    val blocks: List<BasicBlock>,
+    val branches: List<BasicBlockBranch>
 ) {
 
     class BasicBlock {
@@ -60,8 +58,8 @@ class ControlFlowGraph private constructor(
         private val blocks = ArrayList<BasicBlock>()
         private var statements = ArrayList<Statement>()
 
-        fun build(block: BlockExpression): ArrayList<BasicBlock> {
-            for (statement in block.statements) {
+        fun build(block: Collection<Statement>): ArrayList<BasicBlock> {
+            for (statement in block) {
                 when (statement.kind) {
                     BoundNode.Kind.LabelStatement -> {
                         startBlock()
@@ -80,7 +78,7 @@ class ControlFlowGraph private constructor(
                         statements.add(statement)
                     }
                     BoundNode.Kind.NopStatement -> {}
-                    else -> throw BinderError("Unexpected statement ${statement.kind}")
+                    else -> throw Binder.BinderError("Unexpected statement ${statement.kind}")
                 }
             }
             endBlock()
@@ -128,12 +126,12 @@ class ControlFlowGraph private constructor(
                 for (statement in block.statements) {
                     when (statement.kind) {
                         BoundNode.Kind.GotoStatement -> {
-                            statement as GotoStatement
+                            statement as Goto
                             val toBlock = blockFromLabel[statement.label]!!
                             connect(block, toBlock)
                         }
                         BoundNode.Kind.ConditionalGotoStatement -> {
-                            statement as ConditionalGotoStatement
+                            statement as ConditionalGoto
                             val thenBlock = blockFromLabel[statement.label]!!
                             val negatedCondition = negate(statement.condition)
                             val thenCondition =
@@ -158,7 +156,7 @@ class ControlFlowGraph private constructor(
                             }
                         }
                         BoundNode.Kind.NopStatement -> {}
-                        else -> throw BinderError("Unexpected statement ${statement.kind}")
+                        else -> throw Binder.BinderError("Unexpected statement ${statement.kind}")
                     }
                 }
             }
@@ -220,14 +218,14 @@ class ControlFlowGraph private constructor(
     }
 
     companion object {
-        fun create(body: BlockExpression): ControlFlowGraph {
+        fun create(body: Collection<Statement>): ControlFlowGraph {
             val builder = BasicBlockBuilder()
             val blocks = builder.build(body)
             val graphBuilder = GraphBuilder()
             return graphBuilder.build(blocks)
         }
 
-        fun allPathsReturn(body: BlockExpression): Boolean {
+        fun allPathsReturn(body: Collection<Statement>): Boolean {
             val graph = create(body)
 
             for (branch in graph.end.incoming) {

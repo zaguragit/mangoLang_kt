@@ -20,7 +20,7 @@ object Translator {
 
         "break" -> SyntaxType.Break
         "continue" -> SyntaxType.Continue
-        "return" -> SyntaxType.Return
+        "ret" -> SyntaxType.Return
 
         "as" -> SyntaxType.As
 

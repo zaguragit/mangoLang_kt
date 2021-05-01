@@ -15,6 +15,8 @@ enum class SyntaxType {
 
     // Expressions
     LiteralExpression,
+    BoolConst,
+    TextConst,
     BinaryExpression,
     UnaryExpression,
     NameExpression,
@@ -82,8 +84,6 @@ enum class SyntaxType {
     As,
     Range,
     DoubleBang,
-    PlusPlus,
-    MinusMinus,
 
     // Assignment operators
     Equals,
@@ -116,6 +116,7 @@ enum class SyntaxType {
 
     Colon,
     QuestionMark,
+    At,
 
     Identifier,
     TypeClause,

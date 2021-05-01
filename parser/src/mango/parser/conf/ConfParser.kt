@@ -1,11 +1,11 @@
-package mango.cli.conf
+package mango.parser.conf
 
-import mango.compiler.reportBadCharacter
-import mango.compiler.reportUnterminatedString
+import mango.parser.reportBadCharacter
+import mango.parser.reportUnterminatedString
+import shared.DiagnosticList
 import shared.text.SourceText
 import shared.text.TextLocation
 import shared.text.TextSpan
-import shared.utils.DiagnosticList
 import java.io.File
 
 object ConfParser {

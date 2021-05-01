@@ -6,38 +6,35 @@ import mango.compiler.binding.nodes.BoundNode
 import mango.compiler.binding.nodes.UnOperator
 import mango.compiler.binding.nodes.expressions.*
 import mango.compiler.binding.nodes.statements.*
+import mango.compiler.ir.ControlFlowGraph
 import mango.compiler.ir.Label
 import mango.compiler.ir.Lowerer
-import mango.compiler.ir.instructions.GotoStatement
 import mango.compiler.symbols.CallableSymbol
 import mango.compiler.symbols.Symbol
 import mango.compiler.symbols.TypeSymbol
 import mango.compiler.symbols.VariableSymbol
+import mango.parser.SyntaxTree
 import mango.parser.SyntaxType
 import mango.parser.Token
 import mango.parser.Translator
 import mango.parser.nodes.*
-import mango.util.BinderError
+import shared.DiagnosticList
 import shared.text.TextLocation
 import shared.text.TextSpan
-import shared.utils.DiagnosticList
 import java.util.*
-import kotlin.collections.ArrayList
-import kotlin.collections.HashMap
-import kotlin.collections.HashSet
 
 class Binder(
     var scope: Scope,
     val function: CallableSymbol?,
     val functions: HashMap<CallableSymbol, BlockExpression?>,
-    val functionBodies: HashMap<CallableSymbol, Statement?>?,
+    val functionBodies: HashMap<CallableSymbol, Statement?>,
     val symbolsToBind: ArrayList<Symbol>?
 ) {
 
     var isUnsafe = false
     val diagnostics = DiagnosticList()
     private val loopStack = Stack<Pair<Label, Label>>()
-    private var labelCount = 0
+    private var loopCount = 0
 
     inline fun <T> inScope(scope: Scope, block: () -> T): T {
         val tmp = this.scope
@@ -61,8 +58,8 @@ class Binder(
             SyntaxType.ValVarDeclaration -> bindValVarDeclaration(node as ValVarDeclarationNode)
             SyntaxType.LoopStatement -> bindLoopStatement(node as LoopStatementNode)
             SyntaxType.IterationLoopStatement -> bindIterationLoopStatement(node as IterationLoopStatementNode)
-            SyntaxType.BreakStatement -> bindBreakStatement(node as BreakStatementNode)
-            SyntaxType.ContinueStatement -> bindContinueStatement(node as ContinueStatementNode)
+            SyntaxType.BreakStatement -> bindBreakStatement(node as BreakNode)
+            SyntaxType.ContinueStatement -> bindContinueStatement(node as ContinueNode)
             SyntaxType.ReturnStatement -> bindReturnStatement(node as ReturnStatementNode)
             SyntaxType.AssignmentStatement -> bindAssignmentStatement(node as AssignmentNode)
             else -> throw BinderError("Unexpected node: ${node.kind}")
@@ -121,7 +118,7 @@ class Binder(
 
         if (node.arrow == null) {
             meta.isExtern = true
-            if (node.annotations.find { it.identifier.string == "cname" } == null) {
+            if (node.annotations.find { it.getIdentifierString() == "cname" } == null) {
                 diagnostics.reportExternFnRequireCName(node.location)
             }
         }
@@ -167,32 +164,31 @@ class Binder(
     }
 
     private fun bindLoopBody(node: Node): Triple<Statement, Label, Label> {
-        val numStr = labelCount.toString(16)
-        val breakLabel = Label("B$numStr")
-        val continueLabel = Label("C$numStr")
-        labelCount++
+        val numStr = loopCount++.toString(16)
+        val breakLabel = Label("Break$numStr")
+        val continueLabel = Label("Continue$numStr")
         loopStack.push(breakLabel to continueLabel)
         val body = bindStatement(node)
         loopStack.pop()
         return Triple(body, breakLabel, continueLabel)
     }
 
-    private fun bindBreakStatement(node: BreakStatementNode): Statement {
+    private fun bindBreakStatement(node: BreakNode): Statement {
         if (loopStack.count() == 0) {
             diagnostics.reportBreakContinueOutsideLoop(node.keyword.location, node.keyword.string!!)
             return bindErrorStatement()
         }
         val breakLabel = loopStack.peek().first
-        return GotoStatement(breakLabel)
+        return Goto(breakLabel, Goto.Type.Break)
     }
 
-    private fun bindContinueStatement(node: ContinueStatementNode): Statement {
+    private fun bindContinueStatement(node: ContinueNode): Statement {
         if (loopStack.count() == 0) {
             diagnostics.reportBreakContinueOutsideLoop(node.keyword.location, node.keyword.string!!)
             return bindErrorStatement()
         }
         val continueLabel = loopStack.peek().second
-        return GotoStatement(continueLabel)
+        return Goto(continueLabel, Goto.Type.Continue)
     }
 
     private fun bindReturnStatement(node: ReturnStatementNode): Statement {
@@ -259,14 +255,14 @@ class Binder(
         }
     }
 
-    private fun bindValVarDeclaration(node: ValVarDeclarationNode): VariableDeclaration {
+    private fun bindValVarDeclaration(node: ValVarDeclarationNode): ValVarDeclaration {
         val isReadOnly = node.keyword.kind == SyntaxType.Val
 
         val type = node.typeClauseNode?.let { bindTypeClause(it) }
         if (node.initializer == null) {
             val variable = bindVariable(node.identifier, type ?: TypeSymbol.Any, isReadOnly, null)
             diagnostics.reportHasToBeInitialized(node.identifier.location)
-            return VariableDeclaration(variable, ErrorExpression())
+            return ValVarDeclaration(variable, ErrorExpression())
         }
 
         val isLambda = node.initializer!!.kind == SyntaxType.LambdaExpression
@@ -284,7 +280,7 @@ class Binder(
             l.symbol
         } else bindVariable(node.identifier, actualType, isReadOnly, initializer.constantValue)
 
-        return VariableDeclaration(variable, initializer)
+        return ValVarDeclaration(variable, initializer)
     }
 
     private fun bindTypeClause(node: TypeClauseNode): TypeSymbol {
@@ -294,24 +290,21 @@ class Binder(
             diagnostics.reportUndefinedType(node.location, path.joinToString("."))
             return TypeSymbol.err
         }
-        val types = node.types
-        if (types != null) {
+        val typeParams = node.types
+        if (typeParams != null) {
             if (node.start?.kind == SyntaxType.LessThan) {
-                if (type.paramCount != types.nodeCount) {
-                    diagnostics.reportWrongArgumentCount(node.start!!.location, types.nodeCount, type.paramCount)
+                if (type.paramCount != typeParams.nodeCount) {
+                    diagnostics.reportWrongArgumentCount(node.start!!.location, typeParams.nodeCount, type.paramCount)
                 }
                 return type(Array(type.paramCount) {
-                    val t = bindTypeClause(types[it])
-                    if (typeCheck(t, type.params[it], types[it].location)) {
+                    val t = bindTypeClause(typeParams[it])
+                    if (typeCheck(t, type.params[it], typeParams[it].location)) {
                         return TypeSymbol.err
                     }
                     t
                 })
             } else {
-                if (type.paramCount != types.nodeCount) {
-                    diagnostics.reportWrongArgumentCount(node.location, types.nodeCount, type.paramCount)
-                }
-                return TypeSymbol.Fn(type, types.map { bindTypeClause(it) })
+                return TypeSymbol.Fn(type, typeParams.map { bindTypeClause(it) })
             }
         }
         return type
@@ -335,7 +328,6 @@ class Binder(
         if (Namespace[path] == null) {
             val p = node.textFile.projectPath.substringBefore('.') + '.' + path
             if (Namespace[p] == null) {
-                println(Namespace.all.map { it.path })
                 diagnostics.reportIncorrectUseStatement(node.location)
             } else scope.use(UseStatement(p, node.isInclude))
         } else {
@@ -360,6 +352,8 @@ class Binder(
     private fun bindExpressionInternal(node: Node, typeHint: TypeSymbol?): Expression {
         return when (node.kind) {
             SyntaxType.LiteralExpression -> bindLiteralExpression(node as LiteralExpressionNode, typeHint)
+            SyntaxType.BoolConst -> bindBoolConst(node as BoolConstantNode, typeHint)
+            SyntaxType.TextConst -> bindTextConst(node as TextConstantNode, typeHint)
             SyntaxType.UnaryExpression -> bindUnaryExpression(node as UnaryExpressionNode)
             SyntaxType.BinaryExpression -> {
                 node as BinaryExpressionNode
@@ -728,8 +722,8 @@ class Binder(
     }
 
     private fun bindLiteralExpression(
-            node: LiteralExpressionNode,
-            expectedType: TypeSymbol?
+        node: LiteralExpressionNode,
+        expectedType: TypeSymbol?
     ): LiteralExpression {
         val type = when (node.value) {
             is Byte -> when (expectedType) {
@@ -750,8 +744,6 @@ class Binder(
             is Long -> TypeSymbol.I64
             is Float -> TypeSymbol.Float
             is Double -> TypeSymbol.Double
-            is Boolean -> TypeSymbol.Bool
-            is String -> TypeSymbol.String
             is Char -> TypeSymbol.Char
             else -> throw BinderError("Unexpected literal of type ${node.value?.javaClass}")
         }
@@ -760,10 +752,24 @@ class Binder(
             TypeSymbol.I16 -> (node.value as Number).toShort()
             TypeSymbol.I32 -> (node.value as Number).toInt()
             TypeSymbol.I64 -> (node.value as Number).toLong()
-            TypeSymbol.Float -> (node.value as Number).toFloat()
             TypeSymbol.Char -> (node.value as Char).toShort()
+            TypeSymbol.Float -> (node.value as Number).toFloat()
             else -> node.value
         }, type)
+    }
+
+    private fun bindBoolConst(
+        node: BoolConstantNode,
+        expectedType: TypeSymbol?
+    ): LiteralExpression {
+        return LiteralExpression(node.value, TypeSymbol.Bool)
+    }
+
+    private fun bindTextConst(
+        node: TextConstantNode,
+        expectedType: TypeSymbol?
+    ): LiteralExpression {
+        return LiteralExpression(node.value, TypeSymbol.String)
     }
 
     private fun bindUnaryExpression(node: UnaryExpressionNode): Expression {
@@ -960,7 +966,7 @@ class Binder(
         val (isNew, typeWithOriginalField) = isNew(node, struct, declaredTypes)
         var isOverride = false
         for (annotation in node.annotations) {
-            when (annotation.identifier.string) {
+            when (annotation.getIdentifierString()) {
                 "override" -> isOverride = true
                 else -> diagnostics.reportInvalidAnnotation(annotation.location)
             }
@@ -1001,7 +1007,7 @@ class Binder(
             for (syntaxTree in syntaxTrees) {
                 binder.diagnostics.append(syntaxTree.diagnostics)
                 binder.inScope(Namespace[syntaxTree.projectPath]!!) {
-                    for (s in syntaxTree.root.members) {
+                    for (s in syntaxTree.members) {
                         iterate(s, syntaxTree.projectPath)
                     }
                 }
@@ -1024,7 +1030,7 @@ class Binder(
             }
             for (syntaxTree in syntaxTrees) {
                 binder.inScope(Namespace[syntaxTree.projectPath]!!) {
-                    for (s in syntaxTree.root.members) {
+                    for (s in syntaxTree.members) {
                         iterate(s, syntaxTree.projectPath)
                     }
                 }
@@ -1038,7 +1044,7 @@ class Binder(
 
             val parentScope = createRootScope()
             val symbols = ArrayList<Symbol>()
-            val binder = Binder(parentScope, null, HashMap(), null, symbols)
+            val binder = Binder(parentScope, null, HashMap(), HashMap(), symbols)
             val statementBuilder = ArrayList<Statement>()
 
             for (syntaxTree in syntaxTrees) {
@@ -1142,11 +1148,11 @@ class Binder(
         }
 
         fun bindFunction(
-                parentScope: Scope,
-                functions: HashMap<CallableSymbol, BlockExpression?>,
-                symbol: CallableSymbol,
-                diagnostics: DiagnosticList,
-                functionBodies: HashMap<CallableSymbol, Statement?>?
+            parentScope: Scope,
+            functions: HashMap<CallableSymbol, BlockExpression?>,
+            symbol: CallableSymbol,
+            diagnostics: DiagnosticList,
+            functionBodies: HashMap<CallableSymbol, Statement?>
         ) {
             val symbolMangledName = symbol.mangledName()
             if (symbolMangledName == "malloc") {
@@ -1170,7 +1176,7 @@ class Binder(
                     if (body is ExpressionStatement) {
                         binder.typeCheck(body.expression, symbol.returnType, symbol.lambda.body!!.location)
                     } else {
-                        if (!TypeSymbol.Void.isOfType(symbol.returnType) && !ControlFlowGraph.allPathsReturn(loweredBody)) {
+                        if (!TypeSymbol.Void.isOfType(symbol.returnType) && !ControlFlowGraph.allPathsReturn(loweredBody.statements)) {
                             diagnostics.reportWrongType(symbol.lambda.body!!.location, TypeSymbol.Void, symbol.returnType)
                             //diagnostics.reportAllPathsMustReturn(symbol.declarationNode.identifier.location)
                         }
@@ -1191,25 +1197,24 @@ class Binder(
             val functions = HashMap<CallableSymbol, BlockExpression?>()
             val diagnostics = DiagnosticList()
 
-            val functionBodies = if (isSharedLib) {
-                val tmp = HashMap<CallableSymbol, Statement?>()
-                for (symbol in globalScope.symbols) {
-                    if (symbol is CallableSymbol) {
-                        bindFunction(Scope(symbol.namespace!!), functions, symbol, diagnostics, tmp)
-                    }
+            val functionBodies = HashMap<CallableSymbol, Statement?>()
+            for (symbol in globalScope.symbols) {
+                if (symbol is CallableSymbol) {
+                    bindFunction(Scope(symbol.namespace!!), functions, symbol, diagnostics, functionBodies)
                 }
-                tmp
-            } else {
-                for (symbol in globalScope.symbols) {
-                    if (symbol is CallableSymbol) {
-                        bindFunction(Scope(symbol.namespace!!), functions, symbol, diagnostics, null)
-                    }
-                }
-                null
             }
 
+            /*for ((fn, body) in functionBodies) {
+                if (body != null) {
+                    println(fn.mangledName())
+                    functions[fn] = Lowerer.lower(Inliner(functionBodies).rewriteStatement(body).also { println(it.structureString()) })
+                    println()
+                    println()
+                }
+            }*/
+
             val statement = Lowerer.lower(ExpressionStatement(BlockExpression(
-                    globalScope.statements, TypeSymbol.Void
+                globalScope.statements, TypeSymbol.Void
             )))
 
             return Program(
@@ -1222,9 +1227,12 @@ class Binder(
 
     private fun bindFunctionAnnotations(annotations: Collection<AnnotationNode>, l: Lambda) {
         for (annotation in annotations) {
-            when (annotation.identifier.string) {
+            when (annotation.getIdentifierString()) {
                 "inline" -> l.symbol.meta.isInline = true
-                "private" -> l.symbol.meta.isPrivate = true
+                "private" -> {
+                    l.symbol.meta.isPrivate = true
+                    l.symbol.meta.isInternal = true
+                }
                 "internal" -> l.symbol.meta.isInternal = true
                 "operator" -> {
                     if (l.symbol.meta.isExtension) {
@@ -1293,7 +1301,7 @@ class Binder(
                     Symbol.MetaData.entryExists = true
                 }
                 "cname" -> {
-                    val expression = bindLiteralExpression(annotation.value as LiteralExpressionNode, TypeSymbol.String)
+                    val expression = bindTextConst(annotation.getParameter(0) as TextConstantNode, TypeSymbol.String)
                     l.symbol.meta.cname = expression.value as String
                 }
                 "generic" -> {}
@@ -1303,4 +1311,6 @@ class Binder(
             }
         }
     }
+
+    class BinderError(message: String? = null) : Exception(message)
 }

@@ -1,11 +1,15 @@
 package mango.cli
 
 import mango.cli.console.Console
-import mango.compiler.SyntaxTree
-import shared.text.SourceText
+import mango.parser.MangoParser
+import mango.parser.SyntaxTree
 import java.io.File
 
 object Loader {
+
+    private fun fileNameToPackage(fileName: String) = fileName
+            .substringBeforeLast('.')
+            .replace('/', '.')
 
     fun load(fileName: String): SyntaxTree {
         val file = File(fileName)
@@ -20,8 +24,7 @@ object Loader {
             ExitCodes.ERROR()
         }
         val text = file.readText()
-        val sourceText = SourceText(text, fileName)
-        return SyntaxTree.parse(sourceText, sourceText.fileName.substringAfterLast("/").substringBeforeLast('.').replace('/', '.'))
+        return MangoParser.parse(text, fileNameToPackage(fileName.substringAfterLast("/")))
     }
 
     fun loadProject(moduleName: String): Collection<SyntaxTree> {
@@ -34,8 +37,8 @@ object Loader {
         val trees = ArrayList<SyntaxTree>()
         for (file in files) {
             val text = file.readText()
-            val sourceText = SourceText(text, file.path)
-            val syntaxTree = SyntaxTree.parse(sourceText, moduleName + '.' + sourceText.fileName.substringAfter("src/").substringBeforeLast('.').replace('/', '.'))
+            val fileName = file.path
+            val syntaxTree = MangoParser.parse(text, moduleName + '.' + fileNameToPackage(fileName.substringAfter("src/")))
             trees.add(syntaxTree)
         }
         return trees
@@ -73,7 +76,6 @@ object Loader {
             ExitCodes.ERROR()
         }
         val text = headersFile.readText()
-        val sourceText = SourceText(text, headersFileName)
-        return SyntaxTree.parse(sourceText, name)
+        return MangoParser.parse(text, name)
     }
 }

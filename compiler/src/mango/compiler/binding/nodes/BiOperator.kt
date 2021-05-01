@@ -5,11 +5,11 @@ import mango.parser.SyntaxType
 import kotlin.math.max
 
 data class BiOperator(
-        val syntaxType: SyntaxType,
-        val type: Type,
-        val leftType: TypeSymbol,
-        val rightType: TypeSymbol = leftType,
-        val resultType: TypeSymbol = leftType
+    val syntaxType: SyntaxType,
+    val type: Type,
+    val leftType: TypeSymbol,
+    val rightType: TypeSymbol = leftType,
+    val resultType: TypeSymbol = leftType
 ) {
 
     companion object {

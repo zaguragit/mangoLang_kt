@@ -1,16 +1,16 @@
 /*
-[inline]
+@inline
 val executeCommand (args Array<String>) I32 -> {
-    [cname: "execvp"]
+    @cname("execvp")
     val execvp (file Ptr<Char>, argv Ptr<Ptr<Char>>) I32
-    return unsafe {
+    unsafe {
         val argArray = args.map((it String) -> it.chars)
         execvp(cmd.chars, argArray.ptr)
     }
 }
 */
-[cname: "sleep"]
+@cname("sleep")
 val sleep (seconds I32)
 
-[cname: "exit"]
+@cname("exit")
 val exit ()

@@ -1,10 +1,10 @@
 package mango.cli.emission.headers
 
 import mango.cli.emission.Emitter
-import mango.cli.structureString
 import mango.compiler.binding.Namespace
 import mango.compiler.binding.Program
 import mango.compiler.binding.nodes.statements.Statement
+import mango.compiler.binding.structureString
 import mango.compiler.symbols.CallableSymbol
 import mango.compiler.symbols.Symbol
 import mango.compiler.symbols.TypeSymbol
@@ -49,7 +49,7 @@ object HeaderEmitter : Emitter {
     interface Header {
 
         class Function (val symbol: CallableSymbol) : Header {
-            override fun toString () = "\n[cname:\"${symbol.mangledName()}\"]\nval " + run {
+            override fun toString () = "\n@cname(\"${symbol.mangledName()}\")\nval " + run {
                 val a = ArrayList<VariableSymbol>()
                 a.addAll(symbol.parameters)
                 val b = if (symbol.meta.isExtension) {
@@ -65,7 +65,7 @@ object HeaderEmitter : Emitter {
 
         class InlineFunction (val symbol: CallableSymbol, val body: Statement, val functionBodies: HashMap<CallableSymbol, Statement?>) : Header {
             override fun toString (): String {
-                return "\n[inline]\nval " + run {
+                return "\n@inline\nval " + run {
                     val a = ArrayList<VariableSymbol>()
                     a.addAll(symbol.parameters)
                     val b = if (symbol.meta.isExtension) {

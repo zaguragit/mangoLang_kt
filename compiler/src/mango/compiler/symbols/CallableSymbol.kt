@@ -5,19 +5,19 @@ import mango.parser.nodes.ValVarDeclarationNode
 import java.util.*
 
 open class CallableSymbol(
-        name: String,
-        val parameters: Array<VariableSymbol>,
-        override val type: TypeSymbol.Fn,
-        path: String,
-        val declaration: ValVarDeclarationNode?,
-        val lambda: LambdaNode,
-        override val meta: MetaData
+    name: String,
+    val parameters: Array<VariableSymbol>,
+    override val type: TypeSymbol.Fn,
+    path: String,
+    val declaration: ValVarDeclarationNode?,
+    val lambda: LambdaNode,
+    override val meta: MetaData
 ) : VariableSymbol(
     name,
     type,
     true,
     null,
-        Kind.Function,
+    Kind.Function,
     path
 ), VisibleSymbol {
 

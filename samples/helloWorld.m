@@ -1,4 +1,4 @@
 use std.io*
 
-[entry]
+@entry
 fn main -> println(1/*"Hello world!"*/)

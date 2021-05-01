@@ -4,12 +4,12 @@ import mango.parser.SyntaxType
 import mango.parser.TextFile
 import mango.parser.Token
 
-class LiteralExpressionNode(
+class BoolConstantNode(
     textFile: TextFile,
     val literalToken: Token,
-    val value: Any? = literalToken.value
 ) : Node(textFile) {
-    override val kind = SyntaxType.LiteralExpression
+    val value: Boolean = literalToken.kind == SyntaxType.True
+    override val kind = SyntaxType.BoolConst
     override val children
         get() = listOf(literalToken)
 }

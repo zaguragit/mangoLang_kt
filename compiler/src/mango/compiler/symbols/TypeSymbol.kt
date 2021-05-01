@@ -1,14 +1,14 @@
 package mango.compiler.symbols
 
+import mango.compiler.binding.Binder
 import mango.compiler.binding.Scope
-import mango.util.BinderError
 
 open class TypeSymbol private constructor(
-        val path: String,
-        open val parentType: TypeSymbol?,
-        open val size: Int = 0,
-        val paramCount: Int = 0,
-        val params: Array<TypeSymbol> = arrayOf()
+    val path: String,
+    open val parentType: TypeSymbol?,
+    open val size: Int = 0,
+    val paramCount: Int = 0,
+    val params: Array<TypeSymbol> = arrayOf()
 ) : Symbol() {
 
     override val name: String = path.substringAfterLast('.')
@@ -61,18 +61,18 @@ open class TypeSymbol private constructor(
         }
 
         open class Field(
-                val name: String,
-                val type: TypeSymbol,
-                val isReadOnly: Boolean,
-                val isOverride: Boolean
+            val name: String,
+            val type: TypeSymbol,
+            val isReadOnly: Boolean,
+            val isOverride: Boolean
         ) {
-            override fun toString() = (if (isOverride) "[override]" else "") + (if (isReadOnly) "val " else "var ") + name + ' ' + type
+            override fun toString() = (if (isOverride) "@override\n" else "") + (if (isReadOnly) "val " else "var ") + name + ' ' + type
         }
     }
 
     class Fn(
-            val returnType: TypeSymbol,
-            val args: List<TypeSymbol>
+        val returnType: TypeSymbol,
+        val args: List<TypeSymbol>
     ) : TypeSymbol("!Fn", Any, ptrSize) {
 
         override val kind = Kind.FunctionType
@@ -91,11 +91,11 @@ open class TypeSymbol private constructor(
         val declared = ArrayList<StructTypeSymbol>()
 
         private inline fun createBuiltinType(
-                name: String,
-                parentType: TypeSymbol?,
-                size: Int = 0,
-                paramCount: Int = 0,
-                params: Array<TypeSymbol> = arrayOf()
+            name: String,
+            parentType: TypeSymbol?,
+            size: Int = 0,
+            paramCount: Int = 0,
+            params: Array<TypeSymbol> = arrayOf()
         ) = TypeSymbol(name, parentType, size, paramCount, params).also {
             builtin.add(it)
         }
@@ -149,11 +149,11 @@ open class TypeSymbol private constructor(
 
     operator fun invoke(params: Array<TypeSymbol>): TypeSymbol {
         if (params.size != paramCount) {
-            throw BinderError("Wrong param count!")
+            throw Binder.BinderError("Wrong param count!")
         }
         for (i in params.indices) {
             if (!params[i].isOfType(this.params[i])) {
-                throw BinderError("Parameters at position $i don't match!")
+                throw Binder.BinderError("Parameters at position $i don't match!")
             }
         }
         return TypeSymbol(path, parentType, size, paramCount, params)

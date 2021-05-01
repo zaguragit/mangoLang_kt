@@ -1,31 +1,29 @@
 use text.string*
 
-[inline]
-val (b Bool) toString () String -> return b ? "true" : "false"
+@inline
+val (b Bool) toString () String -> b ? "true" : "false"
 
 /*
-[inline]
-val (b Bool) toI64 () I64 -> return b ? 1 : 0
+@inline
+val (b Bool) toI64 () I64 -> b ? 1 : 0
 */
-[inline]
-val (b Bool) toI32 () I32 -> return b ? 1 : 0
+@inline
+val (b Bool) toI32 () I32 -> b ? 1 : 0
 /*
-[inline]
-val (b Bool) toI16 () I16 -> return b ? 1 : 0
+@inline
+val (b Bool) toI16 () I16 -> b ? 1 : 0
 
-[inline]
-val (b Bool) toI8 () I8 -> return b ? 1 : 0
+@inline
+val (b Bool) toI8 () I8 -> b ? 1 : 0
 */
 
-[inline]
+@inline
 val (i I32) toBool () Bool -> i != 0
 
 val (i I32) toString (radix I32) String -> {
     use text.builder*
 
-    i == 0 ? return "0"
-
-    val builder = StringBuilder(10)
+    i == 0 ? ret "0"
 
     var isNegative = false
     var num = i
@@ -35,7 +33,9 @@ val (i I32) toString (radix I32) String -> {
         num = -num
     }
 
-    val translation = "0123456789abcdefghijklmnopqrstuwxyz" // risky, radix can be too big
+    val translation = "0123456789abcdefghijklmnopqrstuwxyzαβγδεζηθικλμνξοπσςτυφχψω" // risky, radix can be too big
+
+    val builder = StringBuilder(10)
 
     loop {
         num == 0 ? break
@@ -51,5 +51,15 @@ val (i I32) toString (radix I32) String -> {
     builder.toString()
 }
 
-[inline]
+@inline
 val (i I32) toString () String -> i.toString(10)
+
+@inline
+val iterate (start I32, end I32, step I32, fn Void(I32)) -> {
+    var i = start
+    loop {
+        fn(i)
+        i += step
+        i == end ? break
+    }
+}

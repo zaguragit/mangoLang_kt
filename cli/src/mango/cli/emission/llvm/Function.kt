@@ -1,9 +1,9 @@
 package mango.cli.emission.llvm
 
+import mango.cli.emission.llvm.LLVMEmitter.LLVMEmitterError
 import mango.cli.emission.llvm.LLVMValue.LocalRef
 import mango.compiler.symbols.TypeSymbol
 import mango.compiler.symbols.VariableSymbol
-import mango.util.EmitterError
 import java.util.*
 
 data class Label(val name: String)
@@ -30,7 +30,7 @@ class BlockBuilder(
         is LLVMType.I -> tmpVal(Conversion(Conversion.Kind.SignExt, value, type)).ref
         is LLVMType.U -> tmpVal(Conversion(Conversion.Kind.ZeroExt, value, type)).ref
         is LLVMType.Float -> tmpVal(Conversion(Conversion.Kind.FloatExt, value, type)).ref
-        else -> throw EmitterError("type ${type.code} can't be extended")
+        else -> throw LLVMEmitterError("type ${type.code} can't be extended")
     }
 
     inline fun tmpVal(value: LLVMInstruction): TmpVal {
@@ -120,7 +120,7 @@ class BlockBuilder(
     inline fun stringConstForContent(content: String): GlobalVar = functionBuilder.stringConstForContent(content)
 
     fun label(): Label {
-        if (name == null) throw EmitterError("Label name can't be null")
+        if (name == null) throw LLVMEmitterError("Label name can't be null")
         return Label(name)
     }
 
@@ -184,7 +184,7 @@ class FunctionBuilder(
 
     fun paramReference (index: Int): LLVMValue {
         if (index < 0 || index >= paramTypes.size) {
-            throw EmitterError("Expected an index between 0 and ${paramTypes.size - 1}, found $index")
+            throw LLVMEmitterError("Expected an index between 0 and ${paramTypes.size - 1}, found $index")
         }
         val type = paramTypes[index]
         return LLVMValue.ParamRef(index, type)

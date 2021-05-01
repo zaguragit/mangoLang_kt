@@ -2,7 +2,7 @@ package shared.text
 
 class SourceText(
     private val text: String,
-    val fileName: String
+    val filePackage: String
 ) {
 
     val lines = ArrayList<Line>()

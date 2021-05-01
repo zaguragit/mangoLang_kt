@@ -3,5 +3,5 @@ use std.text.string*
 
 val astring = "some random string so ye"
 
-[inline]
+@inline
 val getName () String -> ask("What's your name?")

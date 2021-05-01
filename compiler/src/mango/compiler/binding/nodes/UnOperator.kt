@@ -4,10 +4,10 @@ import mango.compiler.symbols.TypeSymbol
 import mango.parser.SyntaxType
 
 class UnOperator(
-        val syntaxType: SyntaxType,
-        val type: Type,
-        val operandType: TypeSymbol,
-        val resultType: TypeSymbol = operandType
+    val syntaxType: SyntaxType,
+    val type: Type,
+    val operandType: TypeSymbol,
+    val resultType: TypeSymbol = operandType
 ) {
     companion object {
 

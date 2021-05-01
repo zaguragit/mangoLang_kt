@@ -5,18 +5,16 @@ import mango.parser.TextFile
 import mango.parser.Token
 
 class AnnotationNode(
-        textFile: TextFile,
-        val left: Token,
-        val identifier: Token,
-        val colon: Token?,
-        val value: Node?,
-        val right: Token
+    textFile: TextFile,
+    val character: Token,
+    val identifier: Token,
+    val callSyntax: CallExpressionNode?,
 ) : Node(textFile) {
 
     override val kind = SyntaxType.Annotation
-    override val children: Collection<Node> get() = arrayListOf<Node>(left, identifier).apply {
-        colon?.let { add(it) }
-        value?.let { add(it) }
-        add(right)
-    }
+    override val children: Collection<Node> get() = listOf(character, callSyntax ?: identifier)
+
+    fun getIdentifierString(): String = identifier.string!!
+
+    fun getParameter(i: Int): Node? = callSyntax?.arguments?.getOrNull(i)
 }

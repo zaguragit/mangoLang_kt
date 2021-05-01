@@ -1,8 +1,8 @@
 package mango.parser
 
+import shared.DiagnosticList
 import shared.text.TextLocation
 import shared.text.TextSpan
-import shared.utils.DiagnosticList
 
 class Lexer(
     private val textFile: TextFile
@@ -29,16 +29,23 @@ class Lexer(
         }
 
         return when (current) {
+            '➞', '→', '➜', '➙', '➝', '➡', '⇾', '➤' -> Token(textFile, SyntaxType.LambdaArrow, position++, string = current.toString())
+            //'✓', '✔' -> Token(textFile, SyntaxType.True, position++, string = current.toString())
+            //'✕', '✖', '✗', '✘' -> Token(textFile, SyntaxType.False, position++, string = current.toString())
+            '÷' -> Token(textFile, SyntaxType.Div, position++, string = current.toString())
+            '∅' -> Token(textFile, SyntaxType.Null, position++, string = current.toString())
+
+            '@' -> Token(textFile, SyntaxType.At, position++, string = current.toString())
+
             '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '.' -> readNumberToken()
+
             '+' -> when (lookAhead()) {
                 '=' -> Token(textFile, SyntaxType.PlusEquals, position, string = "+=").also { position += 2 }
-                '+' -> Token(textFile, SyntaxType.PlusPlus, position, string = "++").also { position += 2 }
                 else -> Token(textFile, SyntaxType.Plus, position++, string = "+")
             }
             '-' -> when (lookAhead()) {
                 '=' -> Token(textFile, SyntaxType.MinusEquals, position, string = "-=").also { position += 2 }
                 '>' -> Token(textFile, SyntaxType.LambdaArrow, position, string = "->").also { position += 2 }
-                '-' -> Token(textFile, SyntaxType.MinusMinus, position, string = "--").also { position += 2 }
                 else -> Token(textFile, SyntaxType.Minus, position++, string = "-")
             }
             '*' -> when (lookAhead()) {
